@@ -13,7 +13,7 @@ type model struct {
 		width  int
 		height int
 	}
-	listPane    tea.Model
+	listPane    listPane
 	detailsPane tea.Model
 }
 
@@ -31,7 +31,9 @@ func (m model) applySize() {
 }
 
 func newModel() model {
-	m := model{}
+	m := model{
+		listPane: newListPane(),
+	}
 	return m
 }
 
@@ -58,7 +60,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m model) View() tea.View {
 	s := strings.Builder{}
-	s.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, borderStyle.Render("This is the future list pane"), borderStyle.Render("This is the future details-pane")))
+	s.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, borderStyle.Render(m.listPane.View()), borderStyle.Render("This is the future details-pane")))
 	v := tea.NewView(s.String())
 	v.AltScreen = true // fullscreen
 	return v
