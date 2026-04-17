@@ -207,6 +207,8 @@ func (m model) View() tea.View {
 	return v
 }
 
+// NOTE: adding panics doesn't appear to alter programme behaviour, it would
+// appear that this function is not actively being used.
 func (m model) Cursor() *tea.Cursor {
 	focusedInput := m.inputs[m.focus]
 	if focusedInput.VirtualCursor() {
@@ -216,7 +218,7 @@ func (m model) Cursor() *tea.Cursor {
 	views := m.inputViews()
 	c := focusedInput.Cursor()
 
-	// Find textrea offset to position real cursor.
+	// Find textarea offset to position real cursor.
 	//
 	// To do this we calculate the width of all textareas to the left of
 	// the focused one.
