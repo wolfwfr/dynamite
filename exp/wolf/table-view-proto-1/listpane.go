@@ -18,6 +18,8 @@ type item string
 
 func (i item) FilterValue() string { return "" }
 
+// styles is a collection object for all the styles that apply or can apply to
+// the list-pane and its contents.
 type styles struct {
 	item         lipgloss.Style
 	selectedItem lipgloss.Style
