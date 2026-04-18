@@ -43,6 +43,8 @@ type Column struct {
 type KeyMap struct {
 	LineUp       key.Binding
 	LineDown     key.Binding
+	ScrollRight  key.Binding
+	ScrollLeft   key.Binding
 	PageUp       key.Binding
 	PageDown     key.Binding
 	HalfPageUp   key.Binding
@@ -53,13 +55,14 @@ type KeyMap struct {
 
 // ShortHelp implements the KeyMap interface.
 func (km KeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{km.LineUp, km.LineDown}
+	return []key.Binding{km.LineUp, km.LineDown, km.ScrollRight}
 }
 
 // FullHelp implements the KeyMap interface.
 func (km KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{km.LineUp, km.LineDown, km.GotoTop, km.GotoBottom},
+		{km.ScrollRight},
 		{km.PageUp, km.PageDown, km.HalfPageUp, km.HalfPageDown},
 	}
 }
@@ -74,6 +77,14 @@ func DefaultKeyMap() KeyMap {
 		LineDown: key.NewBinding(
 			key.WithKeys("down", "j"),
 			key.WithHelp("↓/j", "down"),
+		),
+		ScrollRight: key.NewBinding(
+			key.WithKeys("right", "l"),
+			key.WithHelp("->/l", "right"),
+		),
+		ScrollLeft: key.NewBinding(
+			key.WithKeys("left", "h"),
+			key.WithHelp("<-/h", "left"),
 		),
 		PageUp: key.NewBinding(
 			key.WithKeys("b", "pgup"),
@@ -132,9 +143,12 @@ type Option func(*Model)
 
 // New creates a new model for the table widget.
 func New(opts ...Option) Model {
+	v := viewport.New(viewport.WithHeight(20))
+	v.SoftWrap = false // disable text-wrap and allow horizontal scroll
+	v.SetHorizontalStep(5)
 	m := Model{
 		cursor:   0,
-		viewport: viewport.New(viewport.WithHeight(20)), //nolint:mnd
+		viewport: v, //nolint:mnd
 
 		KeyMap: DefaultKeyMap(),
 		Help:   help.New(),
@@ -212,6 +226,10 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			m.MoveUp(1)
 		case key.Matches(msg, m.KeyMap.LineDown):
 			m.MoveDown(1)
+		case key.Matches(msg, m.KeyMap.ScrollRight):
+			m.ScrollRight(1)
+		case key.Matches(msg, m.KeyMap.ScrollLeft):
+			m.ScrollLeft(1)
 		case key.Matches(msg, m.KeyMap.PageUp):
 			m.MoveUp(m.viewport.Height())
 		case key.Matches(msg, m.KeyMap.PageDown):
@@ -390,6 +408,18 @@ func (m *Model) MoveDown(n int) {
 	m.viewport.SetYOffset(offset)
 }
 
+// ScrollRight scrolls the header and viewport contents to the right
+func (m *Model) ScrollRight(n int) {
+	// TODO: make header scrollable
+	m.viewport.ScrollRight(n)
+}
+
+// ScrollLeft scrolls the header and viewport contents to the left
+func (m *Model) ScrollLeft(n int) {
+	// TODO: make header scrollable
+	m.viewport.ScrollLeft(n)
+}
+
 // GotoTop moves the selection to the first row.
 func (m *Model) GotoTop() {
 	m.MoveUp(m.cursor)
@@ -403,6 +433,7 @@ func (m *Model) GotoBottom() {
 // FromValues create the table rows from a simple string. It uses `\n` by
 // default for getting all the rows and the given separator for the fields on
 // each row.
+// NOTE: this function seems to be unused.
 func (m *Model) FromValues(value, separator string) {
 	rows := []Row{} //nolint:prealloc
 	for _, line := range strings.Split(value, "\n") {

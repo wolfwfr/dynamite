@@ -1,9 +1,9 @@
 package main
 
 import (
-	"charm.land/bubbles/v2/table"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/wolfwfr/dynamite/exp/wolf/table-view-proto-2/internal/table"
 )
 
 type tablePane struct {

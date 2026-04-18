@@ -1,6 +1,9 @@
 package main
 
-import "charm.land/bubbles/v2/table"
+import (
+	// "charm.land/bubbles/v2/table"
+	"github.com/wolfwfr/dynamite/exp/wolf/table-view-proto-2/internal/table"
+)
 
 var columns = []table.Column{
 	{Title: "Rank", Width: 4},
