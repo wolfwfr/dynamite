@@ -24,9 +24,10 @@ type Model struct {
 	focus  bool
 	styles Styles
 
-	viewport viewport.Model
-	start    int
-	end      int
+	content viewport.Model
+	header  viewport.Model
+	start   int
+	end     int
 }
 
 // Row represents one line in the table.
@@ -133,7 +134,7 @@ func DefaultStyles() Styles {
 // SetStyles sets the table styles.
 func (m *Model) SetStyles(s Styles) {
 	m.styles = s
-	m.UpdateViewport()
+	m.UpdateContent()
 }
 
 // Option is used to set options in New. For example:
@@ -143,12 +144,17 @@ type Option func(*Model)
 
 // New creates a new model for the table widget.
 func New(opts ...Option) Model {
-	v := viewport.New(viewport.WithHeight(20))
-	v.SoftWrap = false // disable text-wrap and allow horizontal scroll
-	v.SetHorizontalStep(5)
+	step := 5
+	h := viewport.New(viewport.WithHeight(2)) // header
+	h.SoftWrap = false                        // disable text-wrap and allow horizontal scroll
+	h.SetHorizontalStep(step)
+	c := viewport.New(viewport.WithHeight(20)) // content
+	c.SoftWrap = h.SoftWrap
+	c.SetHorizontalStep(step)
 	m := Model{
-		cursor:   0,
-		viewport: v, //nolint:mnd
+		cursor:  0,
+		content: c, //nolint:mnd
+		header:  h,
 
 		KeyMap: DefaultKeyMap(),
 		Help:   help.New(),
@@ -159,7 +165,7 @@ func New(opts ...Option) Model {
 		opt(&m)
 	}
 
-	m.UpdateViewport()
+	m.UpdateContent()
 
 	return m
 }
@@ -181,14 +187,14 @@ func WithRows(rows []Row) Option {
 // WithHeight sets the height of the table.
 func WithHeight(h int) Option {
 	return func(m *Model) {
-		m.viewport.SetHeight(h - lipgloss.Height(m.headersView()))
+		m.content.SetHeight(h - lipgloss.Height(m.renderHeader()))
 	}
 }
 
 // WithWidth sets the width of the table.
 func WithWidth(w int) Option {
 	return func(m *Model) {
-		m.viewport.SetWidth(w)
+		m.content.SetWidth(w)
 	}
 }
 
@@ -231,13 +237,13 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		case key.Matches(msg, m.KeyMap.ScrollLeft):
 			m.ScrollLeft(1)
 		case key.Matches(msg, m.KeyMap.PageUp):
-			m.MoveUp(m.viewport.Height())
+			m.MoveUp(m.content.Height())
 		case key.Matches(msg, m.KeyMap.PageDown):
-			m.MoveDown(m.viewport.Height())
+			m.MoveDown(m.content.Height())
 		case key.Matches(msg, m.KeyMap.HalfPageUp):
-			m.MoveUp(m.viewport.Height() / 2) //nolint:mnd
+			m.MoveUp(m.content.Height() / 2) //nolint:mnd
 		case key.Matches(msg, m.KeyMap.HalfPageDown):
-			m.MoveDown(m.viewport.Height() / 2) //nolint:mnd
+			m.MoveDown(m.content.Height() / 2) //nolint:mnd
 		case key.Matches(msg, m.KeyMap.GotoTop):
 			m.GotoTop()
 		case key.Matches(msg, m.KeyMap.GotoBottom):
@@ -257,18 +263,18 @@ func (m Model) Focused() bool {
 // interact.
 func (m *Model) Focus() {
 	m.focus = true
-	m.UpdateViewport()
+	m.UpdateContent()
 }
 
 // Blur blurs the table, preventing selection or movement.
 func (m *Model) Blur() {
 	m.focus = false
-	m.UpdateViewport()
+	m.UpdateContent()
 }
 
 // View renders the component.
 func (m Model) View() string {
-	return m.headersView() + "\n" + m.viewport.View()
+	return m.header.View() + "\n" + m.content.View()
 }
 
 // HelpView is a helper method for rendering the help menu from the keymap.
@@ -278,26 +284,33 @@ func (m Model) HelpView() string {
 	return m.Help.View(m.KeyMap)
 }
 
-// UpdateViewport updates the list content based on the previously defined
+// UpdateContent updates the list content based on the previously defined
 // columns and rows.
-func (m *Model) UpdateViewport() {
+func (m *Model) UpdateContent() {
 	renderedRows := make([]string, 0, len(m.rows))
 
 	// Render only rows from: m.cursor-m.viewport.Height to: m.cursor+m.viewport.Height
 	// Constant runtime, independent of number of rows in a table.
 	// Limits the number of renderedRows to a maximum of 2*m.viewport.Height
 	if m.cursor >= 0 {
-		m.start = clamp(m.cursor-m.viewport.Height(), 0, m.cursor)
+		m.start = clamp(m.cursor-m.content.Height(), 0, m.cursor)
 	} else {
 		m.start = 0
 	}
-	m.end = clamp(m.cursor+m.viewport.Height(), m.cursor, len(m.rows))
+	m.end = clamp(m.cursor+m.content.Height(), m.cursor, len(m.rows))
 	for i := m.start; i < m.end; i++ {
 		renderedRows = append(renderedRows, m.renderRow(i))
 	}
 
-	m.viewport.SetContent(
+	m.content.SetContent(
 		lipgloss.JoinVertical(lipgloss.Left, renderedRows...),
+	)
+}
+
+func (m *Model) UpdateHeader() {
+	headerRow := m.renderHeader()
+	m.header.SetContent(
+		lipgloss.JoinVertical(lipgloss.Left, headerRow),
 	)
 }
 
@@ -329,35 +342,38 @@ func (m *Model) SetRows(r []Row) {
 		m.cursor = len(m.rows) - 1
 	}
 
-	m.UpdateViewport()
+	m.UpdateContent()
 }
 
 // SetColumns sets a new columns state.
 func (m *Model) SetColumns(c []Column) {
 	m.cols = c
-	m.UpdateViewport()
+	m.UpdateContent()
+	m.UpdateHeader()
 }
 
 // SetWidth sets the width of the viewport of the table.
 func (m *Model) SetWidth(w int) {
-	m.viewport.SetWidth(w)
-	m.UpdateViewport()
+	m.content.SetWidth(w)
+	m.header.SetWidth(w)
+	m.UpdateContent()
+	m.UpdateHeader()
 }
 
 // SetHeight sets the height of the viewport of the table.
 func (m *Model) SetHeight(h int) {
-	m.viewport.SetHeight(h - lipgloss.Height(m.headersView()))
-	m.UpdateViewport()
+	m.content.SetHeight(h - lipgloss.Height(m.renderHeader()))
+	m.UpdateContent()
 }
 
 // Height returns the viewport height of the table.
 func (m Model) Height() int {
-	return m.viewport.Height()
+	return m.content.Height()
 }
 
 // Width returns the viewport width of the table.
 func (m Model) Width() int {
-	return m.viewport.Width()
+	return m.content.Width()
 }
 
 // Cursor returns the index of the selected row.
@@ -368,7 +384,7 @@ func (m Model) Cursor() int {
 // SetCursor sets the cursor position in the table.
 func (m *Model) SetCursor(n int) {
 	m.cursor = clamp(n, 0, len(m.rows)-1)
-	m.UpdateViewport()
+	m.UpdateContent()
 }
 
 // MoveUp moves the selection up by any number of rows.
@@ -376,48 +392,49 @@ func (m *Model) SetCursor(n int) {
 func (m *Model) MoveUp(n int) {
 	m.cursor = clamp(m.cursor-n, 0, len(m.rows)-1)
 
-	offset := m.viewport.YOffset()
+	offset := m.content.YOffset()
 	switch {
 	case m.start == 0:
 		offset = clamp(offset, 0, m.cursor)
-	case m.start < m.viewport.Height():
-		offset = clamp(clamp(offset+n, 0, m.cursor), 0, m.viewport.Height())
+	case m.start < m.content.Height():
+		offset = clamp(clamp(offset+n, 0, m.cursor), 0, m.content.Height())
 	case offset >= 1:
-		offset = clamp(offset+n, 1, m.viewport.Height())
+		offset = clamp(offset+n, 1, m.content.Height())
 	}
-	m.viewport.SetYOffset(offset)
-	m.UpdateViewport()
+	m.content.SetYOffset(offset)
+	m.UpdateContent()
 }
 
 // MoveDown moves the selection down by any number of rows.
 // It can not go below the last row.
 func (m *Model) MoveDown(n int) {
 	m.cursor = clamp(m.cursor+n, 0, len(m.rows)-1)
-	m.UpdateViewport()
+	m.UpdateContent()
 
-	offset := m.viewport.YOffset()
+	offset := m.content.YOffset()
 	switch {
 	case m.end == len(m.rows) && offset > 0:
-		offset = clamp(offset-n, 1, m.viewport.Height())
+		offset = clamp(offset-n, 1, m.content.Height())
 	case m.cursor > (m.end-m.start)/2 && offset > 0:
 		offset = clamp(offset-n, 1, m.cursor)
 	case offset > 1:
-	case m.cursor > offset+m.viewport.Height()-1:
+	case m.cursor > offset+m.content.Height()-1:
 		offset = clamp(offset+1, 0, 1)
 	}
-	m.viewport.SetYOffset(offset)
+	m.content.SetYOffset(offset)
 }
 
 // ScrollRight scrolls the header and viewport contents to the right
 func (m *Model) ScrollRight(n int) {
-	// TODO: make header scrollable
-	m.viewport.ScrollRight(n)
+	m.header.ScrollRight(n)
+	m.content.ScrollRight(n)
 }
 
 // ScrollLeft scrolls the header and viewport contents to the left
 func (m *Model) ScrollLeft(n int) {
 	// TODO: make header scrollable
-	m.viewport.ScrollLeft(n)
+	m.header.ScrollLeft(n)
+	m.content.ScrollLeft(n)
 }
 
 // GotoTop moves the selection to the first row.
@@ -447,7 +464,7 @@ func (m *Model) FromValues(value, separator string) {
 	m.SetRows(rows)
 }
 
-func (m Model) headersView() string {
+func (m Model) renderHeader() string {
 	s := make([]string, 0, len(m.cols))
 	for _, col := range m.cols {
 		if col.Width <= 0 {
