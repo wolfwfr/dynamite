@@ -13,7 +13,7 @@ type model struct {
 		width  int
 		height int
 	}
-	listPane    listPane
+	listPane    *listPane
 	detailsPane tea.Model
 }
 
@@ -28,11 +28,13 @@ func (m model) applySize() {
 	borderStyle = borderStyle.
 		Height(m.window.height - 2).
 		Width(m.window.width / 2)
+
+	m.listPane.applySize(m.window.height-2-2, m.window.width/2-2)
 }
 
 func newModel() model {
 	m := model{
-		listPane: newListPane(),
+		listPane: newListPane(list_items_mock),
 	}
 	return m
 }
@@ -54,6 +56,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	m.applySize()
+	m.listPane.Update(msg)
 
 	return m, nil
 }
