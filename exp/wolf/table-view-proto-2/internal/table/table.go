@@ -18,7 +18,11 @@ type Model struct {
 	KeyMap KeyMap
 	Help   help.Model
 
-	cols   []Column
+	cols []Column
+	// TODO: if rows are already stored in memory in their entirety, can't they
+	// 'simply' be passed off to the viewport in their entirety, instead of the
+	// complicated viewport content updates that also re-renders every visible
+	// line each time.
 	rows   []Row
 	cursor int
 	focus  bool
@@ -26,8 +30,12 @@ type Model struct {
 
 	content viewport.Model
 	header  viewport.Model
-	start   int
-	end     int
+
+	// start & end represent the row indices of the content that is offered to
+	// the content viewport, which in this implementation is equal to the rows
+	// that are visible.
+	start int
+	end   int
 }
 
 // Row represents one line in the table.
@@ -284,20 +292,53 @@ func (m Model) HelpView() string {
 	return m.Help.View(m.KeyMap)
 }
 
-// UpdateContent updates the list content based on the previously defined
-// columns and rows.
-func (m *Model) UpdateContent() {
+func (m *Model) MoveContent(n int) {
 	renderedRows := make([]string, 0, len(m.rows))
 
-	// Render only rows from: m.cursor-m.viewport.Height to: m.cursor+m.viewport.Height
-	// Constant runtime, independent of number of rows in a table.
-	// Limits the number of renderedRows to a maximum of 2*m.viewport.Height
-	if m.cursor >= 0 {
-		m.start = clamp(m.cursor-m.content.Height(), 0, m.cursor)
-	} else {
-		m.start = 0
+	m.start = clamp(m.start+n, 0, len(m.rows)-m.content.Height())
+	m.end = min(m.start+m.content.Height(), len(m.rows))
+
+	for i := m.start; i < m.end; i++ {
+		renderedRows = append(renderedRows, m.renderRow(i))
 	}
-	m.end = clamp(m.cursor+m.content.Height(), m.cursor, len(m.rows))
+
+	m.content.SetContent(
+		lipgloss.JoinVertical(lipgloss.Left, renderedRows...),
+	)
+}
+
+func (m *Model) updateContentHeight() {
+	if m.Height() < 1 || m.cursor < 0 {
+		return
+	}
+	oldLen := m.content.TotalLineCount()
+	newLen := m.content.Height()
+	diff := oldLen - newLen
+	if diff < 0 { // increase
+		m.start = max(m.start+diff, 0)
+	} else { // decrease
+		first := m.cursor - m.start
+		m.start = m.start + clamp(diff, 0, first)
+	}
+	m.end = min(m.start+newLen, len(m.rows))
+}
+
+// UpdateContent updates the list content based on the previously defined
+// columns and rows.
+// OPTIM: update-content cannot reflect on previous state to determine what rows
+// actually require new rendering; therefore, it renders everything, even if the
+// row was already included in the viewport contents and its selection-state did
+// not change.
+func (m *Model) UpdateContent() {
+	renderedRows := make([]string, 0, len(m.rows))
+	// if m.Height() < 1 || m.cursor < 1 {
+	if m.Height() < 1 || m.cursor < 0 {
+		return
+	}
+
+	// Render only rows that fit within the viewport
+	// Constant runtime, independent of number of rows in a table.
+	// Limits the number of renderedRows to a maximum of m.viewport.Height
 	for i := m.start; i < m.end; i++ {
 		renderedRows = append(renderedRows, m.renderRow(i))
 	}
@@ -362,7 +403,8 @@ func (m *Model) SetWidth(w int) {
 
 // SetHeight sets the height of the viewport of the table.
 func (m *Model) SetHeight(h int) {
-	m.content.SetHeight(h - lipgloss.Height(m.renderHeader()))
+	m.content.SetHeight(h - m.header.Height())
+	m.updateContentHeight()
 	m.UpdateContent()
 }
 
@@ -383,25 +425,21 @@ func (m Model) Cursor() int {
 
 // SetCursor sets the cursor position in the table.
 func (m *Model) SetCursor(n int) {
-	m.cursor = clamp(n, 0, len(m.rows)-1)
-	m.UpdateContent()
+	n = clamp(n, 0, len(m.rows)-1)
+	if m.cursor < n {
+		m.MoveUp(n - m.cursor)
+	} else {
+		m.MoveDown(m.cursor - n)
+	}
 }
 
 // MoveUp moves the selection up by any number of rows.
 // It can not go above the first row.
 func (m *Model) MoveUp(n int) {
 	m.cursor = clamp(m.cursor-n, 0, len(m.rows)-1)
-
-	offset := m.content.YOffset()
-	switch {
-	case m.start == 0:
-		offset = clamp(offset, 0, m.cursor)
-	case m.start < m.content.Height():
-		offset = clamp(clamp(offset+n, 0, m.cursor), 0, m.content.Height())
-	case offset >= 1:
-		offset = clamp(offset+n, 1, m.content.Height())
+	if m.cursorOutOfBounds() {
+		m.MoveContent(-n)
 	}
-	m.content.SetYOffset(offset)
 	m.UpdateContent()
 }
 
@@ -409,19 +447,14 @@ func (m *Model) MoveUp(n int) {
 // It can not go below the last row.
 func (m *Model) MoveDown(n int) {
 	m.cursor = clamp(m.cursor+n, 0, len(m.rows)-1)
-	m.UpdateContent()
-
-	offset := m.content.YOffset()
-	switch {
-	case m.end == len(m.rows) && offset > 0:
-		offset = clamp(offset-n, 1, m.content.Height())
-	case m.cursor > (m.end-m.start)/2 && offset > 0:
-		offset = clamp(offset-n, 1, m.cursor)
-	case offset > 1:
-	case m.cursor > offset+m.content.Height()-1:
-		offset = clamp(offset+1, 0, 1)
+	if m.cursorOutOfBounds() {
+		m.MoveContent(n)
 	}
-	m.content.SetYOffset(offset)
+	m.UpdateContent()
+}
+
+func (m *Model) cursorOutOfBounds() bool {
+	return m.cursor < m.start || m.cursor >= m.end
 }
 
 // ScrollRight scrolls the header and viewport contents to the right
@@ -444,13 +477,12 @@ func (m *Model) GotoTop() {
 
 // GotoBottom moves the selection to the last row.
 func (m *Model) GotoBottom() {
-	m.MoveDown(len(m.rows))
+	m.MoveDown(len(m.rows) - 1)
 }
 
 // FromValues create the table rows from a simple string. It uses `\n` by
 // default for getting all the rows and the given separator for the fields on
 // each row.
-// NOTE: this function seems to be unused.
 func (m *Model) FromValues(value, separator string) {
 	rows := []Row{} //nolint:prealloc
 	for _, line := range strings.Split(value, "\n") {
