@@ -20,14 +20,15 @@ type model struct {
 		width  int
 		height int
 	}
-	tablePane   *tablePane
-	detailsPane *detailsPane
-	focused     paneID
+	tablePane     *tablePane
+	detailsPane   *detailsPane
+	focused       paneID
+	awaitingInput bool // disables quit by 'q'
 }
 
 var (
 	borderStyle = lipgloss.NewStyle().
-			Align(lipgloss.Left, lipgloss.Center).
+			Align(lipgloss.Left, lipgloss.Top).
 			BorderStyle(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color("#415278"))
 	selectedStyle = lipgloss.NewStyle().
@@ -70,11 +71,17 @@ func (m model) Init() tea.Cmd {
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
-		switch msg.String() {
+		switch msg := msg.String(); msg {
 		case "tab", "shift+tab":
 			m = m.moveFocus()
+		case "/":
+			m.awaitingInput = true
+		case "esc":
+			m.awaitingInput = false
 		case "ctrl+c", "q":
-			return m, tea.Quit
+			if msg != "q" || !m.awaitingInput {
+				return m, tea.Quit
+			}
 		}
 	case tea.WindowSizeMsg:
 		m.window.height = msg.Height

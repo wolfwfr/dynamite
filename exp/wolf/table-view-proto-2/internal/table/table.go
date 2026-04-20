@@ -437,7 +437,7 @@ func (m *Model) SetHeight(h int) {
 
 // Height returns the viewport height of the table.
 func (m Model) Height() int {
-	return m.content.Height()
+	return m.content.Height() + m.header.Height()
 }
 
 // Width returns the viewport width of the table.
