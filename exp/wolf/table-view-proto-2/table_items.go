@@ -101,7 +101,7 @@ var rows = []table.Row{
 	{"86", "Cape Town", "South Africa", "4,800,954"},
 	{"87", "Jiddah", "Saudi Arabia", "4,780,740"},
 	{"88", "Urumqi", "China", "4,710,203"},
-	{"89", "Kunming", "China", "4,657,381"},
+	{"89", "Kunmingeiniiiiiiiiiiiiii", "China", "4,657,381"},
 	{"90", "Changchun", "China", "4,616,002"},
 	{"91", "Hefei", "China", "4,496,456"},
 	{"92", "Shantou", "China", "4,490,411"},
