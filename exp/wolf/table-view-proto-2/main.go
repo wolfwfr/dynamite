@@ -32,7 +32,7 @@ var (
 			BorderStyle(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color("#415278"))
 	selectedStyle = lipgloss.NewStyle().
-			Align(lipgloss.Left, lipgloss.Center).
+			Align(lipgloss.Left, lipgloss.Top).
 			BorderStyle(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color("#2381CF"))
 )
