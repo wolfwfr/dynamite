@@ -8,8 +8,17 @@ import (
 	"charm.land/lipgloss/v2"
 )
 
+const (
+	defaultDialogHeight = 20
+	defaultDialogWidth  = 100
+)
+
 type model struct {
 	window struct {
+		width  int
+		height int
+	}
+	dialog struct {
 		width  int
 		height int
 	}
@@ -26,15 +35,17 @@ var (
 	dialogStyle = lipgloss.NewStyle().
 			Align(lipgloss.Center, lipgloss.Center).
 			BorderStyle(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("#F58427")).
-			Height(20).
-			Width(100)
+			BorderForeground(lipgloss.Color("#F58427"))
 )
 
 func (m model) applySize() {
 	borderStyle = borderStyle.
 		Height(m.window.height - 2).
 		Width(m.window.width / 2)
+
+	dialogStyle = dialogStyle.
+		Height(m.dialog.height).
+		Width(m.dialog.width)
 
 }
 
@@ -63,6 +74,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.window.height = msg.Height
 		m.window.width = msg.Width
+		m.dialog.width = defaultDialogWidth
+		m.dialog.height = defaultDialogHeight
 	}
 
 	m.applySize()
@@ -88,7 +101,9 @@ func (m model) View() tea.View {
 	c := lipgloss.NewCompositor(mainLayer)
 	c.AddLayers(mainLayer)
 	if m.dialogOpen {
-		dialogLayer := lipgloss.NewLayer(dialogStyle.Render("I'm a dialog"))
+		dialogLayer := lipgloss.NewLayer(dialogStyle.Render("I'm a dialog")).
+			X(m.window.width/2 - m.dialog.width/2).
+			Y(m.window.height/2 - m.dialog.height/2)
 		c.AddLayers(dialogLayer)
 	}
 
