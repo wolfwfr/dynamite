@@ -18,6 +18,8 @@ type Model struct {
 	KeyMap KeyMap
 	Help   help.Model
 
+	dynCols bool
+
 	cols []Column
 	// TODO: if rows are already stored in memory in their entirety, can't they
 	// 'simply' be passed off to the viewport in their entirety, instead of the
@@ -164,6 +166,8 @@ func New(opts ...Option) Model {
 		content: c, //nolint:mnd
 		header:  h,
 
+		dynCols: true,
+
 		KeyMap: DefaultKeyMap(),
 		Help:   help.New(),
 		styles: DefaultStyles(),
@@ -176,6 +180,12 @@ func New(opts ...Option) Model {
 	m.UpdateContent()
 
 	return m
+}
+
+func WithDynamicColumnWidth(b bool) Option {
+	return func(m *Model) {
+		m.dynCols = b
+	}
 }
 
 // WithColumns sets the table columns (headers).
@@ -329,9 +339,8 @@ func (m *Model) updateContentHeight() {
 // actually require new rendering; therefore, it renders everything, even if the
 // row was already included in the viewport contents and its selection-state did
 // not change.
-func (m *Model) UpdateContent() {
+func (m *Model) UpdateContent() (updateHeader bool) {
 	renderedRows := make([]string, 0, len(m.rows))
-	// if m.Height() < 1 || m.cursor < 1 {
 	if m.Height() < 1 || m.cursor < 0 {
 		return
 	}
@@ -339,6 +348,20 @@ func (m *Model) UpdateContent() {
 	// Render only rows that fit within the viewport
 	// Constant runtime, independent of number of rows in a table.
 	// Limits the number of renderedRows to a maximum of m.viewport.Height
+
+	// TODO: consider combining loops
+	var colChanged bool
+	if m.dynCols {
+		for j := range m.cols {
+			mx := len(m.cols[j].Title)
+			for i := m.start; i < m.end; i++ {
+				mx = max(mx, len(m.rows[i][j]))
+			}
+			colChanged = colChanged || mx != m.cols[j].Width
+			m.cols[j].Width = mx
+		}
+	}
+
 	for i := m.start; i < m.end; i++ {
 		renderedRows = append(renderedRows, m.renderRow(i))
 	}
@@ -346,6 +369,8 @@ func (m *Model) UpdateContent() {
 	m.content.SetContent(
 		lipgloss.JoinVertical(lipgloss.Left, renderedRows...),
 	)
+
+	return colChanged
 }
 
 func (m *Model) UpdateHeader() {
@@ -405,7 +430,9 @@ func (m *Model) SetWidth(w int) {
 func (m *Model) SetHeight(h int) {
 	m.content.SetHeight(h - m.header.Height())
 	m.updateContentHeight()
-	m.UpdateContent()
+	if colChanged := m.UpdateContent(); colChanged {
+		m.UpdateHeader()
+	}
 }
 
 // Height returns the viewport height of the table.
@@ -440,7 +467,9 @@ func (m *Model) MoveUp(n int) {
 	if m.cursorOutOfBounds() {
 		m.MoveContent(-n)
 	}
-	m.UpdateContent()
+	if colChanged := m.UpdateContent(); colChanged {
+		m.UpdateHeader()
+	}
 }
 
 // MoveDown moves the selection down by any number of rows.
@@ -450,7 +479,9 @@ func (m *Model) MoveDown(n int) {
 	if m.cursorOutOfBounds() {
 		m.MoveContent(n)
 	}
-	m.UpdateContent()
+	if colChanged := m.UpdateContent(); colChanged {
+		m.UpdateHeader()
+	}
 }
 
 func (m *Model) cursorOutOfBounds() bool {
@@ -465,7 +496,6 @@ func (m *Model) ScrollRight(n int) {
 
 // ScrollLeft scrolls the header and viewport contents to the left
 func (m *Model) ScrollLeft(n int) {
-	// TODO: make header scrollable
 	m.header.ScrollLeft(n)
 	m.content.ScrollLeft(n)
 }
