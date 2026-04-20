@@ -66,14 +66,14 @@ type KeyMap struct {
 
 // ShortHelp implements the KeyMap interface.
 func (km KeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{km.LineUp, km.LineDown, km.ScrollRight}
+	return []key.Binding{km.LineUp, km.LineDown, km.ScrollLeft, km.ScrollRight}
 }
 
 // FullHelp implements the KeyMap interface.
 func (km KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{km.LineUp, km.LineDown, km.GotoTop, km.GotoBottom},
-		{km.ScrollRight},
+		{km.ScrollLeft}, {km.ScrollRight},
 		{km.PageUp, km.PageDown, km.HalfPageUp, km.HalfPageDown},
 	}
 }
@@ -91,11 +91,11 @@ func DefaultKeyMap() KeyMap {
 		),
 		ScrollRight: key.NewBinding(
 			key.WithKeys("right", "l"),
-			key.WithHelp("->/l", "right"),
+			key.WithHelp("→/l", "right"),
 		),
 		ScrollLeft: key.NewBinding(
 			key.WithKeys("left", "h"),
-			key.WithHelp("<-/h", "left"),
+			key.WithHelp("←/h", "left"),
 		),
 		PageUp: key.NewBinding(
 			key.WithKeys("b", "pgup"),
