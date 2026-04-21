@@ -22,6 +22,7 @@ var (
 )
 
 type search struct {
+	f       FilterFunc
 	enabled bool // enabled determines whether searchbox is visible
 	active  bool // active determines whether searchbox is actively receiving input
 	input   textinput.Model
@@ -59,6 +60,7 @@ func newTablePane(cols []table.Column, rows []table.Row) *tablePane {
 	m := tablePane{
 		table: t,
 		search: search{
+			f:     DefaultFilter,
 			input: searchInput,
 		},
 	}
@@ -72,16 +74,27 @@ func (m *tablePane) Init() tea.Cmd {
 func (m *tablePane) Update(msg tea.Msg) (*tablePane, tea.Cmd) {
 	var cmd tea.Cmd
 
-	if m.search.active {
+	if _, ok := msg.(FilterMatchesMsg); ok || m.search.active {
 		cmd = m.handleSearching(msg)
 	} else {
 		cmd = m.handleNavigation(msg)
 	}
+	// TODO: check current cursor position; if necessary async start loading
+	// details & throw event when done, for async info see
+	// [docs](https://github.com/charmbracelet/bubbletea/tree/main/tutorials/commands/).
+	// IMPORTANT: to prevent many calls, add a configurable debounce (e.g. 50ms)
+	// before making network call and cancel on next navigation event.
+	// IMPORTANT: for the table-pane showing dynamo-db items, all items are
+	// already in-memory, the details pane only shows the same item in a JSON
+	// format; no need to make a new call.
 	return m, cmd
 }
 
 // handleNavigation handles events when search is active.
-func (m *tablePane) handleSearching(msg tea.Msg) (cmd tea.Cmd) {
+func (m *tablePane) handleSearching(msg tea.Msg) tea.Cmd {
+	cmds := []tea.Cmd{}
+	var cmd tea.Cmd
+
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
 		switch txt := msg.String(); txt {
@@ -89,18 +102,52 @@ func (m *tablePane) handleSearching(msg tea.Msg) (cmd tea.Cmd) {
 			m.inactivateSearch()
 			fallthrough
 		default:
-			var newState textinput.Model
-			newState, cmd = m.search.input.Update(msg)
-			if newState.Value() != m.search.input.Value() {
-				// apply filter
+			newQuery, cmd := m.search.input.Update(msg)
+			cmds = append(cmds, cmd)
+			if newQuery.Value() != m.search.input.Value() { // if new query
+				cmds = append(cmds, m.Search(newQuery.Value()))
 			}
-			m.search.input = newState
-			// m.addSearch(msg)
+			m.search.input = newQuery
 		}
+	case FilterMatchesMsg:
+		if m.search.input.Value() == "" {
+			m.table.ResetVirtualRows()
+			break
+		}
+		rows := m.table.Rows()
+		filtered := make([]table.Row, len(msg))
+		for i, match := range msg {
+			filtered[i] = rows[match.index]
+		}
+		m.table.SetVirtualRows(filtered)
 	default:
 		m.search.input, cmd = m.search.input.Update(msg)
+		cmds = append(cmds, cmd)
 	}
-	return
+	return tea.Batch(cmds...)
+}
+
+// search applies the current search query to all rows in the table and returns
+// a cmd that the tea-framework can asynchronously process. Upon completion, it
+// returns a tea.Msg containing the items remaining post-filter, which can be
+// handled by replacing the table rows with the filtered items.
+func (m *tablePane) Search(query string) tea.Cmd {
+	rows := rowStrings(m.table.Rows())
+	f := m.search.f
+	// OPTIM: cancel on next text input for performance
+	return func() tea.Msg { // will execute async
+		ranks := f(query, rows)
+		filtered := make([]filteredItem, len(ranks))
+		for i, r := range ranks {
+			item := filteredItem{
+				index:   r.Index,
+				item:    Item{Content: rows[r.Index]},
+				matches: r.MatchedIndexes,
+			}
+			filtered[i] = item
+		}
+		return FilterMatchesMsg(filtered)
+	}
 }
 
 // handleNavigation handles events when search is not active.
@@ -142,6 +189,7 @@ func (m *tablePane) resetSearch() {
 	if !m.search.enabled {
 		return
 	}
+	m.table.ResetVirtualRows()
 	m.search.input.Reset()
 	m.search.enabled = false
 	m.search.active = false
@@ -172,4 +220,12 @@ func (m *tablePane) applySize(height, width int) {
 	m.table.SetWidth(width)
 	m.search.input.SetWidth(width)
 	searchBox = searchBox.Width(width)
+}
+
+func rowStrings(rows []table.Row) []string {
+	res := make([]string, len(rows))
+	for i := range rows {
+		res[i] = rows[i].String()
+	}
+	return res
 }

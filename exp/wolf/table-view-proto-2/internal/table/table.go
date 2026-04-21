@@ -25,10 +25,15 @@ type Model struct {
 	// 'simply' be passed off to the viewport in their entirety, instead of the
 	// complicated viewport content updates that also re-renders every visible
 	// line each time.
-	rows   []Row
-	cursor int
-	focus  bool
-	styles Styles
+	rows []Row
+
+	// virtual rows replace rows (visually) when len > 0
+	// virtual rows can be used to show filtered data
+	virtualRows []Row
+	cursor      int
+	lastCursor  int // used to reset cursor after a virtual row reset
+	focus       bool
+	styles      Styles
 
 	content viewport.Model
 	header  viewport.Model
@@ -36,12 +41,16 @@ type Model struct {
 	// start & end represent the row indices of the content that is offered to
 	// the content viewport, which in this implementation is equal to the rows
 	// that are visible.
-	start int
-	end   int
+	start int // inclusive
+	end   int // exclusive
 }
 
 // Row represents one line in the table.
 type Row []string
+
+func (r Row) String() string {
+	return strings.Join(r, " ")
+}
 
 // Column defines the table structure.
 type Column struct {
@@ -202,6 +211,13 @@ func WithRows(rows []Row) Option {
 	}
 }
 
+// WithVirtualRows sets the table virtual rows (data view).
+func WithVirtualRows(rows []Row) Option {
+	return func(m *Model) {
+		m.virtualRows = rows
+	}
+}
+
 // WithHeight sets the height of the table.
 func WithHeight(h int) Option {
 	return func(m *Model) {
@@ -303,8 +319,10 @@ func (m Model) HelpView() string {
 }
 
 func (m *Model) MoveContentBoundaries(n int) {
-	m.start = clamp(m.start+n, 0, max(0, len(m.rows)-m.content.Height()))
-	m.end = min(m.start+m.content.Height(), len(m.rows))
+	rows := m.VisualRows()
+
+	m.start = clamp(m.start+n, 0, max(0, len(rows)-m.content.Height()))
+	m.end = min(m.start+m.content.Height(), len(rows))
 }
 
 func (m *Model) updateContentHeight() {
@@ -320,7 +338,7 @@ func (m *Model) updateContentHeight() {
 		first := m.cursor - m.start
 		m.start = m.start + clamp(diff, 0, first)
 	}
-	m.end = min(m.start+newLen, len(m.rows))
+	m.end = min(m.start+newLen, len(m.VisualRows()))
 }
 
 // UpdateContent updates the list content based on the previously defined
@@ -344,14 +362,14 @@ func (m *Model) UpdateContent() (updateHeader bool) {
 		for j := range m.cols {
 			mx := len(m.cols[j].Title)
 			for i := m.start; i < m.end; i++ {
-				mx = max(mx, len(m.rows[i][j]))
+				mx = max(mx, len(m.VisualRows()[i][j]))
 			}
 			colChanged = colChanged || mx != m.cols[j].Width
 			m.cols[j].Width = mx
 		}
 	}
 
-	renderedRows := make([]string, 0, m.end-m.start)
+	renderedRows := make([]string, 0, max(0, m.end-m.start))
 	for i := m.start; i < m.end; i++ {
 		renderedRows = append(renderedRows, m.renderRow(i))
 	}
@@ -373,16 +391,30 @@ func (m *Model) UpdateHeader() {
 // SelectedRow returns the selected row.
 // You can cast it to your own implementation.
 func (m Model) SelectedRow() Row {
-	if m.cursor < 0 || m.cursor >= len(m.rows) {
+	rows := m.VisualRows()
+	if m.cursor < 0 || m.cursor >= len(rows) {
 		return nil
 	}
 
-	return m.rows[m.cursor]
+	return rows[m.cursor]
+}
+
+// Visual rows returns virtual rows when set or falls back to rows
+func (m *Model) VisualRows() []Row {
+	if m.virtualRows != nil { // virtualRows with len 0 is valid
+		return m.virtualRows
+	}
+	return m.rows
 }
 
 // Rows returns the current rows.
 func (m Model) Rows() []Row {
 	return m.rows
+}
+
+// VirtualRows returns the current virtual rows.
+func (m Model) VirtualRows() []Row {
+	return m.virtualRows
 }
 
 // Columns returns the current columns.
@@ -394,11 +426,44 @@ func (m Model) Columns() []Column {
 func (m *Model) SetRows(r []Row) {
 	m.rows = r
 
-	if m.cursor > len(m.rows)-1 {
-		m.cursor = len(m.rows) - 1
+	if m.cursor > len(m.VisualRows())-1 {
+		m.SetCursor(len(m.VisualRows()) - 1)
 	}
 
 	m.UpdateContent()
+}
+
+// SetVirtualRows sets the virtual rows
+// Note that supplying nil or [] does not reset the view.
+// To completely remove virtual rows (even if empty) from view, use the
+// `ResetVirtualRows` method.
+func (m *Model) SetVirtualRows(r []Row) {
+	if r == nil {
+		r = []Row{} // ensure this function cannot be abused to replace ResetVirtualRows
+	}
+	if m.virtualRows == nil && len(r) > 0 { // virtual rows come into view
+		m.lastCursor = m.cursor
+	}
+
+	m.virtualRows = r
+
+	// OPTIM: perhaps not ideal to hard-set each time
+	m.start = 0
+	m.end = clamp(m.start+m.content.Height(), m.start, len(r))
+
+	if m.cursor > max(0, len(m.VisualRows())-1) {
+		m.SetCursor(len(m.VisualRows()) - 1)
+	}
+
+	if colChanged := m.UpdateContent(); colChanged {
+		m.UpdateHeader()
+	}
+}
+
+// resetVirtaulRows empties virtual rows and ensures that the base rows are returned
+func (m *Model) ResetVirtualRows() {
+	m.virtualRows = nil
+	m.cursor = m.lastCursor
 }
 
 // SetColumns sets a new columns state.
@@ -442,7 +507,7 @@ func (m Model) Cursor() int {
 
 // SetCursor sets the cursor position in the table.
 func (m *Model) SetCursor(n int) {
-	n = clamp(n, 0, len(m.rows)-1)
+	n = clamp(n, 0, len(m.VisualRows())-1)
 	if m.cursor < n {
 		m.MoveUp(n - m.cursor)
 	} else {
@@ -453,7 +518,7 @@ func (m *Model) SetCursor(n int) {
 // MoveUp moves the selection up by any number of rows.
 // It can not go above the first row.
 func (m *Model) MoveUp(n int) {
-	m.cursor = clamp(m.cursor-n, 0, len(m.rows)-1)
+	m.cursor = clamp(m.cursor-n, 0, len(m.VisualRows())-1)
 	if m.cursorOutOfBounds() {
 		m.MoveContentBoundaries(-n)
 	}
@@ -465,7 +530,7 @@ func (m *Model) MoveUp(n int) {
 // MoveDown moves the selection down by any number of rows.
 // It can not go below the last row.
 func (m *Model) MoveDown(n int) {
-	m.cursor = clamp(m.cursor+n, 0, len(m.rows)-1)
+	m.cursor = clamp(m.cursor+n, 0, len(m.VisualRows())-1)
 	if m.cursorOutOfBounds() {
 		m.MoveContentBoundaries(n)
 	}
@@ -497,7 +562,7 @@ func (m *Model) GotoTop() {
 
 // GotoBottom moves the selection to the last row.
 func (m *Model) GotoBottom() {
-	m.MoveDown(len(m.rows) - 1)
+	m.MoveDown(len(m.VisualRows()) - 1)
 }
 
 // FromValues create the table rows from a simple string. It uses `\n` by
@@ -529,9 +594,10 @@ func (m Model) renderHeader() string {
 	return lipgloss.JoinHorizontal(lipgloss.Top, s...)
 }
 
+// TODO: render filter match chars with underline or background when appliccable
 func (m *Model) renderRow(r int) string {
 	s := make([]string, 0, len(m.cols))
-	for i, value := range m.rows[r] {
+	for i, value := range m.VisualRows()[r] {
 		if m.cols[i].Width <= 0 {
 			continue
 		}

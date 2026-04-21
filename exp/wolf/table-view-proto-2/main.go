@@ -53,7 +53,7 @@ func (m model) applySize() {
 		Height(m.window.height - 2).
 		Width(m.window.width / 2)
 
-	m.tablePane.applySize(m.window.height-2-4, m.window.width/2-4)
+	m.tablePane.applySize(m.window.height-2-3, m.window.width/2-4)
 }
 
 func newModel() model {
