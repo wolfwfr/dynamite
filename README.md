@@ -322,3 +322,7 @@ human readable format.
 **Attribute Projection**
 
 Perform `scan` or `query` with attribute projection.
+
+**Attribute Sorting**
+
+Sort ASC or DESC by a column of choice.
