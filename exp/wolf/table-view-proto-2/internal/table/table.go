@@ -302,19 +302,9 @@ func (m Model) HelpView() string {
 	return m.Help.View(m.KeyMap)
 }
 
-func (m *Model) MoveContent(n int) {
-	renderedRows := make([]string, 0, len(m.rows))
-
-	m.start = clamp(m.start+n, 0, len(m.rows)-m.content.Height())
+func (m *Model) MoveContentBoundaries(n int) {
+	m.start = clamp(m.start+n, 0, max(0, len(m.rows)-m.content.Height()))
 	m.end = min(m.start+m.content.Height(), len(m.rows))
-
-	for i := m.start; i < m.end; i++ {
-		renderedRows = append(renderedRows, m.renderRow(i))
-	}
-
-	m.content.SetContent(
-		lipgloss.JoinVertical(lipgloss.Left, renderedRows...),
-	)
 }
 
 func (m *Model) updateContentHeight() {
@@ -340,7 +330,6 @@ func (m *Model) updateContentHeight() {
 // row was already included in the viewport contents and its selection-state did
 // not change.
 func (m *Model) UpdateContent() (updateHeader bool) {
-	renderedRows := make([]string, 0, len(m.rows))
 	if m.Height() < 1 || m.cursor < 0 {
 		return
 	}
@@ -362,6 +351,7 @@ func (m *Model) UpdateContent() (updateHeader bool) {
 		}
 	}
 
+	renderedRows := make([]string, 0, m.end-m.start)
 	for i := m.start; i < m.end; i++ {
 		renderedRows = append(renderedRows, m.renderRow(i))
 	}
@@ -465,7 +455,7 @@ func (m *Model) SetCursor(n int) {
 func (m *Model) MoveUp(n int) {
 	m.cursor = clamp(m.cursor-n, 0, len(m.rows)-1)
 	if m.cursorOutOfBounds() {
-		m.MoveContent(-n)
+		m.MoveContentBoundaries(-n)
 	}
 	if colChanged := m.UpdateContent(); colChanged {
 		m.UpdateHeader()
@@ -477,7 +467,7 @@ func (m *Model) MoveUp(n int) {
 func (m *Model) MoveDown(n int) {
 	m.cursor = clamp(m.cursor+n, 0, len(m.rows)-1)
 	if m.cursorOutOfBounds() {
-		m.MoveContent(n)
+		m.MoveContentBoundaries(n)
 	}
 	if colChanged := m.UpdateContent(); colChanged {
 		m.UpdateHeader()
