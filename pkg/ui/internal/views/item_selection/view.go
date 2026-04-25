@@ -1,16 +1,27 @@
 package itemselection
 
 import (
+	"context"
+
 	tea "charm.land/bubbletea/v2"
 
+	appconfig "github.com/wolfwfr/dynamite/pkg"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 )
 
 type ItemSelection struct {
+	// top-level context
+	ctx context.Context
+
+	// shared config
+	config *appconfig.Config
 }
 
-func NewItemSelection() *ItemSelection {
-	return &ItemSelection{}
+func NewItemSelection(ctx context.Context, config *appconfig.Config) *ItemSelection {
+	return &ItemSelection{
+		ctx:    ctx,
+		config: config,
+	}
 }
 
 func (m *ItemSelection) Init() tea.Cmd {

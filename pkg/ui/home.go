@@ -7,6 +7,8 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	appconfig "github.com/wolfwfr/dynamite/pkg"
+	"github.com/wolfwfr/dynamite/pkg/aws"
+	"github.com/wolfwfr/dynamite/pkg/aws/dynamodb"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	itemselection "github.com/wolfwfr/dynamite/pkg/ui/internal/views/item_selection"
 	tableselection "github.com/wolfwfr/dynamite/pkg/ui/internal/views/table_selection"
@@ -27,6 +29,12 @@ type Model struct {
 	// TODO: consider handling all keymaps, including global, in views
 	awaitingInput bool
 
+	// top-level context
+	ctx context.Context
+
+	// shared config
+	config *appconfig.Config
+
 	// views
 	tableSelection *tableselection.TableSelection
 	itemselection  *itemselection.ItemSelection
@@ -34,14 +42,27 @@ type Model struct {
 
 func NewModel(ctx context.Context, cfg appconfig.Config) Model {
 	return Model{
+		ctx:    ctx,
+		config: &cfg,
+
 		activeView:     table_selection,
-		tableSelection: tableselection.NewTableSelection(),
-		itemselection:  itemselection.NewItemSelection(),
+		tableSelection: tableselection.NewTableSelection(ctx, &cfg),
+		itemselection:  itemselection.NewItemSelection(ctx, &cfg),
 	}
 }
 
 func (m Model) Init() tea.Cmd {
-	return nil
+	if m.config.Client == nil {
+		cfg, err := aws.LoadAWSConfig(m.ctx, m.config.Region, m.config.Profile)
+		if err != nil {
+			// TODO: handling
+		}
+		m.config.Client = dynamodb.NewClient(cfg)
+	}
+	var cmds []tea.Cmd
+	cmds = append(cmds, m.tableSelection.Init())
+	cmds = append(cmds, m.itemselection.Init())
+	return tea.Batch(cmds...)
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
