@@ -6,7 +6,10 @@ import (
 	"os"
 	"path/filepath"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/urfave/cli/v3"
+
+	"github.com/wolfwfr/dynamite/pkg/ui"
 )
 
 const (
@@ -60,6 +63,7 @@ func runApplication(ctx context.Context, cmd *cli.Command) error {
 	// profile := cmd.String(aws_profile_key)
 	// configPath := cmd.String(config_key)
 	// TODO: init dependencies
-	// TODO: start UI
-	panic("implement me!")
+	p := tea.NewProgram(ui.NewModel())
+	_, err := p.Run()
+	return err
 }
