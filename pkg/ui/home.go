@@ -1,10 +1,12 @@
 package ui
 
 import (
+	"context"
 	"log"
 
 	tea "charm.land/bubbletea/v2"
 
+	appconfig "github.com/wolfwfr/dynamite/pkg"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	itemselection "github.com/wolfwfr/dynamite/pkg/ui/internal/views/item_selection"
 	tableselection "github.com/wolfwfr/dynamite/pkg/ui/internal/views/table_selection"
@@ -25,11 +27,12 @@ type Model struct {
 	// TODO: consider handling all keymaps, including global, in views
 	awaitingInput bool
 
+	// views
 	tableSelection *tableselection.TableSelection
 	itemselection  *itemselection.ItemSelection
 }
 
-func NewModel() Model {
+func NewModel(ctx context.Context, cfg appconfig.Config) Model {
 	return Model{
 		activeView:     table_selection,
 		tableSelection: tableselection.NewTableSelection(),

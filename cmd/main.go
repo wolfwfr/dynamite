@@ -9,6 +9,8 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/urfave/cli/v3"
 
+	appconfig "github.com/wolfwfr/dynamite/pkg"
+	"github.com/wolfwfr/dynamite/pkg/configfile"
 	"github.com/wolfwfr/dynamite/pkg/ui"
 )
 
@@ -16,20 +18,29 @@ const (
 	aws_profile_key = "aws_profile"
 	config_key      = "config"
 	dynamo_url_key  = "dynamo_url"
+
+	corrupt_config_dir = "<config_dir_not_found>"
 )
 
 var configDir string
 
-func init() {
+func initDirs() error {
 	// Local user configuration.
-	if os.Getenv("XDG_CONFIG_HOME") != "" {
-		configDir = os.Getenv("XDG_CONFIG_HOME")
-	} else {
-		configDir = filepath.Join(os.Getenv("HOME"), ".config")
+	var err error
+	configDir, err = os.UserConfigDir()
+	if err != nil {
+		configDir = corrupt_config_dir
+		return err
 	}
+	return nil
 }
 
 func main() {
+	err := initDirs()
+	if err != nil {
+		// TODO: notify user
+	}
+
 	cmd := &cli.Command{
 		Flags: []cli.Flag{
 			&cli.StringFlag{
@@ -42,7 +53,7 @@ func main() {
 				Name:    config_key,
 				Aliases: []string{"c"},
 				Value:   filepath.Join(configDir, "dynamite/config.yaml"),
-				Usage:   "path to config file (relative or absolute)",
+				Usage:   "path to config file (relative or absolute); must be yaml",
 			},
 			&cli.StringFlag{
 				Name:    dynamo_url_key,
@@ -60,10 +71,36 @@ func main() {
 }
 
 func runApplication(ctx context.Context, cmd *cli.Command) error {
-	// profile := cmd.String(aws_profile_key)
-	// configPath := cmd.String(config_key)
-	// TODO: init dependencies
-	p := tea.NewProgram(ui.NewModel())
-	_, err := p.Run()
+	full, err := filepath.Abs(cmd.String(config_key))
+	if err != nil {
+		// TODO: handling
+	}
+
+	configman := configfile.NewConfigManager(full)
+	cfgf, err := configman.LoadConfig(true)
+	if err != nil {
+		// TODO: handling
+	}
+
+	cfg := appconfig.Config{
+		Profile: resolveProfile(cmd, cfgf),
+		Region:  cfgf.DefaultRegion,
+	}
+
+	p := tea.NewProgram(ui.NewModel(ctx, cfg))
+	_, err = p.Run()
 	return err
+}
+
+func resolveProfile(cmd *cli.Command, cfg configfile.ConfigFile) *string {
+	if pr := cmd.String(aws_profile_key); pr != "" {
+		return &pr
+	}
+	if pr := os.Getenv("AWS_PROFILE"); pr != "" {
+		return &pr
+	}
+	if pr := cfg.DefaultProfile; pr != "" {
+		return &pr
+	}
+	return nil
 }
