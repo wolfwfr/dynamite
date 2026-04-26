@@ -436,7 +436,8 @@ func (m *Model) Columns() []Column {
 	return m.cols
 }
 
-// SetRows sets a new rows state.
+// SetRows sets a new rows state.Can be unsafe if the number of columns changes.
+// Use SetContent if rows and columns change together.
 func (m *Model) SetRows(r []Row) {
 	m.rows = r
 
@@ -444,6 +445,7 @@ func (m *Model) SetRows(r []Row) {
 		m.SetCursor(len(m.VisualRows()) - 1)
 	}
 
+	m.updateContentHeight()
 	m.UpdateContent()
 }
 
@@ -480,7 +482,25 @@ func (m *Model) ResetVirtualRows() {
 	m.cursor = m.lastCursor
 }
 
-// SetColumns sets a new columns state.
+// SetContent is suited when columns and rows change simultaneously, especially
+// when the number of columns changes from the previous content state. This
+// operation also completely resets any virtual rows.
+func (m *Model) SetContent(c []Column, r []Row) {
+	m.ResetVirtualRows()
+
+	m.cols = c
+	m.rows = r
+
+	if m.cursor > len(m.VisualRows())-1 {
+		m.SetCursor(len(m.VisualRows()) - 1)
+	}
+	m.updateContentHeight()
+	m.UpdateContent()
+	m.UpdateHeader()
+}
+
+// SetColumns sets a new columns state. Can be unsafe if the number of columns
+// changes. Use SetContent if rows and columns change together.
 func (m *Model) SetColumns(c []Column) {
 	m.cols = c
 	m.UpdateContent()
