@@ -506,6 +506,9 @@ func (m *Model) SetVirtualRows(r []Row) {
 func (m *Model) ResetVirtualRows() {
 	m.virtualRows = nil
 	m.cursor = m.lastCursor
+	if colChanged := m.UpdateContent(); colChanged {
+		m.UpdateHeader()
+	}
 }
 
 // SetContent is suited when columns and rows change simultaneously, especially
