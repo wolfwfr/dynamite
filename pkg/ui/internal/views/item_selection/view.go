@@ -71,6 +71,8 @@ func (m *ItemSelection) Update(msg tea.Msg) tea.Cmd {
 		switch s := msg.String(); s {
 		case "esc":
 			return m.escape()
+		case "W":
+			m.content.WithDynamicColumnWidth(!m.content.DynamicColumnWidth())
 		}
 	case tea.WindowSizeMsg:
 		m.window.height = msg.Height

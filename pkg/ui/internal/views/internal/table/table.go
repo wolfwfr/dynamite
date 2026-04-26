@@ -54,8 +54,9 @@ func (r Row) String() string {
 
 // Column defines the table structure.
 type Column struct {
-	Title string
-	Width int
+	Title        string
+	Width        int
+	DynamicWidth int
 }
 
 // KeyMap defines keybindings. It satisfies to the help.KeyMap interface, which
@@ -374,12 +375,12 @@ func (m *Model) UpdateContent() (updateHeader bool) {
 	var colChanged bool
 	if m.dynCols {
 		for j := range m.cols {
-			mx := len(m.cols[j].Title)
+			mx := ternary(m.cols[j].DynamicWidth, len(m.cols[j].Title), m.cols[j].DynamicWidth > 0)
 			for i := m.start; i < m.end; i++ {
 				mx = max(mx, len(m.VisualRows()[i][j]))
 			}
-			colChanged = colChanged || mx != m.cols[j].Width
-			m.cols[j].Width = mx
+			colChanged = colChanged || mx != m.cols[j].Width // once true, stays true
+			m.cols[j].DynamicWidth = mx
 		}
 	}
 
@@ -434,6 +435,11 @@ func (m *Model) VirtualRows() []Row {
 // Columns returns the current columns.
 func (m *Model) Columns() []Column {
 	return m.cols
+}
+
+// DynamicColumnWidth returns the current setting for dynamic-column-width
+func (m *Model) DynamicColumnWidth() bool {
+	return m.dynCols
 }
 
 // SetRows sets a new rows state.Can be unsafe if the number of columns changes.
@@ -503,6 +509,14 @@ func (m *Model) SetContent(c []Column, r []Row) {
 // changes. Use SetContent if rows and columns change together.
 func (m *Model) SetColumns(c []Column) {
 	m.cols = c
+	m.UpdateContent()
+	m.UpdateHeader()
+}
+
+// WithDynamicColumnWidth updates the setting for dynamic-column-width and
+// updates the view appropriately
+func (m *Model) WithDynamicColumnWidth(b bool) {
+	m.dynCols = b
 	m.UpdateContent()
 	m.UpdateHeader()
 }
@@ -618,11 +632,12 @@ func (m *Model) FromValues(value, separator string) {
 func (m *Model) renderHeader() string {
 	s := make([]string, 0, len(m.cols))
 	for _, col := range m.cols {
-		if col.Width <= 0 {
+		width := ternary(col.DynamicWidth, col.Width, m.dynCols && col.DynamicWidth > 0)
+		if width <= 0 {
 			continue
 		}
-		style := lipgloss.NewStyle().Width(col.Width).MaxWidth(col.Width).Inline(true)
-		renderedCell := style.Render(ansi.Truncate(col.Title, col.Width, "…"))
+		style := lipgloss.NewStyle().Width(width).MaxWidth(width).Inline(true)
+		renderedCell := style.Render(ansi.Truncate(col.Title, width, "…"))
 		s = append(s, m.styles.Header.Render(renderedCell))
 	}
 	return lipgloss.JoinHorizontal(lipgloss.Top, s...)
@@ -632,11 +647,12 @@ func (m *Model) renderHeader() string {
 func (m *Model) renderRow(r int) string {
 	s := make([]string, 0, len(m.cols))
 	for i, value := range m.VisualRows()[r] {
-		if m.cols[i].Width <= 0 {
+		width := ternary(m.cols[i].DynamicWidth, m.cols[i].Width, m.dynCols && m.cols[i].DynamicWidth > 0)
+		if width <= 0 {
 			continue
 		}
-		style := lipgloss.NewStyle().Width(m.cols[i].Width).MaxWidth(m.cols[i].Width).Inline(true)
-		renderedCell := m.styles.Cell.Render(style.Render(ansi.Truncate(value, m.cols[i].Width, "…")))
+		style := lipgloss.NewStyle().Width(width).MaxWidth(width).Inline(true)
+		renderedCell := m.styles.Cell.Render(style.Render(ansi.Truncate(value, width, "…")))
 		s = append(s, renderedCell)
 	}
 
@@ -651,4 +667,11 @@ func (m *Model) renderRow(r int) string {
 
 func clamp(v, low, high int) int {
 	return min(max(v, low), high)
+}
+
+func ternary[T any](first T, second T, cond bool) T {
+	if cond {
+		return first
+	}
+	return second
 }
