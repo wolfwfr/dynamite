@@ -2,29 +2,28 @@ package tableselection
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	appconfig "github.com/wolfwfr/dynamite/pkg"
-	"github.com/wolfwfr/dynamite/pkg/aws/dynamodb"
-	"github.com/wolfwfr/dynamite/pkg/aws/dynamodb/types"
-	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
-	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/internal/table"
+)
+
+type paneID int
+
+const (
+	tablePaneID paneID = iota
+	detailsPaneID
 )
 
 type TableSelection struct {
-	// top-level context
-	ctx context.Context
-
 	// standard timeout
 	stdTO time.Duration
 
 	// shared config
 	config *appconfig.Config
-
-	// errorText
-	err error
 
 	// view window
 	window struct {
@@ -32,52 +31,48 @@ type TableSelection struct {
 		height int
 	}
 
-	content *table.Model
+	// panes
+	tablePane   *tableSelectionPane
+	detailsPane *detailsPane
+	focused     paneID
+}
+
+var (
+	borderStyle = lipgloss.NewStyle().
+			Align(lipgloss.Left, lipgloss.Top).
+			BorderStyle(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("#415278"))
+	focusedStyle = lipgloss.NewStyle().
+			Align(lipgloss.Left, lipgloss.Top).
+			BorderStyle(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("#2381CF"))
+)
+
+func (m *TableSelection) renderBorder(paneID paneID, content string) string {
+	if m.focused == paneID {
+		return focusedStyle.Render(content)
+	}
+	return borderStyle.Render(content)
 }
 
 func NewTableSelectionView(ctx context.Context, config *appconfig.Config) *TableSelection {
 	return &TableSelection{
-		ctx:    ctx,
-		config: config,
-		stdTO:  5 * time.Second,
-		// TODO: add table feature to hide columns
-		content: table.New(
-			table.WithColumns([]table.Column{{Title: "table-name", Width: 64}}),
-			table.WithFocused(true),
-		),
+		config:      config,
+		tablePane:   newTableSelectionPane(ctx, config),
+		detailsPane: newDetailsPane(ctx, config),
 	}
-}
-
-func (m *TableSelection) cleanSlate() {
-	m.err = nil
 }
 
 func (m *TableSelection) Init() tea.Cmd {
-	m.cleanSlate()
-	if client := m.config.Client; client != nil {
-		// TODO: async
-		ctx, cc := context.WithTimeout(m.ctx, m.stdTO)
-		defer cc()
-		tables, err := dynamodb.ListTables(client, ctx)
-		if err != nil {
-			m.err = err
-			return nil
-		}
-		rows := make([]table.Row, len(tables))
-		for i := range tables {
-			rows[i] = table.Row([]string{tables[i]})
-		}
-		m.content.SetRows(rows)
-	}
-	return nil
+	return m.tablePane.Init()
 }
 
 func (m *TableSelection) Update(msg tea.Msg) tea.Cmd {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
 		switch s := msg.String(); s {
-		case "enter":
-			return m.selectTable()
+		case "tab", "shift+tab":
+			m.moveFocus()
 		}
 	case tea.WindowSizeMsg:
 		m.window.height = msg.Height
@@ -85,50 +80,50 @@ func (m *TableSelection) Update(msg tea.Msg) tea.Cmd {
 		m.applySize()
 	}
 
-	return m.content.Update(msg)
+	return m.foward(msg)
 }
 
-func (m *TableSelection) selectTable() tea.Cmd {
-	switchView := func() tea.Msg {
-		return messages.SwitchView{
-			OldView: messages.Table_selection,
-			NewView: messages.Item_selection,
-		}
+func (m *TableSelection) foward(msg tea.Msg) tea.Cmd {
+	switch m.focused {
+	case tablePaneID:
+		return m.tablePane.Update(msg)
+	case detailsPaneID:
+		return m.detailsPane.Update(msg)
 	}
-	r := []string(m.content.SelectedRow())
-	if len(r) == 0 {
-		return nil // nothing to select
-	}
-	// TODO: table details should already be loaded as part of table navigation
-	m.cleanSlate()
-	var details *types.DescribeTableResponse
-	ctx, cc := context.WithTimeout(m.ctx, m.stdTO)
-	defer cc()
-	var err error
-	details, err = dynamodb.DescribeTable(m.config.Client, ctx, r[0])
-	if err != nil {
-		m.err = err
-		return nil
-	}
-
-	selectTable := func() tea.Msg {
-		return messages.SelectTable{
-			TableName:    r[0],
-			TableDetails: *details,
-		}
-	}
-	return tea.Batch(switchView, selectTable)
+	return nil
 }
 
 func (m *TableSelection) applySize() {
-	// m.content.applySize(m.window.height-2-3, m.window.width/2-4)
-	m.content.SetHeight(m.window.height)
-	m.content.SetWidth(m.window.width)
+	borderStyle = borderStyle.
+		Height(m.window.height - 2).
+		Width(m.window.width / 2)
+
+	focusedStyle = focusedStyle.
+		Height(m.window.height - 2).
+		Width(m.window.width / 2)
+
+	m.tablePane.applySize(m.window.height-2-3, m.window.width/2-4)
+}
+
+func (m *TableSelection) moveFocus() {
+	m.focused++
+	if m.focused > detailsPaneID {
+		m.focused = tablePaneID
+	}
 }
 
 func (m *TableSelection) View() string {
-	if m.err != nil { // TODO: formatting
-		return m.err.Error()
+	s := strings.Builder{}
+	s.WriteString(lipgloss.JoinHorizontal(lipgloss.Top,
+		m.renderBorder(tablePaneID, m.tablePane.View()),
+		m.renderBorder(detailsPaneID, m.detailsPane.View()),
+	))
+	return s.String()
+}
+
+func ternary[T any](first T, second T, cond bool) T {
+	if cond {
+		return first
 	}
-	return m.content.View()
+	return second
 }
