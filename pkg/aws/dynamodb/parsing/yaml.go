@@ -32,11 +32,11 @@ func pYAML(elements map[string]types.AttributeValue, hashkey string, rangekey *s
 func switchAttrValueYAML(v types.AttributeValue, hashkey string, rangekey *string, nestLevel int, isListItem bool) string {
 	switch vv := v.(type) {
 	case *types.AttributeValueMemberB:
-		return fmt.Sprintf("%s\n", string(vv.Value))
+		return fmt.Sprintf("<bytes>(len=%d)\n", len(vv.Value))
 	case *types.AttributeValueMemberBOOL:
 		return fmt.Sprintf("%t\n", vv.Value)
 	case *types.AttributeValueMemberBS:
-		return stringableAsListYAML(vv.Value, nestLevel, func(s []byte) string { return fmt.Sprintf("%s\n", s) })
+		return stringableAsListYAML(vv.Value, nestLevel, func(s []byte) string { return fmt.Sprintf("<bytes>(len=%d)\n", len(s)) })
 	case *types.AttributeValueMemberL:
 		return stringableAsListYAML(vv.Value, nestLevel, func(s types.AttributeValue) string { return switchAttrValueYAML(s, hashkey, rangekey, nestLevel, true) })
 	case *types.AttributeValueMemberM:

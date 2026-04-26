@@ -13,10 +13,10 @@ func genericTestItemYAML() string {
 	return `string-key: "string-value"
 bool-false-key: false
 bool-true-key: true
-byte-key: byte-value
+byte-key: <bytes>(len=10)
 byte-set-key: 
-  - byte-set-value-1
-  - byte-set-value-2
+  - <bytes>(len=16)
+  - <bytes>(len=16)
 empty-map-key: 
 empty-set-key: 
 list-key-1: 

@@ -60,11 +60,11 @@ func pJSON(elements map[string]types.AttributeValue, hashkey string, rangekey *s
 func switchAttrValueJSON(v types.AttributeValue, hashkey string, rangekey *string, nestLevel int) string {
 	switch vv := v.(type) {
 	case *types.AttributeValueMemberB:
-		return fmt.Sprintf("%s,\n", string(vv.Value))
+		return fmt.Sprintf("<bytes>(len=%d),\n", len(vv.Value))
 	case *types.AttributeValueMemberBOOL:
 		return fmt.Sprintf("%t,\n", vv.Value)
 	case *types.AttributeValueMemberBS:
-		return stringableAsListJSON(vv.Value, nestLevel, func(s []byte) string { return fmt.Sprintf("%s,\n", s) })
+		return stringableAsListJSON(vv.Value, nestLevel, func(s []byte) string { return fmt.Sprintf("<bytes>(len=%d),\n", len(s)) })
 	case *types.AttributeValueMemberL:
 		return stringableAsListJSON(vv.Value, nestLevel, func(s types.AttributeValue) string { return switchAttrValueJSON(s, hashkey, rangekey, nestLevel+1) })
 	case *types.AttributeValueMemberM:
