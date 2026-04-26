@@ -142,9 +142,7 @@ func (m *tableSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 			m.search.Reset()
 		}
 	}
-	var cmd tea.Cmd
-	cmd = m.content.Update(msg)
-	return tea.Batch(append(cmds, cmd)...)
+	return tea.Batch(append(cmds, m.content.Update(msg))...)
 }
 
 func (m *tableSelectionPane) Zoom() tea.Cmd {
