@@ -6,6 +6,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	dynamotypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 
@@ -40,24 +41,27 @@ type ItemSelection struct {
 	selectedTable string
 }
 
-func (m *ItemSelection) refreshTable() *table.Model {
-	return table.New(
+func NewItemSelectionView(ctx context.Context, config *appconfig.Config) *ItemSelection {
+	t := table.New(
 		table.WithFocused(true),
 		table.WithDynamicColumnWidth(false), // TODO: configurable
-		table.WithHeight(m.window.height),
-		table.WithWidth(m.window.width),
 	)
-}
-
-func NewItemSelectionView(ctx context.Context, config *appconfig.Config) *ItemSelection {
+	s := table.DefaultStyles()
+	s.Header = s.Header.
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color("240")).
+		BorderBottom(true).
+		Bold(false)
+	s.Selected = s.Selected.
+		Foreground(lipgloss.Color("229")).
+		Background(lipgloss.Color("57")).
+		Bold(false)
+	t.SetStyles(s)
 	return &ItemSelection{
-		ctx:    ctx,
-		config: config,
-		stdTO:  5 * time.Second,
-		content: table.New(
-			table.WithFocused(true),
-			table.WithDynamicColumnWidth(false), // TODO: configurable
-		),
+		ctx:     ctx,
+		config:  config,
+		stdTO:   5 * time.Second,
+		content: t,
 	}
 }
 
