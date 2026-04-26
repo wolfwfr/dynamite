@@ -3,6 +3,7 @@
 package table
 
 import (
+	"math"
 	"strings"
 
 	"charm.land/bubbles/v2/help"
@@ -74,6 +75,8 @@ type KeyMap struct {
 	HalfPageDown key.Binding
 	GotoTop      key.Binding
 	GotoBottom   key.Binding
+	GotoLeft     key.Binding
+	GotoRight    key.Binding
 }
 
 // ShortHelp implements the KeyMap interface.
@@ -85,7 +88,7 @@ func (km *KeyMap) ShortHelp() []key.Binding {
 func (km *KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{km.LineUp, km.LineDown, km.GotoTop, km.GotoBottom},
-		{km.ScrollLeft}, {km.ScrollRight}, {km.ShiftLeft}, {km.ShiftRight},
+		{km.ScrollLeft}, {km.ScrollRight}, {km.ShiftLeft}, {km.ShiftRight}, {km.GotoLeft}, {km.GotoRight},
 		{km.PageUp, km.PageDown, km.HalfPageUp, km.HalfPageDown},
 	}
 }
@@ -140,6 +143,14 @@ func DefaultKeyMap() *KeyMap {
 		GotoBottom: key.NewBinding(
 			key.WithKeys("end", "G"),
 			key.WithHelp("G/end", "go to end"),
+		),
+		GotoLeft: key.NewBinding(
+			key.WithKeys("B", "0"),
+			key.WithHelp("shift+b/0", "go to row beginning"),
+		),
+		GotoRight: key.NewBinding(
+			key.WithKeys("end", "E", "$"),
+			key.WithHelp("shift+e/$", "go to row end"),
 		),
 	}
 }
@@ -297,6 +308,10 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 			m.GotoTop()
 		case key.Matches(msg, m.KeyMap.GotoBottom):
 			m.GotoBottom()
+		case key.Matches(msg, m.KeyMap.GotoLeft):
+			m.GotoLeft()
+		case key.Matches(msg, m.KeyMap.GotoRight):
+			m.GotoRight()
 		}
 	}
 
@@ -611,6 +626,18 @@ func (m *Model) GotoTop() {
 // GotoBottom moves the selection to the last row.
 func (m *Model) GotoBottom() {
 	m.MoveDown(len(m.VisualRows()) - 1)
+}
+
+// GotoLeft scrolls back to the row beginning
+func (m *Model) GotoLeft() {
+	m.header.SetXOffset(0)
+	m.content.SetXOffset(0)
+}
+
+// GotoRight scrolls to the rows ending
+func (m *Model) GotoRight() {
+	m.header.SetXOffset(math.MaxInt)
+	m.content.SetXOffset(math.MaxInt)
 }
 
 // FromValues create the table rows from a simple string. It uses `\n` by
