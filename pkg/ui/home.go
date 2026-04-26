@@ -46,8 +46,8 @@ func NewModel(ctx context.Context, cfg appconfig.Config) Model {
 		config: &cfg,
 
 		activeView:     table_selection,
-		tableSelection: tableselection.NewTableSelection(ctx, &cfg),
-		itemselection:  itemselection.NewItemSelection(ctx, &cfg),
+		tableSelection: tableselection.NewTableSelectionView(ctx, &cfg),
+		itemselection:  itemselection.NewItemSelectionView(ctx, &cfg),
 	}
 }
 
@@ -74,6 +74,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 	}
+
 	switch msg := msg.(type) {
 	case messages.SwitchView:
 		return m.handleSwitchView(msg)
@@ -83,6 +84,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) forward(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if msg, ok := msg.(tea.WindowSizeMsg); ok {
+		cmds := []tea.Cmd{}
+		cmds = append(cmds, m.tableSelection.Update(msg))
+		cmds = append(cmds, m.itemselection.Update(msg))
+		return m, tea.Batch(cmds...)
+	}
+
+	if msg, ok := msg.(messages.SelectTable); ok {
+		return m, m.itemselection.Update(msg)
+	}
+
 	switch m.activeView {
 	case table_selection:
 		return m.handleTableSelectionMode(msg)

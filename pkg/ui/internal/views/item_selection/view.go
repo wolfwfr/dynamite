@@ -2,25 +2,62 @@ package itemselection
 
 import (
 	"context"
+	"slices"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 
+	dynamotypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+
 	appconfig "github.com/wolfwfr/dynamite/pkg"
+	"github.com/wolfwfr/dynamite/pkg/aws/dynamodb"
+	"github.com/wolfwfr/dynamite/pkg/aws/dynamodb/types"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
+	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/internal/table"
 )
 
 type ItemSelection struct {
 	// top-level context
 	ctx context.Context
 
+	// standard timeout
+	stdTO time.Duration
+
 	// shared config
 	config *appconfig.Config
+
+	// error
+	err error
+
+	// view window
+	window struct {
+		width  int
+		height int
+	}
+
+	content *table.Model
+
+	selectedTable string
 }
 
-func NewItemSelection(ctx context.Context, config *appconfig.Config) *ItemSelection {
+func (m *ItemSelection) refreshTable() *table.Model {
+	return table.New(
+		table.WithFocused(true),
+		table.WithDynamicColumnWidth(false), // TODO: configurable
+		table.WithHeight(m.window.height),
+		table.WithWidth(m.window.width),
+	)
+}
+
+func NewItemSelectionView(ctx context.Context, config *appconfig.Config) *ItemSelection {
 	return &ItemSelection{
 		ctx:    ctx,
 		config: config,
+		stdTO:  5 * time.Second,
+		content: table.New(
+			table.WithFocused(true),
+			table.WithDynamicColumnWidth(false), // TODO: configurable
+		),
 	}
 }
 
@@ -35,8 +72,102 @@ func (m *ItemSelection) Update(msg tea.Msg) tea.Cmd {
 		case "esc":
 			return m.escape()
 		}
+	case tea.WindowSizeMsg:
+		m.window.height = msg.Height
+		m.window.width = msg.Width
+		m.applySize()
+	case messages.SelectTable:
+		return m.selectTable(msg.TableName, msg.TableDetails)
+	}
+	return m.content.Update(msg)
+}
+
+func (m *ItemSelection) cleanSlate() {
+	m.err = nil
+}
+
+// selectTable processes the select-table message, which indicates that the
+// item-selection-view is opened because a table has been selected. It will
+// default to scanning the first page of items.
+func (m *ItemSelection) selectTable(tableName string, details types.DescribeTableResponse) tea.Cmd {
+	// resetting state
+	m.cleanSlate()
+	m.content.ResetVirtualRows()
+
+	m.selectedTable = tableName
+	// TODO: spinner & async
+	ctx, cc := context.WithTimeout(m.ctx, m.stdTO)
+	defer cc()
+	scan, err := dynamodb.ScanTable(m.config.Client, ctx, tableName, types.ScanParameters{
+		KeyDetails: details.AttributeDefinitions,
+		KeySchema:  details.KeySchema,
+		Limit:      m.window.height,
+	})
+	if err != nil {
+		m.err = err
+		return nil
+	}
+
+	if len(scan.TableKeys) > 0 {
+		// set columns
+		_, rang := primaryKeysFromSchema(details.KeySchema)
+		completekeys := compileCompleteKeys(scan.TableKeys, rang != nil)
+		cols := make([]table.Column, len(completekeys))
+		for i, k := range completekeys {
+			cols[i] = table.Column{Title: k, Width: clamp(len(k), 16, 32)}
+		}
+
+		// set rows
+		rows := make([]table.Row, len(scan.TableKeys))
+		for i, k := range scan.TableKeys {
+			row := make([]string, len(completekeys))
+			var x int
+			for j, key := range completekeys {
+				if key == k[x].Key { // matching key
+					row[j] = k[x].Value
+					x = min(len(k)-1, x+1)
+				} else { // no matching key
+					row[j] = ""
+				}
+			}
+			rows[i] = row
+		}
+		m.content.SetContent(cols, rows)
 	}
 	return nil
+}
+
+// compileCompleteKeys takes a table of key-value pairs, observes all keys and
+// compiles a complete, in-order list of all unique key observed.
+// This ensures that when individual table rows have keys missing, the final
+// result still contains these keys when they are present in other rows in the
+// specified table.
+// TODO: accept existing key-slice for pagination compatibility
+func compileCompleteKeys(table [][]types.KeyValue, hasRangeKey bool) []string {
+	res := make([]string, 0)
+	seen := map[string]struct{}{}
+	for _, row := range table {
+		for _, col := range row {
+			key := col.Key
+			if _, ok := seen[key]; !ok {
+				res = append(res, key)
+				seen[key] = struct{}{}
+			}
+		}
+	}
+
+	sortLenOffset := ternary(2, 1, hasRangeKey)
+	toSort := make([]string, len(res)-sortLenOffset)
+	copy(toSort, res[sortLenOffset:])
+	slices.Sort(toSort)
+	copy(res[sortLenOffset:], toSort)
+
+	return res
+}
+
+func (m *ItemSelection) applySize() {
+	m.content.SetHeight(m.window.height)
+	m.content.SetWidth(m.window.width)
 }
 
 func (m *ItemSelection) escape() tea.Cmd {
@@ -49,5 +180,30 @@ func (m *ItemSelection) escape() tea.Cmd {
 }
 
 func (m *ItemSelection) View() string {
-	return "<item-selection-placeholder>"
+	if m.err != nil { // TODO: formatting
+		return m.err.Error()
+	}
+	return m.content.View()
+}
+
+func clamp(v, low, high int) int {
+	return min(max(v, low), high)
+}
+
+func ternary[T any](first T, second T, cond bool) T {
+	if cond {
+		return first
+	}
+	return second
+}
+
+func primaryKeysFromSchema(s []dynamotypes.KeySchemaElement) (hash string, rang *string) {
+	for _, e := range s {
+		if e.KeyType == dynamotypes.KeyTypeHash {
+			hash = *e.AttributeName
+		} else {
+			rang = e.AttributeName
+		}
+	}
+	return
 }
