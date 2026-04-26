@@ -34,6 +34,13 @@ type ( // DESCRIBE TABLE
 	}
 )
 
+type Items struct {
+	JSON      []string
+	YAML      []string
+	Raw       []map[string]types.AttributeValue // TODO: review usefullness
+	TableKeys [][]KeyValue                      // TODO: review: should this be part of items?
+}
+
 type ( // SCAN
 	ScanParameters struct {
 		KeyDetails []types.AttributeDefinition // table attribute-definitions, describing table & index key attribute types
@@ -44,10 +51,7 @@ type ( // SCAN
 		// LastEvaluatedKey map[string]types.AttributeValue
 	}
 	ScanResponse struct {
-		ItemsJSON []string
-		ItemsYAML []string
-		ItemsRaw  []map[string]types.AttributeValue // TODO: review usefullness
-		TableKeys [][]KeyValue
+		Items Items
 		// LastEvaluatedKey map[string]types.AttributeValue
 	}
 )
@@ -65,10 +69,7 @@ type ( // QUERY
 		// LastEvaluatedKey map[string]types.AttributeValue
 	}
 	QueryResponse struct {
-		ItemsJSON []string
-		ItemsYAML []string
-		ItemsRaw  []map[string]types.AttributeValue // TODO: review usefullness
-		TableKeys [][]KeyValue
+		Items Items
 
 		// LastEvaluatedKey map[string]types.AttributeValue
 	}

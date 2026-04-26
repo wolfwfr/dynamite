@@ -53,6 +53,9 @@ func (m *detailsPane) Update(msg tea.Msg) (cmd tea.Cmd) {
 		case "Z":
 			return m.Zoom()
 		}
+	case messages.PreviewItem:
+		m.content.SetContent(msg.Item)
+		return nil
 	}
 
 	m.content, cmd = m.content.Update(msg)

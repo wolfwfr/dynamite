@@ -40,7 +40,10 @@ type ItemSelectionPane struct {
 	// fuzzy finding
 	search *search.SearchBox
 
-	content *table.Model
+	content         *table.Model
+	items           types.Items
+	filteredItems   []int // indices referring to items
+	lastPreviewItem int   // index
 
 	selectedTable string
 }
@@ -77,14 +80,17 @@ func NewItemSelectionPane(ctx context.Context, config *appconfig.Config) *ItemSe
 				return nil
 			},
 			Results: func(results []search.FilteredItem) {
+				p.filteredItems = make([]int, len(results))
 				rows := p.content.Rows()
 				filtered := make([]table.Row, len(results))
 				for i, match := range results {
 					filtered[i] = rows[match.Index]
+					p.filteredItems[i] = match.Index
 				}
 				p.content.SetVirtualRows(filtered)
 			},
 			Reset: func(searchHeight int) {
+				p.filteredItems = make([]int, 0)
 				p.content.ResetVirtualRows()
 				p.content.SetHeight(p.content.Height() + searchHeight)
 			},
@@ -105,13 +111,15 @@ func (m *ItemSelectionPane) Init() tea.Cmd {
 }
 
 func (m *ItemSelectionPane) Update(msg tea.Msg) (cmd tea.Cmd) {
+	cmds := []tea.Cmd{}
 	_, isSelect := msg.(messages.SelectTable)
 	if search.IsSearchBoxMessage(msg) || (!isSelect && m.search.IsFocused()) {
-		cmd = m.search.Update(msg)
+		cmds = append(cmds, m.search.Update(msg))
 	} else {
-		cmd = m.handleNavigation(msg)
+		cmds = append(cmds, m.handleNavigation(msg))
 	}
-	return
+	cmds = append(cmds, m.MaybePreviewItem(false))
+	return tea.Batch(cmds...)
 }
 
 // handleNavigation handles events when search is not active.
@@ -136,7 +144,25 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 	case messages.SelectTable:
 		return m.selectTable(msg.TableName, msg.TableDetails)
 	}
-	return tea.Batch(append(cmds, m.content.Update(msg))...)
+	cmds = append(cmds, m.content.Update(msg))
+	return tea.Batch(cmds...)
+}
+
+// force is used on new pane initialization because lastPreviewItem could be 0
+func (m *ItemSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
+	idx := m.content.Cursor()
+	if len(m.filteredItems) > 0 { // cursor refers to filtered items
+		idx = m.filteredItems[idx]
+	}
+	if idx == m.lastPreviewItem && !force {
+		return nil
+	}
+	m.lastPreviewItem = idx
+	return func() tea.Msg {
+		return messages.PreviewItem{
+			Item: m.items.YAML[idx],
+		}
+	}
 }
 
 func (m *ItemSelectionPane) Zoom() tea.Cmd {
@@ -167,18 +193,20 @@ func (m *ItemSelectionPane) selectTable(tableName string, details types.Describe
 		return nil
 	}
 
-	if len(scan.TableKeys) > 0 {
+	m.items = scan.Items
+
+	if len(scan.Items.TableKeys) > 0 {
 		// set columns
 		_, rang := primaryKeysFromSchema(details.KeySchema)
-		completekeys := compileCompleteKeys(scan.TableKeys, rang != nil)
+		completekeys := compileCompleteKeys(scan.Items.TableKeys, rang != nil)
 		cols := make([]table.Column, len(completekeys))
 		for i, k := range completekeys {
 			cols[i] = table.Column{Title: k, Width: clamp(len(k), 16, 32)}
 		}
 
 		// set rows
-		rows := make([]table.Row, len(scan.TableKeys))
-		for i, k := range scan.TableKeys {
+		rows := make([]table.Row, len(scan.Items.TableKeys))
+		for i, k := range scan.Items.TableKeys {
 			row := make([]string, len(completekeys))
 			var x int
 			for j, key := range completekeys {
@@ -193,7 +221,7 @@ func (m *ItemSelectionPane) selectTable(tableName string, details types.Describe
 		}
 		m.content.SetContent(cols, rows)
 	}
-	return nil
+	return m.MaybePreviewItem(true)
 }
 
 // compileCompleteKeys takes a table of key-value pairs, observes all keys and

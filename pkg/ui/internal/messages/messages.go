@@ -23,3 +23,7 @@ type ZoomToggleItemSelectionPane struct{}
 type ZoomToggleItemDetailsPane struct{}
 type ZoomToggleTableSelectionPane struct{}
 type ZoomToggleTableDetailsPane struct{}
+
+type PreviewItem struct {
+	Item string
+}

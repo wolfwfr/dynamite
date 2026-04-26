@@ -97,19 +97,21 @@ func ScanTable(client dynamodbClient, ctx context.Context, table string, params 
 		return nil, fmt.Errorf("expected output, but dynamo-db query returned 'nil'")
 	}
 	res := &apitypes.ScanResponse{
-		ItemsJSON: make([]string, 0, len(out.Items)),
-		ItemsYAML: make([]string, 0, len(out.Items)),
-		ItemsRaw:  out.Items,
-		TableKeys: make([][]apitypes.KeyValue, 0, len(out.Items)),
+		Items: apitypes.Items{
+			JSON:      make([]string, 0, len(out.Items)),
+			YAML:      make([]string, 0, len(out.Items)),
+			Raw:       out.Items,
+			TableKeys: make([][]apitypes.KeyValue, 0, len(out.Items)),
+		},
 	}
 
 	// TODO: reconsider parsing to both JSON & YAML all the time
 	for _, item := range out.Items {
 		yaml := parsing.ParseItemToYAML(item, *hkey, rkey)
 		json, keys := parsing.ParseToJSONWithKeys(item, *hkey, rkey)
-		res.ItemsJSON = append(res.ItemsJSON, json)
-		res.ItemsYAML = append(res.ItemsYAML, yaml)
-		res.TableKeys = append(res.TableKeys, keys)
+		res.Items.JSON = append(res.Items.JSON, json)
+		res.Items.YAML = append(res.Items.YAML, yaml)
+		res.Items.TableKeys = append(res.Items.TableKeys, keys)
 	}
 
 	return res, nil
@@ -146,19 +148,21 @@ func QueryTable(client dynamodbClient, ctx context.Context, table string, params
 		return nil, fmt.Errorf("expected output, but dynamo-db query returned 'nil'")
 	}
 	res := &apitypes.QueryResponse{
-		ItemsJSON: make([]string, 0, len(out.Items)),
-		ItemsYAML: make([]string, 0, len(out.Items)),
-		ItemsRaw:  out.Items,
-		TableKeys: make([][]apitypes.KeyValue, 0, len(out.Items)),
+		Items: apitypes.Items{
+			JSON:      make([]string, 0, len(out.Items)),
+			YAML:      make([]string, 0, len(out.Items)),
+			Raw:       out.Items,
+			TableKeys: make([][]apitypes.KeyValue, 0, len(out.Items)),
+		},
 	}
 
 	// TODO: reconsider parsing to both JSON & YAML all the time
 	for _, item := range out.Items {
 		yaml := parsing.ParseItemToYAML(item, hkey, rkey)
 		json, keys := parsing.ParseToJSONWithKeys(item, hkey, rkey)
-		res.ItemsJSON = append(res.ItemsJSON, json)
-		res.ItemsYAML = append(res.ItemsYAML, yaml)
-		res.TableKeys = append(res.TableKeys, keys)
+		res.Items.JSON = append(res.Items.JSON, json)
+		res.Items.YAML = append(res.Items.YAML, yaml)
+		res.Items.TableKeys = append(res.Items.TableKeys, keys)
 	}
 
 	return res, nil

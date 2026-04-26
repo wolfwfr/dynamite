@@ -100,13 +100,11 @@ func (m *ItemSelection) handleZoom(msg tea.Msg) tea.Cmd {
 }
 
 func (m *ItemSelection) forward(msg tea.Msg) tea.Cmd {
-	switch m.focused {
-	case itemsPaneID:
+	_, isPreview := msg.(messages.PreviewItem)
+	if m.focused == itemsPaneID && !isPreview {
 		return m.itemsPane.Update(msg)
-	case detailsPaneID:
-		return m.detailsPane.Update(msg)
 	}
-	return nil
+	return m.detailsPane.Update(msg)
 }
 
 func (m *ItemSelection) moveFocus() {
