@@ -86,6 +86,7 @@ func newTableSelectionPane(ctx context.Context, config *appconfig.Config) *table
 				return table.Rows(p.content.Rows()).ToStrings()
 			},
 			EmptyInput: func() tea.Cmd {
+				p.filteredTables = make([]int, 0)
 				p.content.ResetVirtualRows()
 				return nil
 			},

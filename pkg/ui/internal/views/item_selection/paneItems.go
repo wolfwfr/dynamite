@@ -82,6 +82,7 @@ func NewItemSelectionPane(ctx context.Context, config *appconfig.Config) *ItemSe
 				return table.Rows(p.content.Rows()).ToStrings()
 			},
 			EmptyInput: func() tea.Cmd {
+				p.filteredItems = make([]int, 0)
 				p.content.ResetVirtualRows()
 				return nil
 			},
