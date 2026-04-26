@@ -118,6 +118,20 @@ func TestKeySorting(t *testing.T) {
 				input_rangekey: toPtr("X"), // should have no effect
 				rootlevel:      true,
 				exp:            []string{"U", "X", "B", "L", "Z"},
+			}, {
+				desc:           "sort hash- & range-keys correctly when only range is at correct position",
+				input_keys:     []string{"X", "U", "B", "Z", "L"},
+				input_hashkey:  "L",        // should have no effect
+				input_rangekey: toPtr("U"), // should have no effect
+				rootlevel:      true,
+				exp:            []string{"L", "U", "B", "X", "Z"},
+			}, {
+				desc:           "sort hash- & range-keys correctly when only hash is at correct position",
+				input_keys:     []string{"X", "U", "B", "Z", "L"},
+				input_hashkey:  "X",        // should have no effect
+				input_rangekey: toPtr("Z"), // should have no effect
+				rootlevel:      true,
+				exp:            []string{"X", "Z", "B", "L", "U"},
 			},
 		}
 
