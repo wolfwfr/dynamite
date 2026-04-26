@@ -1,5 +1,5 @@
 // credits go to charm.land/bubbles/v2/list/list.go
-package fuzzy
+package search
 
 import (
 	"sort"

@@ -11,6 +11,7 @@ import (
 	"github.com/wolfwfr/dynamite/pkg/aws/dynamodb"
 	"github.com/wolfwfr/dynamite/pkg/aws/dynamodb/types"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
+	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/internal/search"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/internal/table"
 )
 
@@ -33,6 +34,9 @@ type tableSelectionPane struct {
 		height int
 	}
 
+	// fuzzy finding
+	search *search.SearchBox
+
 	content *table.Model
 }
 
@@ -52,13 +56,41 @@ func newTableSelectionPane(ctx context.Context, config *appconfig.Config) *table
 		Background(lipgloss.Color("57")).
 		Bold(false)
 	t.SetStyles(s)
-	return &tableSelectionPane{
+
+	p := &tableSelectionPane{
 		ctx:    ctx,
 		config: config,
 		stdTO:  5 * time.Second,
-		// TODO: add table feature to hide columns
+		// TODO: add table feature to hide header
 		content: t,
 	}
+	p.search = search.NewSearchBox(
+		search.SearchCallbacks{
+			ToSearch: func() []string {
+				return table.Rows(p.content.Rows()).ToStrings()
+			},
+			EmptyInput: func() tea.Cmd {
+				p.content.ResetVirtualRows()
+				return nil
+			},
+			Results: func(results []search.FilteredItem) {
+				rows := p.content.Rows()
+				filtered := make([]table.Row, len(results))
+				for i, match := range results {
+					filtered[i] = rows[match.Index]
+				}
+				p.content.SetVirtualRows(filtered)
+			},
+			Reset: func(searchHeight int) {
+				p.content.ResetVirtualRows()
+				p.content.SetHeight(p.content.Height() + searchHeight)
+			},
+			ViewBoxOpens: func(searchHeight int) {
+				p.content.SetHeight(p.content.Height() - searchHeight)
+			},
+		},
+	)
+	return p
 }
 
 func (m *tableSelectionPane) cleanSlate() {
@@ -85,18 +117,34 @@ func (m *tableSelectionPane) Init() tea.Cmd {
 	return nil
 }
 
-func (m *tableSelectionPane) Update(msg tea.Msg) tea.Cmd {
+func (m *tableSelectionPane) Update(msg tea.Msg) (cmd tea.Cmd) {
+	if search.IsSearchBoxMessage(msg) || m.search.IsFocused() {
+		cmd = m.search.Update(msg)
+	} else {
+		cmd = m.handleNavigation(msg)
+	}
+	return
+}
+
+// handleNavigation handles events when search is not active.
+func (m *tableSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
+	cmds := []tea.Cmd{}
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
-		switch s := msg.String(); s {
+		switch msg := msg.String(); msg {
+		case "/":
+			cmds = append(cmds, m.search.OpenSearchBox())
 		case "enter":
 			return m.selectTable()
 		case "Z":
 			return m.Zoom()
+		case "esc":
+			m.search.Reset()
 		}
 	}
-
-	return m.content.Update(msg)
+	var cmd tea.Cmd
+	cmd = m.content.Update(msg)
+	return tea.Batch(append(cmds, cmd)...)
 }
 
 func (m *tableSelectionPane) Zoom() tea.Cmd {
@@ -138,15 +186,23 @@ func (m *tableSelectionPane) selectTable() tea.Cmd {
 }
 
 func (m *tableSelectionPane) applySize(height, width int) {
+	searchBoxH := m.search.GetHeight()
+	if !m.search.IsEnabled() {
+		searchBoxH = 0
+	}
 	m.window.height = height
 	m.window.width = width
-	m.content.SetHeight(height)
+	m.content.SetHeight(height - searchBoxH)
 	m.content.SetWidth(width)
+	m.search.SetWidth(width)
 }
 
 func (m *tableSelectionPane) View() string {
-	if m.err != nil { // TODO: formatting
+	if m.err != nil {
 		return m.err.Error()
 	}
-	return m.content.View()
+	return lipgloss.JoinVertical(lipgloss.Left,
+		m.content.View(),
+		m.search.View(),
+	)
 }

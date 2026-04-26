@@ -53,6 +53,19 @@ func (r Row) String() string {
 	return strings.Join(r, " ")
 }
 
+type Rows []Row
+
+// Convenience function for obtaining plain string representation of each row.
+// Useful for searching.
+func (r Rows) ToStrings() []string {
+	rows := []Row(r)
+	res := make([]string, len(rows))
+	for i := range rows {
+		res[i] = rows[i].String()
+	}
+	return res
+}
+
 // Column defines the table structure.
 type Column struct {
 	Title        string
