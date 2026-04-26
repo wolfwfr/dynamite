@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 
+	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
@@ -28,6 +29,9 @@ type TableSelection struct {
 		width  int
 		height int
 	}
+
+	// key map
+	KeyMap *TableViewKeyMap
 
 	// panes
 	tablePane   *tableSelectionPane
@@ -56,6 +60,7 @@ func NewTableSelectionView(ctx context.Context, config *appconfig.Config) *Table
 		config:      config,
 		tablePane:   newTableSelectionPane(ctx, config),
 		detailsPane: newDetailsPane(ctx, config),
+		KeyMap:      DefaultTableViewKeyMap(),
 	}
 }
 
@@ -66,8 +71,8 @@ func (m *TableSelection) Init() tea.Cmd {
 func (m *TableSelection) Update(msg tea.Msg) tea.Cmd {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
-		switch s := msg.String(); s {
-		case "tab", "shift+tab":
+		switch {
+		case key.Matches(msg, m.KeyMap.MoveFocus):
 			m.moveFocus()
 			return nil
 		}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
@@ -41,6 +42,9 @@ type tableSelectionPane struct {
 	// fuzzy finding
 	search *search.SearchBox
 
+	// key map
+	KeyMap *TablePaneKeyMap
+
 	content *table.Model
 
 	tables           []string
@@ -72,6 +76,7 @@ func newTableSelectionPane(ctx context.Context, config *appconfig.Config) *table
 		debounceDur: 50 * time.Millisecond,
 		config:      config,
 		stdTO:       5 * time.Second,
+		KeyMap:      DefaultTablePaneKeyMap(),
 		// TODO: add table feature to hide header
 		content: t,
 	}
@@ -154,14 +159,14 @@ func (m *tableSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 	cmds := []tea.Cmd{}
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
-		switch msg := msg.String(); msg {
-		case "/":
+		switch {
+		case key.Matches(msg, m.KeyMap.Search):
 			cmds = append(cmds, m.search.OpenSearchBox())
-		case "enter":
+		case key.Matches(msg, m.KeyMap.Select):
 			return m.selectTable()
-		case "Z":
+		case key.Matches(msg, m.KeyMap.Zoom):
 			return m.Zoom()
-		case "esc":
+		case key.Matches(msg, m.KeyMap.Esc):
 			m.search.Reset()
 		}
 	}

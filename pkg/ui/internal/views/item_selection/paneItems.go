@@ -5,6 +5,7 @@ import (
 	"slices"
 	"time"
 
+	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
@@ -40,6 +41,9 @@ type ItemSelectionPane struct {
 	// fuzzy finding
 	search *search.SearchBox
 
+	// key map
+	KeyMap *ItemPaneKeyMap
+
 	content *table.Model
 
 	items           types.Items
@@ -70,6 +74,7 @@ func NewItemSelectionPane(ctx context.Context, config *appconfig.Config) *ItemSe
 		config:  config,
 		stdTO:   5 * time.Second,
 		content: t,
+		KeyMap:  DefaultItemPaneKeyMap(),
 	}
 	p.search = search.NewSearchBox(
 		search.SearchCallbacks{
@@ -128,18 +133,18 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 	cmds := []tea.Cmd{}
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
-		switch s := msg.String(); s {
-		case "/":
+		switch {
+		case key.Matches(msg, m.KeyMap.Search):
 			cmds = append(cmds, m.search.OpenSearchBox())
-		case "esc":
+		case key.Matches(msg, m.KeyMap.Esc):
 			if m.search.IsEnabled() {
 				m.search.Reset()
 			} else {
 				return m.escape()
 			}
-		case "W":
+		case key.Matches(msg, m.KeyMap.ChCols):
 			m.content.SetDynamicColumnWidth(!m.content.DynamicColumnWidth())
-		case "Z":
+		case key.Matches(msg, m.KeyMap.Zoom):
 			return m.Zoom()
 		}
 	case messages.SelectTable:

@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 
+	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
@@ -35,6 +36,8 @@ type ItemSelection struct {
 
 	zoomEnabled bool
 
+	KeyMap *ItemViewKeyMap
+
 	focused    paneID
 	zoomtarget paneID
 }
@@ -56,6 +59,7 @@ func NewItemSelectionView(ctx context.Context, config *appconfig.Config) *ItemSe
 		config:      config,
 		itemsPane:   NewItemSelectionPane(ctx, config),
 		detailsPane: newDetailsPane(ctx, config),
+		KeyMap:      DefaultItemViewKeyMap(),
 	}
 }
 
@@ -66,8 +70,8 @@ func (m *ItemSelection) Init() tea.Cmd {
 func (m *ItemSelection) Update(msg tea.Msg) tea.Cmd {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
-		switch s := msg.String(); s {
-		case "tab", "shift+tab":
+		switch {
+		case key.Matches(msg, m.KeyMap.MoveFocus):
 			m.moveFocus()
 			return nil
 		}

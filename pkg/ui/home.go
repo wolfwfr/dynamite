@@ -5,6 +5,10 @@ import (
 	"log"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
+
+	"charm.land/bubbles/v2/help"
+	"charm.land/bubbles/v2/key"
 
 	appconfig "github.com/wolfwfr/dynamite/pkg"
 	"github.com/wolfwfr/dynamite/pkg/aws"
@@ -29,6 +33,8 @@ type Model struct {
 	// TODO: consider handling all keymaps, including global, in views
 	awaitingInput bool
 
+	KeyMap *KeyMap
+
 	// top-level context
 	ctx context.Context
 
@@ -38,6 +44,9 @@ type Model struct {
 	// views
 	tableSelection *tableselection.TableSelection
 	itemselection  *itemselection.ItemSelection
+
+	// help
+	Help help.Model
 }
 
 func NewModel(ctx context.Context, cfg appconfig.Config) Model {
@@ -45,9 +54,13 @@ func NewModel(ctx context.Context, cfg appconfig.Config) Model {
 		ctx:    ctx,
 		config: &cfg,
 
+		KeyMap: DefaultKeyMap(),
+
 		activeView:     table_selection,
 		tableSelection: tableselection.NewTableSelectionView(ctx, &cfg),
 		itemselection:  itemselection.NewItemSelectionView(ctx, &cfg),
+
+		Help: help.New(),
 	}
 }
 
@@ -78,6 +91,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case messages.SwitchView:
 		return m.handleSwitchView(msg)
+	case tea.WindowSizeMsg:
+		m.Help.SetWidth(msg.Width)
 	}
 
 	return m.forward(msg)
@@ -126,13 +141,25 @@ func (m Model) handleSwitchView(msg messages.SwitchView) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var str string
+	var help string
 	switch m.activeView {
 	case table_selection:
 		str = m.tableSelection.View()
+		help = m.Help.ShortHelpView(m.augmentHelp(m.tableSelection.ShortHelp()))
 	case item_selection:
 		str = m.itemselection.View()
+		help = m.Help.ShortHelpView(m.augmentHelp(m.itemselection.ShortHelp()))
 	}
+	str = lipgloss.JoinVertical(lipgloss.Top, str, help)
 	v := tea.NewView(str)
 	v.AltScreen = true // fullscreen
 	return v
+}
+
+func (m Model) augmentHelp(help []key.Binding) []key.Binding {
+	h := m.KeyMap.ShortHelp()
+	res := make([]key.Binding, len(help)+len(h))
+	copy(res[:len(help)], help)
+	copy(res[len(help):], h)
+	return res
 }

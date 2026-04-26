@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
 
@@ -29,6 +30,9 @@ type detailsPane struct {
 		height int
 	}
 
+	// key map
+	KeyMap *DetailsPaneKeyMap
+
 	content viewport.Model
 }
 
@@ -37,9 +41,12 @@ func newDetailsPane(ctx context.Context, config *appconfig.Config) *detailsPane 
 	c := viewport.New(viewport.WithHeight(20)) // content
 	c.SoftWrap = false
 	c.SetHorizontalStep(step)
+	c.KeyMap.Left.SetHelp("←/h", "left")
+	c.KeyMap.Right.SetHelp("→/l", "right")
 	return &detailsPane{
 		config:  config,
 		content: c,
+		KeyMap:  DefaultDetailsKeyMap(),
 	}
 }
 
@@ -55,8 +62,8 @@ func (m *detailsPane) Init() tea.Cmd {
 func (m *detailsPane) Update(msg tea.Msg) (cmd tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
-		switch s := msg.String(); s {
-		case "Z":
+		switch {
+		case key.Matches(msg, m.KeyMap.Zoom):
 			return m.Zoom()
 		}
 	case messages.TableDetails:
