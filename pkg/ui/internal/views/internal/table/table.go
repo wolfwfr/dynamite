@@ -65,6 +65,8 @@ type KeyMap struct {
 	LineDown     key.Binding
 	ScrollRight  key.Binding
 	ScrollLeft   key.Binding
+	ShiftRight   key.Binding
+	ShiftLeft    key.Binding
 	PageUp       key.Binding
 	PageDown     key.Binding
 	HalfPageUp   key.Binding
@@ -82,7 +84,7 @@ func (km *KeyMap) ShortHelp() []key.Binding {
 func (km *KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{km.LineUp, km.LineDown, km.GotoTop, km.GotoBottom},
-		{km.ScrollLeft}, {km.ScrollRight},
+		{km.ScrollLeft}, {km.ScrollRight}, {km.ShiftLeft}, {km.ShiftRight},
 		{km.PageUp, km.PageDown, km.HalfPageUp, km.HalfPageDown},
 	}
 }
@@ -105,6 +107,14 @@ func DefaultKeyMap() *KeyMap {
 		ScrollLeft: key.NewBinding(
 			key.WithKeys("left", "h"),
 			key.WithHelp("←/h", "left"),
+		),
+		ShiftRight: key.NewBinding(
+			key.WithKeys("L"),
+			key.WithHelp("shift+l", "half-width right"),
+		),
+		ShiftLeft: key.NewBinding(
+			key.WithKeys("H"),
+			key.WithHelp("shift+h", "half-width left"),
 		),
 		PageUp: key.NewBinding(
 			key.WithKeys("b", "pgup"),
@@ -270,6 +280,10 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 			m.ScrollRight(1)
 		case key.Matches(msg, m.KeyMap.ScrollLeft):
 			m.ScrollLeft(1)
+		case key.Matches(msg, m.KeyMap.ShiftRight):
+			m.ScrollRight(m.content.Width() / 2)
+		case key.Matches(msg, m.KeyMap.ShiftLeft):
+			m.ScrollLeft(m.content.Width() / 2)
 		case key.Matches(msg, m.KeyMap.PageUp):
 			m.MoveUp(m.content.Height())
 		case key.Matches(msg, m.KeyMap.PageDown):
