@@ -5,6 +5,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	appconfig "github.com/wolfwfr/dynamite/pkg"
 	"github.com/wolfwfr/dynamite/pkg/aws/dynamodb"
@@ -36,15 +37,27 @@ type tableSelectionPane struct {
 }
 
 func newTableSelectionPane(ctx context.Context, config *appconfig.Config) *tableSelectionPane {
+	t := table.New(
+		table.WithColumns([]table.Column{{Title: "table-name", Width: 64}}),
+		table.WithFocused(true),
+	)
+	s := table.DefaultStyles()
+	s.Header = s.Header.
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color("240")).
+		BorderBottom(true).
+		Bold(false)
+	s.Selected = s.Selected.
+		Foreground(lipgloss.Color("229")).
+		Background(lipgloss.Color("57")).
+		Bold(false)
+	t.SetStyles(s)
 	return &tableSelectionPane{
 		ctx:    ctx,
 		config: config,
 		stdTO:  5 * time.Second,
 		// TODO: add table feature to hide columns
-		content: table.New(
-			table.WithColumns([]table.Column{{Title: "table-name", Width: 64}}),
-			table.WithFocused(true),
-		),
+		content: t,
 	}
 }
 
