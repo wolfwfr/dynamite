@@ -40,21 +40,22 @@ func DefaultDetailsKeyMap() *DetailsPaneKeyMap {
 // ItemPaneKeyMap defines keybindings. It satisfies to the help.KeyMap interface, which
 // is used to render the help menu.
 type ItemPaneKeyMap struct {
-	Search key.Binding
-	Zoom   key.Binding
-	Esc    key.Binding
-	ChCols key.Binding
+	Search    key.Binding
+	Zoom      key.Binding
+	Esc       key.Binding
+	ChCols    key.Binding
+	ToggleFmt key.Binding
 }
 
 // ShortHelp implements the KeyMap interface.
 func (km *ItemPaneKeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{km.Search, km.Zoom, km.Esc, km.ChCols}
+	return []key.Binding{km.Search, km.Zoom, km.Esc, km.ChCols, km.ToggleFmt}
 }
 
 // FullHelp implements the KeyMap interface.
 func (km *ItemPaneKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{km.Search}, {km.Zoom}, {km.Esc}, {km.ChCols},
+		{km.Search}, {km.Zoom}, {km.Esc}, {km.ChCols}, {km.ToggleFmt},
 	}
 }
 
@@ -76,6 +77,10 @@ func DefaultItemPaneKeyMap() *ItemPaneKeyMap {
 		ChCols: key.NewBinding(
 			key.WithKeys("W"),
 			key.WithHelp("shift+w", "toggle dynamic column width"),
+		),
+		ToggleFmt: key.NewBinding(
+			key.WithKeys("J"),
+			key.WithHelp("shift+j", "toggle json/yaml"),
 		),
 	}
 }

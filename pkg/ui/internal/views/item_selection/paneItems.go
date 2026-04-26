@@ -158,6 +158,8 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 			m.content.SetDynamicColumnWidth(!m.content.DynamicColumnWidth())
 		case key.Matches(msg, m.KeyMap.Zoom):
 			return m.Zoom()
+		case key.Matches(msg, m.KeyMap.ToggleFmt):
+			return m.ToggleJSONYAMLFormat()
 		}
 	case messages.SelectTable:
 		return m.selectTable(msg.TableName, msg.TableDetails)
