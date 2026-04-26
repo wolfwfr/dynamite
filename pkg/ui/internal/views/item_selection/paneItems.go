@@ -76,7 +76,7 @@ func (m *ItemSelectionPane) Update(msg tea.Msg) tea.Cmd {
 		case "esc":
 			return m.escape()
 		case "W":
-			m.content.WithDynamicColumnWidth(!m.content.DynamicColumnWidth())
+			m.content.SetDynamicColumnWidth(!m.content.DynamicColumnWidth())
 		case "Z":
 			return m.Zoom()
 		}

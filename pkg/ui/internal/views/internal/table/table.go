@@ -408,6 +408,9 @@ func (m *Model) UpdateContent() (updateHeader bool) {
 		lipgloss.JoinVertical(lipgloss.Left, renderedRows...),
 	)
 
+	// ensures horizontal position is updated if content width changed
+	m.content.ScrollLeft(0)
+
 	return colChanged
 }
 
@@ -416,6 +419,8 @@ func (m *Model) UpdateHeader() {
 	m.header.SetContent(
 		lipgloss.JoinVertical(lipgloss.Left, headerRow),
 	)
+	// ensures horizontal position is updated if header width changed
+	m.header.ScrollLeft(0)
 }
 
 // SelectedRow returns the selected row.
@@ -528,9 +533,9 @@ func (m *Model) SetColumns(c []Column) {
 	m.UpdateHeader()
 }
 
-// WithDynamicColumnWidth updates the setting for dynamic-column-width and
+// SetDynamicColumnWidth updates the setting for dynamic-column-width and
 // updates the view appropriately
-func (m *Model) WithDynamicColumnWidth(b bool) {
+func (m *Model) SetDynamicColumnWidth(b bool) {
 	m.dynCols = b
 	m.UpdateContent()
 	m.UpdateHeader()
