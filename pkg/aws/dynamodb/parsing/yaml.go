@@ -158,7 +158,7 @@ func getSortedKeys(hashkey string, rangekey *string, elements map[string]types.A
 
 	keysSorted = slices.Delete(keysSorted, *hidx, *hidx+1)
 	if ridx != nil {
-		keysSorted = slices.Delete(keysSorted, *ridx-1, *ridx) // -1 because slice is 1 element shorter now
+		keysSorted = slices.Delete(keysSorted, max(0, *ridx-1), max(1, *ridx)) // -1 because slice is 1 element shorter now
 	}
 
 	ret := []string{hashkey}

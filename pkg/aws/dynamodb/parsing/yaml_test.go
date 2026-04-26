@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -48,4 +49,86 @@ func TestYAMLParsing(t *testing.T) {
 	exp := genericTestItemYAML()
 	assert.EqualValues(t, exp, res)
 	fmt.Print(res)
+}
+
+func toPtr[T any](t T) *T {
+	return &t
+}
+
+func TestKeySorting(t *testing.T) {
+	tr := func(in []string) map[string]types.AttributeValue {
+		res := make(map[string]types.AttributeValue)
+		for _, k := range in {
+			res[k] = &types.AttributeValueMemberS{Value: ""}
+		}
+		return res
+	}
+
+	t.Run("get-sorted-keys should", func(t *testing.T) {
+		// convenience resources
+
+		// testcases
+		testcases := []struct {
+			desc           string
+			input_keys     []string
+			input_hashkey  string
+			input_rangekey *string
+			rootlevel      bool
+			exp            []string
+		}{
+			{
+				desc:           "simply return alphabetically sorted keys when root-level == false",
+				input_keys:     []string{"Z", "X", "B", "U", "L"},
+				input_hashkey:  "U",        // should have no effect
+				input_rangekey: toPtr("L"), // should have no effect
+				rootlevel:      false,
+				exp:            []string{"B", "L", "U", "X", "Z"},
+			}, {
+				desc:           "return alphabetically sorted keys with hashkey at idx 0 when root-level == true",
+				input_keys:     []string{"Z", "X", "B", "U", "L"},
+				input_hashkey:  "U", // should have no effect
+				input_rangekey: nil, // should have no effect
+				rootlevel:      true,
+				exp:            []string{"U", "B", "L", "X", "Z"},
+			}, {
+				desc:           "return alphabetically sorted keys with hashkey at idx 0, & rangekey at idx 1 when root-level == true",
+				input_keys:     []string{"Z", "X", "B", "U", "L"},
+				input_hashkey:  "U",        // should have no effect
+				input_rangekey: toPtr("Z"), // should have no effect
+				rootlevel:      true,
+				exp:            []string{"U", "Z", "B", "L", "X"},
+			}, {
+				desc:           "sort hash-key correctly when already at correct position",
+				input_keys:     []string{"U", "X", "B", "Z", "L"},
+				input_hashkey:  "U", // should have no effect
+				input_rangekey: nil, // should have no effect
+				rootlevel:      true,
+				exp:            []string{"U", "B", "L", "X", "Z"},
+			}, {
+				desc:           "sort hash- & range-keys correctly when already at correct position",
+				input_keys:     []string{"U", "X", "B", "Z", "L"},
+				input_hashkey:  "U",        // should have no effect
+				input_rangekey: toPtr("X"), // should have no effect
+				rootlevel:      true,
+				exp:            []string{"U", "X", "B", "L", "Z"},
+			}, {
+				desc:           "sort hash- & range-keys correctly when already at each other's position",
+				input_keys:     []string{"X", "U", "B", "Z", "L"},
+				input_hashkey:  "U",        // should have no effect
+				input_rangekey: toPtr("X"), // should have no effect
+				rootlevel:      true,
+				exp:            []string{"U", "X", "B", "L", "Z"},
+			},
+		}
+
+		for _, tc := range testcases {
+			t.Run(tc.desc, func(t *testing.T) {
+				// test
+				res := getSortedKeys(tc.input_hashkey, tc.input_rangekey, tr(tc.input_keys), tc.rootlevel)
+
+				// assert
+				assert.EqualValues(t, tc.exp, res)
+			})
+		}
+	})
 }
