@@ -18,3 +18,8 @@ type SelectTable struct {
 	TableName    string
 	TableDetails types.DescribeTableResponse
 }
+
+type ZoomToggleItemSelectionPane struct{}
+type ZoomToggleItemDetailsPane struct{}
+type ZoomToggleTableSelectionPane struct{}
+type ZoomToggleTableDetailsPane struct{}

@@ -91,10 +91,18 @@ func (m *tableSelectionPane) Update(msg tea.Msg) tea.Cmd {
 		switch s := msg.String(); s {
 		case "enter":
 			return m.selectTable()
+		case "Z":
+			return m.Zoom()
 		}
 	}
 
 	return m.content.Update(msg)
+}
+
+func (m *tableSelectionPane) Zoom() tea.Cmd {
+	return func() tea.Msg {
+		return messages.ZoomToggleTableSelectionPane{}
+	}
 }
 
 func (m *tableSelectionPane) selectTable() tea.Cmd {

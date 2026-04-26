@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	appconfig "github.com/wolfwfr/dynamite/pkg"
+	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
 )
 
@@ -31,7 +32,11 @@ type ItemSelection struct {
 	// panes
 	itemsPane   *ItemSelectionPane
 	detailsPane *detailsPane
-	focused     paneID
+
+	zoomEnabled bool
+
+	focused    paneID
+	zoomtarget paneID
 }
 
 var (
@@ -69,9 +74,26 @@ func (m *ItemSelection) Update(msg tea.Msg) tea.Cmd {
 		m.window.height = msg.Height
 		m.window.width = msg.Width
 		m.applySize()
+	case messages.ZoomToggleItemSelectionPane, messages.ZoomToggleItemDetailsPane:
+		m.handleZoom(msg)
 	}
 
 	return m.forward(msg)
+}
+
+func (m *ItemSelection) handleZoom(msg tea.Msg) tea.Cmd {
+	switch msg.(type) {
+	case messages.ZoomToggleItemSelectionPane:
+		m.zoomEnabled = !m.zoomEnabled
+		m.zoomtarget = itemsPaneID
+		m.focused = itemsPaneID
+	case messages.ZoomToggleItemDetailsPane:
+		m.zoomEnabled = !m.zoomEnabled
+		m.zoomtarget = detailsPaneID
+		m.focused = detailsPaneID
+	}
+	m.applySize()
+	return nil
 }
 
 func (m *ItemSelection) forward(msg tea.Msg) tea.Cmd {
@@ -92,22 +114,24 @@ func (m *ItemSelection) moveFocus() {
 }
 
 func (m *ItemSelection) applySize() {
+	w := ternary(m.window.width, m.window.width/2, m.zoomEnabled)
 	borderStyle = borderStyle.
 		Height(m.window.height - 2).
-		Width(m.window.width / 2)
+		Width(w)
 
 	focusedStyle = focusedStyle.
 		Height(m.window.height - 2).
-		Width(m.window.width / 2)
+		Width(w)
 
-	m.itemsPane.ApplySize(m.window.height-2-3, m.window.width/2-4)
+	m.itemsPane.applySize(m.window.height-2-3, w-4)
+	m.detailsPane.applySize(m.window.height-2-3, w-4)
 }
 
 func (m *ItemSelection) View() string {
 	s := strings.Builder{}
 	s.WriteString(lipgloss.JoinHorizontal(lipgloss.Top,
-		m.renderBorder(itemsPaneID, m.itemsPane.View()),
-		m.renderBorder(detailsPaneID, m.detailsPane.View()),
+		ternary(m.renderBorder(itemsPaneID, m.itemsPane.View()), "", !m.zoomEnabled || m.zoomtarget == itemsPaneID),
+		ternary(m.renderBorder(detailsPaneID, m.detailsPane.View()), "", !m.zoomEnabled || m.zoomtarget == detailsPaneID),
 	))
 	return s.String()
 }

@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	appconfig "github.com/wolfwfr/dynamite/pkg"
+	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 )
 
 type detailsPane struct {
@@ -49,6 +50,8 @@ func (m *detailsPane) Update(msg tea.Msg) (cmd tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
 		switch s := msg.String(); s {
+		case "Z":
+			return m.Zoom()
 		}
 	}
 
@@ -56,7 +59,13 @@ func (m *detailsPane) Update(msg tea.Msg) (cmd tea.Cmd) {
 	return
 }
 
-func (m *detailsPane) ApplySize(height, width int) {
+func (m *detailsPane) Zoom() tea.Cmd {
+	return func() tea.Msg {
+		return messages.ZoomToggleTableDetailsPane{}
+	}
+}
+
+func (m *detailsPane) applySize(height, width int) {
 	// m.content.applySize(m.window.height-2-3, m.window.width/2-4)
 	m.window.height = height
 	m.window.width = width

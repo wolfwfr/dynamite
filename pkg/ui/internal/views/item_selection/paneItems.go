@@ -77,6 +77,8 @@ func (m *ItemSelectionPane) Update(msg tea.Msg) tea.Cmd {
 			return m.escape()
 		case "W":
 			m.content.WithDynamicColumnWidth(!m.content.DynamicColumnWidth())
+		case "Z":
+			return m.Zoom()
 		}
 	case messages.SelectTable:
 		return m.selectTable(msg.TableName, msg.TableDetails)
@@ -86,6 +88,12 @@ func (m *ItemSelectionPane) Update(msg tea.Msg) tea.Cmd {
 
 func (m *ItemSelectionPane) cleanSlate() {
 	m.err = nil
+}
+
+func (m *ItemSelectionPane) Zoom() tea.Cmd {
+	return func() tea.Msg {
+		return messages.ZoomToggleItemSelectionPane{}
+	}
 }
 
 // selectTable processes the select-table message, which indicates that the
@@ -167,7 +175,7 @@ func compileCompleteKeys(table [][]types.KeyValue, hasRangeKey bool) []string {
 	return res
 }
 
-func (m *ItemSelectionPane) ApplySize(height, width int) {
+func (m *ItemSelectionPane) applySize(height, width int) {
 	m.window.height = height
 	m.window.width = width
 	m.content.SetHeight(height)
