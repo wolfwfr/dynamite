@@ -9,7 +9,6 @@ import (
 
 	appconfig "github.com/wolfwfr/dynamite/pkg"
 	"github.com/wolfwfr/dynamite/pkg/aws/dynamodb"
-	"github.com/wolfwfr/dynamite/pkg/aws/dynamodb/types"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/internal/search"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/internal/table"
@@ -18,6 +17,10 @@ import (
 type tableSelectionPane struct {
 	// top-level context
 	ctx context.Context
+
+	// cancel last call context (debounce)
+	cancelLast  func()
+	debounceDur time.Duration
 
 	// standard timeout
 	stdTO time.Duration
@@ -38,6 +41,10 @@ type tableSelectionPane struct {
 	search *search.SearchBox
 
 	content *table.Model
+
+	tables           []string
+	filteredTables   []int // indices referring to tables
+	lastTableDetails int   // index
 }
 
 func newTableSelectionPane(ctx context.Context, config *appconfig.Config) *tableSelectionPane {
@@ -58,9 +65,11 @@ func newTableSelectionPane(ctx context.Context, config *appconfig.Config) *table
 	t.SetStyles(s)
 
 	p := &tableSelectionPane{
-		ctx:    ctx,
-		config: config,
-		stdTO:  5 * time.Second,
+		ctx:         ctx,
+		cancelLast:  func() {}, // noop on init
+		debounceDur: 50 * time.Millisecond,
+		config:      config,
+		stdTO:       5 * time.Second,
 		// TODO: add table feature to hide header
 		content: t,
 	}
@@ -74,14 +83,17 @@ func newTableSelectionPane(ctx context.Context, config *appconfig.Config) *table
 				return nil
 			},
 			Results: func(results []search.FilteredItem) {
+				p.filteredTables = make([]int, len(results))
 				rows := p.content.Rows()
 				filtered := make([]table.Row, len(results))
 				for i, match := range results {
 					filtered[i] = rows[match.Index]
+					p.filteredTables[i] = match.Index
 				}
 				p.content.SetVirtualRows(filtered)
 			},
 			Reset: func(searchHeight int) {
+				p.filteredTables = make([]int, 0)
 				p.content.ResetVirtualRows()
 				p.content.SetHeight(p.content.Height() + searchHeight)
 			},
@@ -108,22 +120,25 @@ func (m *tableSelectionPane) Init() tea.Cmd {
 			m.err = err
 			return nil
 		}
+		m.tables = tables
 		rows := make([]table.Row, len(tables))
 		for i := range tables {
 			rows[i] = table.Row([]string{tables[i]})
 		}
 		m.content.SetRows(rows)
 	}
-	return nil
+	return m.MaybePreviewItem(true)
 }
 
-func (m *tableSelectionPane) Update(msg tea.Msg) (cmd tea.Cmd) {
+func (m *tableSelectionPane) Update(msg tea.Msg) tea.Cmd {
+	cmds := []tea.Cmd{}
 	if search.IsSearchBoxMessage(msg) || m.search.IsFocused() {
-		cmd = m.search.Update(msg)
+		cmds = append(cmds, m.search.Update(msg))
 	} else {
-		cmd = m.handleNavigation(msg)
+		cmds = append(cmds, m.handleNavigation(msg))
 	}
-	return
+	cmds = append(cmds, m.MaybePreviewItem(false))
+	return tea.Batch(cmds...)
 }
 
 // handleNavigation handles events when search is not active.
@@ -142,7 +157,44 @@ func (m *tableSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 			m.search.Reset()
 		}
 	}
-	return tea.Batch(append(cmds, m.content.Update(msg))...)
+	cmds = append(cmds, m.content.Update(msg))
+	return tea.Batch(cmds...)
+}
+
+// force is used on new pane initialization because lastPreviewItem could be 0
+func (m *tableSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
+	idx := m.content.Cursor()
+	if len(m.filteredTables) > 0 { // cursor refers to filtered items
+		idx = m.filteredTables[idx]
+	}
+	if idx == m.lastTableDetails && !force {
+		return nil
+	}
+	m.lastTableDetails = idx
+	table := m.tables[idx]
+
+	// prepare debounce cancellation
+	m.cancelLast()
+	ctx, cc := context.WithCancel(m.ctx)
+	m.cancelLast = cc
+
+	return func() tea.Msg {
+		time.Sleep(m.debounceDur)
+		if ctx.Err() != nil { // context canceled
+			return nil // debounce
+		}
+
+		ctx, cc := context.WithTimeout(ctx, m.stdTO)
+		defer cc()
+		details, err := dynamodb.DescribeTable(m.config.Client, ctx, table)
+		if err != nil {
+			return nil
+		}
+
+		return messages.TableDetails{
+			Details: *details,
+		}
+	}
 }
 
 func (m *tableSelectionPane) Zoom() tea.Cmd {
@@ -164,11 +216,9 @@ func (m *tableSelectionPane) selectTable() tea.Cmd {
 	}
 	// TODO: table details should already be loaded as part of table navigation
 	m.cleanSlate()
-	var details *types.DescribeTableResponse
 	ctx, cc := context.WithTimeout(m.ctx, m.stdTO)
 	defer cc()
-	var err error
-	details, err = dynamodb.DescribeTable(m.config.Client, ctx, r[0])
+	details, err := dynamodb.DescribeTable(m.config.Client, ctx, r[0])
 	if err != nil {
 		m.err = err
 		return nil

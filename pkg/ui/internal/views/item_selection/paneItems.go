@@ -40,7 +40,8 @@ type ItemSelectionPane struct {
 	// fuzzy finding
 	search *search.SearchBox
 
-	content         *table.Model
+	content *table.Model
+
 	items           types.Items
 	filteredItems   []int // indices referring to items
 	lastPreviewItem int   // index

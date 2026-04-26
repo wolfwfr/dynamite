@@ -1,6 +1,6 @@
 package messages
 
-import "github.com/wolfwfr/dynamite/pkg/aws/dynamodb/types"
+import apitypes "github.com/wolfwfr/dynamite/pkg/aws/dynamodb/types"
 
 type View int
 
@@ -16,7 +16,7 @@ type SwitchView struct {
 
 type SelectTable struct {
 	TableName    string
-	TableDetails types.DescribeTableResponse
+	TableDetails apitypes.DescribeTableResponse
 }
 
 type ZoomToggleItemSelectionPane struct{}
@@ -26,4 +26,8 @@ type ZoomToggleTableDetailsPane struct{}
 
 type PreviewItem struct {
 	Item string
+}
+
+type TableDetails struct {
+	Details apitypes.DescribeTableResponse
 }

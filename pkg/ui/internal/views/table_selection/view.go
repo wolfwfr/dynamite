@@ -100,6 +100,13 @@ func (m *TableSelection) handleZoom(msg tea.Msg) tea.Cmd {
 }
 
 func (m *TableSelection) foward(msg tea.Msg) tea.Cmd {
+	if _, isDetails := msg.(messages.TableDetails); isDetails {
+		cmds := []tea.Cmd{}
+		cmds = append(cmds, m.tablePane.Update(msg))
+		cmds = append(cmds, m.detailsPane.Update(msg))
+		return tea.Batch(cmds...)
+	}
+
 	switch m.focused {
 	case tablePaneID:
 		return m.tablePane.Update(msg)
