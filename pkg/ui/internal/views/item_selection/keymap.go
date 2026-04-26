@@ -5,18 +5,19 @@ import "charm.land/bubbles/v2/key"
 // DetailsPaneKeyMap defines keybindings. It satisfies to the help.KeyMap interface, which
 // is used to render the help menu.
 type DetailsPaneKeyMap struct {
-	Zoom key.Binding
+	Zoom      key.Binding
+	ToggleFmt key.Binding
 }
 
 // ShortHelp implements the KeyMap interface.
 func (km *DetailsPaneKeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{km.Zoom}
+	return []key.Binding{km.Zoom, km.ToggleFmt}
 }
 
 // FullHelp implements the KeyMap interface.
 func (km *DetailsPaneKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{km.Zoom},
+		{km.Zoom}, {km.ToggleFmt},
 	}
 }
 
@@ -26,6 +27,10 @@ func DefaultDetailsKeyMap() *DetailsPaneKeyMap {
 		Zoom: key.NewBinding(
 			key.WithKeys("Z"),
 			key.WithHelp("shift+z", "zoom"),
+		),
+		ToggleFmt: key.NewBinding(
+			key.WithKeys("J"),
+			key.WithHelp("shift+j", "toggle json/yaml"),
 		),
 	}
 }

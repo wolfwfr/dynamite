@@ -105,7 +105,8 @@ func (m *ItemSelection) handleZoom(msg tea.Msg) tea.Cmd {
 
 func (m *ItemSelection) forward(msg tea.Msg) tea.Cmd {
 	_, isPreview := msg.(messages.PreviewItem)
-	if m.focused == itemsPaneID && !isPreview {
+	_, isToggleFormat := msg.(messages.ToggleJSONYAML)
+	if m.focused == itemsPaneID && !isPreview || isToggleFormat {
 		return m.itemsPane.Update(msg)
 	}
 	return m.detailsPane.Update(msg)

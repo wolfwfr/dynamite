@@ -19,6 +19,13 @@ import (
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/internal/table"
 )
 
+type previewFormat int
+
+const (
+	YAMLformat previewFormat = iota
+	JSONformat
+)
+
 type ItemSelectionPane struct {
 	// top-level context
 	ctx context.Context
@@ -51,6 +58,8 @@ type ItemSelectionPane struct {
 	lastPreviewItem int   // index
 
 	selectedTable string
+
+	previewFormat previewFormat
 }
 
 func NewItemSelectionPane(ctx context.Context, config *appconfig.Config) *ItemSelectionPane {
@@ -120,7 +129,9 @@ func (m *ItemSelectionPane) Init() tea.Cmd {
 func (m *ItemSelectionPane) Update(msg tea.Msg) (cmd tea.Cmd) {
 	cmds := []tea.Cmd{}
 	_, isSelect := msg.(messages.SelectTable)
-	if search.IsSearchBoxMessage(msg) || (!isSelect && m.search.IsFocused()) {
+	_, isToggleFmt := msg.(messages.ToggleJSONYAML)
+	excludeSearch := isSelect || isToggleFmt
+	if search.IsSearchBoxMessage(msg) || (!excludeSearch && m.search.IsFocused()) {
 		cmds = append(cmds, m.search.Update(msg))
 	} else {
 		cmds = append(cmds, m.handleNavigation(msg))
@@ -150,9 +161,19 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 		}
 	case messages.SelectTable:
 		return m.selectTable(msg.TableName, msg.TableDetails)
+	case messages.ToggleJSONYAML:
+		return m.ToggleJSONYAMLFormat()
 	}
 	cmds = append(cmds, m.content.Update(msg))
 	return tea.Batch(cmds...)
+}
+
+func (m *ItemSelectionPane) ToggleJSONYAMLFormat() tea.Cmd {
+	m.previewFormat += 1
+	if m.previewFormat > JSONformat {
+		m.previewFormat = YAMLformat
+	}
+	return m.MaybePreviewItem(true)
 }
 
 // force is used on new pane initialization because lastPreviewItem could be 0
@@ -165,9 +186,16 @@ func (m *ItemSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
 		return nil
 	}
 	m.lastPreviewItem = idx
+	var item string
+	switch m.previewFormat {
+	case JSONformat:
+		item = m.items.JSON[idx]
+	case YAMLformat:
+		item = m.items.YAML[idx]
+	}
 	return func() tea.Msg {
 		return messages.PreviewItem{
-			Item: m.items.YAML[idx],
+			Item: item,
 		}
 	}
 }

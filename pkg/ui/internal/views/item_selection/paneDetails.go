@@ -58,6 +58,8 @@ func (m *detailsPane) Update(msg tea.Msg) (cmd tea.Cmd) {
 		switch {
 		case key.Matches(msg, m.KeyMap.Zoom):
 			return m.Zoom()
+		case key.Matches(msg, m.KeyMap.ToggleFmt):
+			return m.ToggleFmt()
 		}
 	case messages.PreviewItem:
 		m.content.SetContent(msg.Item)
@@ -66,6 +68,12 @@ func (m *detailsPane) Update(msg tea.Msg) (cmd tea.Cmd) {
 
 	m.content, cmd = m.content.Update(msg)
 	return
+}
+
+func (m *detailsPane) ToggleFmt() tea.Cmd {
+	return func() tea.Msg {
+		return messages.ToggleJSONYAML{}
+	}
 }
 
 func (m *detailsPane) Zoom() tea.Cmd {
