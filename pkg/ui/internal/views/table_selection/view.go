@@ -69,13 +69,16 @@ func (m *TableSelection) Update(msg tea.Msg) tea.Cmd {
 		switch s := msg.String(); s {
 		case "tab", "shift+tab":
 			m.moveFocus()
+			return nil
 		}
 	case tea.WindowSizeMsg:
 		m.window.height = msg.Height
 		m.window.width = msg.Width
 		m.applySize()
+		return nil
 	case messages.ZoomToggleTableSelectionPane, messages.ZoomToggleTableDetailsPane:
 		m.handleZoom(msg)
+		return nil
 	}
 
 	return m.foward(msg)

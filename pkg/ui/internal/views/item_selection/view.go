@@ -69,13 +69,16 @@ func (m *ItemSelection) Update(msg tea.Msg) tea.Cmd {
 		switch s := msg.String(); s {
 		case "tab", "shift+tab":
 			m.moveFocus()
+			return nil
 		}
 	case tea.WindowSizeMsg:
 		m.window.height = msg.Height
 		m.window.width = msg.Width
 		m.applySize()
+		return nil
 	case messages.ZoomToggleItemSelectionPane, messages.ZoomToggleItemDetailsPane:
 		m.handleZoom(msg)
+		return nil
 	}
 
 	return m.forward(msg)
