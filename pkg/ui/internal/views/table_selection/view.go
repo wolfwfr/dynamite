@@ -3,12 +3,12 @@ package tableselection
 import (
 	"context"
 	"strings"
-	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
 	appconfig "github.com/wolfwfr/dynamite/pkg"
+	"github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
 )
 
 type paneID int
@@ -19,9 +19,6 @@ const (
 )
 
 type TableSelection struct {
-	// standard timeout
-	stdTO time.Duration
-
 	// shared config
 	config *appconfig.Config
 
@@ -38,14 +35,8 @@ type TableSelection struct {
 }
 
 var (
-	borderStyle = lipgloss.NewStyle().
-			Align(lipgloss.Left, lipgloss.Top).
-			BorderStyle(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("#415278"))
-	focusedStyle = lipgloss.NewStyle().
-			Align(lipgloss.Left, lipgloss.Top).
-			BorderStyle(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("#2381CF"))
+	borderStyle  = styles.BorderStyle
+	focusedStyle = styles.FocusedBorderStyle
 )
 
 func (m *TableSelection) renderBorder(paneID paneID, content string) string {
