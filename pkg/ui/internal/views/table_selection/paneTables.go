@@ -9,6 +9,7 @@ import (
 
 	appconfig "github.com/wolfwfr/dynamite/pkg"
 	"github.com/wolfwfr/dynamite/pkg/aws/dynamodb"
+	apitypes "github.com/wolfwfr/dynamite/pkg/aws/dynamodb/types"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/internal/search"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/internal/table"
@@ -45,6 +46,7 @@ type tableSelectionPane struct {
 	tables           []string
 	filteredTables   []int // indices referring to tables
 	lastTableDetails int   // index
+	details          apitypes.DescribeTableResponse
 }
 
 func newTableSelectionPane(ctx context.Context, config *appconfig.Config) *tableSelectionPane {
@@ -132,11 +134,17 @@ func (m *tableSelectionPane) Init() tea.Cmd {
 
 func (m *tableSelectionPane) Update(msg tea.Msg) tea.Cmd {
 	cmds := []tea.Cmd{}
+	if msg, ok := msg.(messages.TableDetails); ok {
+		m.details = msg.Details
+		return nil
+	}
+
 	if search.IsSearchBoxMessage(msg) || m.search.IsFocused() {
 		cmds = append(cmds, m.search.Update(msg))
 	} else {
 		cmds = append(cmds, m.handleNavigation(msg))
 	}
+
 	cmds = append(cmds, m.MaybePreviewItem(false))
 	return tea.Batch(cmds...)
 }
@@ -214,20 +222,22 @@ func (m *tableSelectionPane) selectTable() tea.Cmd {
 	if len(r) == 0 {
 		return nil // nothing to select
 	}
-	// TODO: table details should already be loaded as part of table navigation
-	m.cleanSlate()
-	ctx, cc := context.WithTimeout(m.ctx, m.stdTO)
-	defer cc()
-	details, err := dynamodb.DescribeTable(m.config.Client, ctx, r[0])
-	if err != nil {
-		m.err = err
-		return nil
+	if m.details.TableName != nil && *m.details.TableName != r[0] {
+		m.cleanSlate()
+		ctx, cc := context.WithTimeout(m.ctx, m.stdTO)
+		defer cc()
+		details, err := dynamodb.DescribeTable(m.config.Client, ctx, r[0])
+		if err != nil {
+			m.err = err
+			return nil
+		}
+		m.details = *details
 	}
 
 	selectTable := func() tea.Msg {
 		return messages.SelectTable{
 			TableName:    r[0],
-			TableDetails: *details,
+			TableDetails: m.details,
 		}
 	}
 	return tea.Batch(switchView, selectTable)
