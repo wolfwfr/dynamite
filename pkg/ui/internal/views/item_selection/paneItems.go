@@ -20,10 +20,14 @@ import (
 )
 
 type previewFormat int
+type queryMode int
 
 const (
 	YAMLformat previewFormat = iota
 	JSONformat
+
+	ScanMode queryMode = iota
+	QueryMode
 )
 
 type ItemSelectionPane struct {
@@ -53,11 +57,24 @@ type ItemSelectionPane struct {
 
 	content *table.Model
 
+	// query & scan parameters
+	queryMode   queryMode
+	scanLimit   int
+	queryLimit  int
+	chosenIndex *string
+
 	items           types.Items
 	filteredItems   []int // indices referring to items
 	lastPreviewItem int   // index
+	pageKey         map[string]dynamotypes.AttributeValue
+	pageCancel      func()
+	paging          bool
 
-	selectedTable string
+	// keysComplete represents a unique set of dynamo-db item keys that
+	// exhaustively cover all keys in the currently paged set of items
+	keysComplete []string
+
+	selectedTable types.DescribeTableResponse
 
 	previewFormat previewFormat
 }
@@ -79,11 +96,16 @@ func NewItemSelectionPane(ctx context.Context, config *appconfig.Config) *ItemSe
 		Bold(false)
 	t.SetStyles(s)
 	p := &ItemSelectionPane{
-		ctx:     ctx,
-		config:  config,
-		stdTO:   5 * time.Second,
-		content: t,
-		KeyMap:  DefaultItemPaneKeyMap(),
+		ctx:           ctx,
+		config:        config,
+		stdTO:         5 * time.Second,
+		content:       t,
+		KeyMap:        DefaultItemPaneKeyMap(),
+		queryMode:     ScanMode,
+		previewFormat: JSONformat,
+		scanLimit:     10,
+		queryLimit:    10,
+		pageCancel:    func() {}, // init as noop
 	}
 	p.search = search.NewSearchBox(
 		search.SearchCallbacks{
@@ -165,9 +187,53 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 		return m.selectTable(msg.TableName, msg.TableDetails)
 	case messages.ToggleJSONYAML:
 		return m.ToggleJSONYAMLFormat()
+	case messages.ScanPageReady:
+		return m.ProcessScanPage(msg)
 	}
 	cmds = append(cmds, m.content.Update(msg))
+	// paginate when not filtering and at end of content
+	if len(m.filteredItems) == 0 && m.content.ViewAtEnd() {
+		// TODO: spinner
+		cmds = append(cmds, m.PageNext())
+	}
 	return tea.Batch(cmds...)
+}
+
+func (m *ItemSelectionPane) PageNext() tea.Cmd {
+	if len(m.pageKey) == 0 || m.paging {
+		return nil
+	}
+	m.paging = true
+	mode := m.queryMode
+	table := m.selectedTable
+	key := m.pageKey
+	idx := m.chosenIndex
+	ctx, cc := context.WithTimeout(m.ctx, m.stdTO)
+	m.pageCancel = cc
+	return func() tea.Msg {
+		defer cc()
+		switch mode {
+		case QueryMode:
+			panic("not supported yet")
+		case ScanMode:
+			scan, err := dynamodb.ScanTable(m.config.Client, ctx, *table.TableName, types.ScanParameters{
+				KeyDetails:       m.selectedTable.AttributeDefinitions,
+				IndexName:        idx,
+				KeySchema:        keysFromIndex(idx, table),
+				Limit:            m.scanLimit,
+				LastEvaluatedKey: key,
+			})
+			if err != nil {
+				return nil
+			}
+			return messages.ScanPageReady{
+				Table:    table,
+				Index:    idx,
+				Response: *scan,
+			}
+		}
+		return nil
+	}
 }
 
 func (m *ItemSelectionPane) ToggleJSONYAMLFormat() tea.Cmd {
@@ -208,6 +274,41 @@ func (m *ItemSelectionPane) Zoom() tea.Cmd {
 	}
 }
 
+func (m *ItemSelectionPane) ProcessScanPage(msg messages.ScanPageReady) tea.Cmd {
+	scan := msg.Response
+	details := m.selectedTable
+
+	if m.selectedTable.TableArn != msg.Table.TableArn || m.chosenIndex != msg.Index { // expired
+		return nil
+	}
+
+	m.appendItems(scan.Items)
+	m.pageKey = scan.LastEvaluatedKey
+
+	if len(scan.Items.TableKeys) > 0 {
+		// set columns
+		_, rang := primaryKeysFromSchema(keysFromIndex(m.chosenIndex, details))
+		completeKeys := compileCompleteKeys(scan.Items.TableKeys, m.keysComplete, rang != nil)
+		defer func() { m.keysComplete = completeKeys }()
+
+		if slices.Equal(m.keysComplete, completeKeys) {
+			// prep new rows & append
+			rows := parseRows(completeKeys, scan.Items.TableKeys)
+			m.content.AppendRows(rows)
+		} else {
+			// prep cols, prep ALL rows, set content
+			cols := make([]table.Column, len(completeKeys))
+			for i, k := range completeKeys {
+				cols[i] = table.Column{Title: k, Width: clamp(len(k), 16, 32)}
+			}
+			rows := parseRows(completeKeys, m.items.TableKeys)
+			m.content.SetContent(cols, rows)
+		}
+	}
+	m.paging = false
+	return m.MaybePreviewItem(true)
+}
+
 // selectTable processes the select-table message, which indicates that the
 // item-selection-view is opened because a table has been selected. It will
 // default to scanning the first page of items.
@@ -216,14 +317,14 @@ func (m *ItemSelectionPane) selectTable(tableName string, details types.Describe
 	m.cleanSlate()
 	m.content.ResetVirtualRows()
 
-	m.selectedTable = tableName
+	m.selectedTable = details
 	// TODO: spinner & async
 	ctx, cc := context.WithTimeout(m.ctx, m.stdTO)
 	defer cc()
 	scan, err := dynamodb.ScanTable(m.config.Client, ctx, tableName, types.ScanParameters{
 		KeyDetails: details.AttributeDefinitions,
 		KeySchema:  details.KeySchema,
-		Limit:      m.window.height,
+		Limit:      m.scanLimit,
 	})
 	if err != nil {
 		m.err = err
@@ -231,31 +332,19 @@ func (m *ItemSelectionPane) selectTable(tableName string, details types.Describe
 	}
 
 	m.items = scan.Items
+	m.pageKey = scan.LastEvaluatedKey
 
 	if len(scan.Items.TableKeys) > 0 {
 		// set columns
 		_, rang := primaryKeysFromSchema(details.KeySchema)
-		completekeys := compileCompleteKeys(scan.Items.TableKeys, rang != nil)
-		cols := make([]table.Column, len(completekeys))
-		for i, k := range completekeys {
+		m.keysComplete = compileCompleteKeys(scan.Items.TableKeys, nil, rang != nil)
+		cols := make([]table.Column, len(m.keysComplete))
+		for i, k := range m.keysComplete {
 			cols[i] = table.Column{Title: k, Width: clamp(len(k), 16, 32)}
 		}
 
 		// set rows
-		rows := make([]table.Row, len(scan.Items.TableKeys))
-		for i, k := range scan.Items.TableKeys {
-			row := make([]string, len(completekeys))
-			var x int
-			for j, key := range completekeys {
-				if key == k[x].Key { // matching key
-					row[j] = k[x].Value
-					x = min(len(k)-1, x+1)
-				} else { // no matching key
-					row[j] = ""
-				}
-			}
-			rows[i] = row
-		}
+		rows := parseRows(m.keysComplete, scan.Items.TableKeys)
 		m.content.SetContent(cols, rows)
 	}
 	return m.MaybePreviewItem(true)
@@ -267,9 +356,15 @@ func (m *ItemSelectionPane) selectTable(tableName string, details types.Describe
 // result still contains these keys when they are present in other rows in the
 // specified table.
 // TODO: accept existing key-slice for pagination compatibility
-func compileCompleteKeys(table [][]types.KeyValue, hasRangeKey bool) []string {
+func compileCompleteKeys(table [][]types.KeyValue, existing []string, hasRangeKey bool) []string {
 	res := make([]string, 0)
 	seen := map[string]struct{}{}
+	if len(existing) > 0 {
+		res = existing
+	}
+	for _, e := range existing {
+		seen[e] = struct{}{}
+	}
 	for _, row := range table {
 		for _, col := range row {
 			key := col.Key
@@ -299,9 +394,21 @@ func (m *ItemSelectionPane) applySize(height, width int) {
 	m.content.SetHeight(height - searchBoxH)
 	m.content.SetWidth(width)
 	m.search.SetWidth(width)
+	m.queryLimit = height
+	m.scanLimit = height
+}
+
+func (m *ItemSelectionPane) resetQueryParameters() {
+	m.paging = false
+	m.keysComplete = []string{}
+	m.chosenIndex = nil
+	m.queryMode = ScanMode
+	m.pageKey = nil
 }
 
 func (m *ItemSelectionPane) escape() tea.Cmd {
+	m.pageCancel()
+	m.resetQueryParameters()
 	return func() tea.Msg {
 		return messages.SwitchView{
 			OldView: messages.Item_selection,
@@ -318,6 +425,29 @@ func (m *ItemSelectionPane) View() string {
 		m.content.View(),
 		m.search.View(),
 	)
+}
+
+func (m *ItemSelectionPane) appendItems(newItems types.Items) {
+	// JSON
+	j := make([]string, len(m.items.JSON)+len(newItems.JSON))
+	copy(j[:len(m.items.JSON)], m.items.JSON)
+	copy(j[len(m.items.JSON):], newItems.JSON)
+	m.items.JSON = j
+	// YAML
+	y := make([]string, len(m.items.YAML)+len(newItems.YAML))
+	copy(y[:len(m.items.YAML)], m.items.YAML)
+	copy(y[len(m.items.YAML):], newItems.YAML)
+	m.items.YAML = y
+	// RAW
+	r := make([]map[string]dynamotypes.AttributeValue, len(m.items.Raw)+len(newItems.Raw))
+	copy(r[:len(m.items.Raw)], m.items.Raw)
+	copy(r[len(m.items.Raw):], newItems.Raw)
+	m.items.Raw = r
+	// KEYS
+	k := make([][]types.KeyValue, len(m.items.TableKeys)+len(newItems.TableKeys))
+	copy(k[:len(m.items.TableKeys)], m.items.TableKeys)
+	copy(k[len(m.items.TableKeys):], newItems.TableKeys)
+	m.items.TableKeys = k
 }
 
 func clamp(v, low, high int) int {
@@ -340,4 +470,39 @@ func primaryKeysFromSchema(s []dynamotypes.KeySchemaElement) (hash string, rang 
 		}
 	}
 	return
+}
+
+func keysFromIndex(idx *string, details types.DescribeTableResponse) []dynamotypes.KeySchemaElement {
+	if idx == nil {
+		return details.KeySchema
+	}
+	for _, g := range details.GlobalSecondaryIndexes {
+		if *g.IndexName == *idx {
+			return g.KeySchema
+		}
+	}
+	for _, l := range details.LocalSecondaryIndexes {
+		if *l.IndexName == *idx {
+			return l.KeySchema
+		}
+	}
+	return details.KeySchema
+}
+
+func parseRows(cols []string, tableKeys [][]types.KeyValue) []table.Row {
+	rows := make([]table.Row, len(tableKeys))
+	for i, k := range tableKeys {
+		row := make([]string, len(cols))
+		var x int
+		for j, key := range cols {
+			if key == k[x].Key { // matching key
+				row[j] = k[x].Value
+				x = min(len(k)-1, x+1)
+			} else { // no matching key
+				row[j] = ""
+			}
+		}
+		rows[i] = row
+	}
+	return rows
 }

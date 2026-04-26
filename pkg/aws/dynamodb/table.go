@@ -70,8 +70,10 @@ func DescribeTable(client dynamodbClient, ctx context.Context, tableName string)
 func ScanTable(client dynamodbClient, ctx context.Context, table string, params apitypes.ScanParameters) (*apitypes.ScanResponse, error) {
 	hkey, rkey := parsePrimaryKeys(params.KeySchema) // TODO: prevent waste
 	p := dynamodb.ScanInput{
-		TableName: &table,
-		Limit:     toPtr(int32(params.Limit)),
+		TableName:         &table,
+		Limit:             toPtr(int32(params.Limit)),
+		ExclusiveStartKey: params.LastEvaluatedKey,
+
 		// Limit:                     new(int32),
 		// ScanFilter:                map[string]types.Condition{},
 		// IndexName:                 new(string),
@@ -79,7 +81,6 @@ func ScanTable(client dynamodbClient, ctx context.Context, table string, params 
 		// AttributesToGet:           []string{},
 		// ConditionalOperator:       "",
 		// ConsistentRead:            new(bool),
-		// ExclusiveStartKey:         map[string]types.AttributeValue{},
 		// ExpressionAttributeNames:  map[string]string{},
 		// ExpressionAttributeValues: map[string]types.AttributeValue{},
 		// FilterExpression:          new(string),
@@ -103,6 +104,7 @@ func ScanTable(client dynamodbClient, ctx context.Context, table string, params 
 			Raw:       out.Items,
 			TableKeys: make([][]apitypes.KeyValue, 0, len(out.Items)),
 		},
+		LastEvaluatedKey: out.LastEvaluatedKey,
 	}
 
 	// TODO: reconsider parsing to both JSON & YAML all the time

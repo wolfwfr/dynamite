@@ -1,6 +1,8 @@
 package messages
 
-import apitypes "github.com/wolfwfr/dynamite/pkg/aws/dynamodb/types"
+import (
+	apitypes "github.com/wolfwfr/dynamite/pkg/aws/dynamodb/types"
+)
 
 type View int
 
@@ -33,3 +35,9 @@ type TableDetails struct {
 }
 
 type ToggleJSONYAML struct{}
+
+type ScanPageReady struct {
+	Table    apitypes.DescribeTableResponse
+	Index    *string
+	Response apitypes.ScanResponse
+}

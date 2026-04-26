@@ -113,7 +113,7 @@ func TestCompileCompleteKeys(t *testing.T) {
 		for _, tc := range testcases {
 			t.Run(tc.desc, func(t *testing.T) {
 				// test
-				res := compileCompleteKeys(tc.input_keys, tc.input_hasRange)
+				res := compileCompleteKeys(tc.input_keys, nil, tc.input_hasRange)
 
 				// assert
 				assert.EqualValues(t, tc.exp, res)

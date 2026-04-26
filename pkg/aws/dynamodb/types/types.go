@@ -47,12 +47,12 @@ type ( // SCAN
 		IndexName  *string                     // optional index-name, queries table if nil
 		KeySchema  []types.KeySchemaElement    // keyschema associated with `IndexName` or table
 
-		Limit int
-		// LastEvaluatedKey map[string]types.AttributeValue
+		Limit            int
+		LastEvaluatedKey map[string]types.AttributeValue
 	}
 	ScanResponse struct {
-		Items Items
-		// LastEvaluatedKey map[string]types.AttributeValue
+		Items            Items
+		LastEvaluatedKey map[string]types.AttributeValue
 	}
 )
 

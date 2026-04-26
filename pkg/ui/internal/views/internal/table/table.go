@@ -393,6 +393,18 @@ func (m *Model) SetRows(r []Row) {
 	m.UpdateContent()
 }
 
+// AppendRows appends rows to the table's state. This can be unsafe if the
+// number of columns is not equal to that of existing rows.
+func (m *Model) AppendRows(r []Row) {
+	rr := make([]Row, len(m.rows)+len(r))
+	copy(rr[:len(m.rows)], m.rows)
+	copy(rr[len(m.rows):], r)
+	m.rows = rr
+
+	m.updateContentHeight()
+	m.UpdateContent()
+}
+
 // SetVirtualRows sets the virtual rows
 // Note that supplying nil or [] does not reset the view.
 // To completely remove virtual rows (even if empty) from view, use the
@@ -496,6 +508,16 @@ func (m *Model) Width() int {
 // Cursor returns the index of the selected row.
 func (m *Model) Cursor() int {
 	return m.cursor
+}
+
+// CursorAtEnd returns whether the selected row is the last available row
+func (m *Model) CursorAtEnd() bool {
+	return m.cursor == len(m.VisualRows())
+}
+
+// ViewAtEnd returns whether the last available row is in view
+func (m *Model) ViewAtEnd() bool {
+	return m.end == len(m.VisualRows())
 }
 
 // SetCursor sets the cursor position in the table.
