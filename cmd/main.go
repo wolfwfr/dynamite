@@ -90,8 +90,10 @@ func runApplication(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	cfg := appconfig.Config{
-		Profile: resolveProfile(cmd, cfgf),
-		Region:  resolveRegion(cmd, cfgf),
+		Profile:          resolveProfile(cmd, cfgf),
+		Region:           resolveRegion(cmd, cfgf),
+		AvailableRegions: cfgf.AWSRegions,
+		StarredRegions:   cfgf.StarredRegions,
 	}
 
 	p := tea.NewProgram(ui.NewModel(ctx, cfg))

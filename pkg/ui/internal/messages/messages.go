@@ -43,3 +43,9 @@ type ScanPageReady struct {
 }
 
 type ToggleHelp struct{}
+type ToggleRegions struct{}
+
+type SwitchRegion struct {
+	OldRegion string
+	NewRegion string
+}

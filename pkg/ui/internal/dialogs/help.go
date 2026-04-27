@@ -41,14 +41,11 @@ type Help struct {
 }
 
 func NewHelp(tableView, itemView help.KeyMap) *Help {
-	return &Help{
+	h := &Help{
 		activeView: 0,
 
 		defaultDialogHeight: 20,
 		defaultDialogWidth:  180,
-
-		width:  20,
-		height: 180,
 
 		keyMap: helpKeyMap{
 			close: key.NewBinding(
@@ -62,6 +59,11 @@ func NewHelp(tableView, itemView help.KeyMap) *Help {
 		tableSelection: tableView,
 		itemselection:  itemView,
 	}
+
+	h.width = h.defaultDialogWidth
+	h.height = h.defaultDialogHeight
+
+	return h
 }
 
 func (m *Help) Init() tea.Cmd {
@@ -122,7 +124,9 @@ func (m *Help) View() string {
 	availableHeight := m.height - helpHeight - 2 - 2*padding
 	nl := newLines(int(availableHeight / 2))
 
-	return helpDialogStyle.Render("Help" + nl + fullhelp + nl + m.Help.ShortHelpView((m.keyMap.ShortHelp())))
+	title := "Help"
+
+	return helpDialogStyle.Render(title + nl + fullhelp + nl + m.Help.ShortHelpView((m.keyMap.ShortHelp())))
 }
 
 func newLines(n int) string {

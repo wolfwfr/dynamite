@@ -8,7 +8,6 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"charm.land/bubbles/v2/help"
-	"charm.land/bubbles/v2/key"
 
 	appconfig "github.com/wolfwfr/dynamite/pkg"
 	"github.com/wolfwfr/dynamite/pkg/aws"
@@ -21,10 +20,14 @@ import (
 )
 
 type View int
+type Dialog int
 
 const (
 	table_selection View = iota
 	item_selection
+
+	help_dialog    Dialog = iota
+	regions_dialog Dialog = iota
 )
 
 var regionBlock = lipgloss.NewStyle().
@@ -45,8 +48,10 @@ type Model struct {
 
 	// dialogs
 	dialogs struct {
-		open bool
-		help *dialogs.Help
+		open   bool
+		help   *dialogs.Help
+		region *dialogs.Regions
+		active Dialog
 	}
 
 	// top-level context
@@ -72,39 +77,43 @@ func NewModel(ctx context.Context, cfg appconfig.Config) Model {
 		Help:       help.New(),
 	}
 
+	km := DefaultKeyMap()
+
 	inheritedKeys := []keymaps.AdditionalKey{
 		{
-			Binding: key.NewBinding(
-				key.WithKeys("q", "ctrl+c"),
-				key.WithHelp("q/ctrl+c", "quit"),
-			),
-			Call: tea.Quit,
+			Binding: km.Quit,
+			Call:    tea.Quit,
 		}, {
-			Binding: key.NewBinding(
-				key.WithKeys("?"),
-				key.WithHelp("?", "help"),
-			),
-			Call: m.SignalOpenHelpDialog(),
+			Binding: km.Help,
+			Call:    m.SignalOpenHelpDialog(),
 		},
 	}
 
-	m.tableSelection = tableselection.NewTableSelectionView(ctx, &cfg, tableselection.WithAdditionalKeys(keymaps.AdditionalKeys(inheritedKeys)))
+	tableViewInherit := make([]keymaps.AdditionalKey, len(inheritedKeys)+1)
+	copy(tableViewInherit[:len(inheritedKeys)], inheritedKeys)
+	copy(tableViewInherit[len(inheritedKeys):], []keymaps.AdditionalKey{
+		{
+			Binding: km.Regions,
+			Call:    m.SignalOpenRegionsDialog(),
+		},
+	})
+
+	m.tableSelection = tableselection.NewTableSelectionView(ctx, &cfg, tableselection.WithAdditionalKeys(keymaps.AdditionalKeys(tableViewInherit)))
 	m.itemselection = itemselection.NewItemSelectionView(ctx, &cfg, itemselection.WithAdditionalKeys(keymaps.AdditionalKeys(inheritedKeys)))
 
 	m.dialogs.help = dialogs.NewHelp(m.tableSelection, m.itemselection)
+	m.dialogs.region = dialogs.NewRegionsDialog(m.config.AvailableRegions, m.config.StarredRegions, m.config.Region)
 
 	return m
 
 }
 
 func (m Model) Init() tea.Cmd {
-	if m.config.Client == nil {
-		cfg, err := aws.LoadAWSConfig(m.ctx, m.config.Region, m.config.Profile)
-		if err != nil {
-			// TODO: handling
-		}
-		m.config.Client = dynamodb.NewClient(cfg)
+	cfg, err := aws.LoadAWSConfig(m.ctx, m.config.Region, m.config.Profile)
+	if err != nil {
+		// TODO: handling
 	}
+	m.config.Client = dynamodb.NewClient(cfg)
 	var cmds []tea.Cmd
 	cmds = append(cmds, m.tableSelection.Init())
 	cmds = append(cmds, m.itemselection.Init())
@@ -119,9 +128,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.applySize(msg.Height, msg.Width).(Model)
 	case messages.ToggleHelp:
 		return m.ToggleHelpDialog()
+	case messages.ToggleRegions:
+		return m.ToggleRegionsDialog()
+	case messages.SwitchRegion:
+		return m.switchRegion(msg.OldRegion, msg.NewRegion)
 	}
 
 	return m.forward(msg)
+}
+
+func (m Model) switchRegion(oldr, newr string) (tea.Model, tea.Cmd) {
+	m.config.Region = newr
+	return m, m.Init()
 }
 
 func (m Model) applySize(height, width int) tea.Model {
@@ -137,6 +155,7 @@ func (m Model) forward(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, m.tableSelection.Update(msg))
 		cmds = append(cmds, m.itemselection.Update(msg))
 		cmds = append(cmds, m.dialogs.help.Update(msg))
+		cmds = append(cmds, m.dialogs.region.Update(msg))
 		return m, tea.Batch(cmds...)
 	}
 
@@ -150,7 +169,12 @@ func (m Model) forward(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch {
 	case m.dialogs.open:
-		return m, m.dialogs.help.Update(msg)
+		switch m.dialogs.active {
+		case help_dialog:
+			return m, m.dialogs.help.Update(msg)
+		case regions_dialog:
+			return m, m.dialogs.region.Update(msg)
+		}
 	case m.activeView == table_selection:
 		return m.handleTableSelectionMode(msg)
 	case m.activeView == item_selection:
@@ -180,8 +204,31 @@ func (m Model) handleSwitchView(msg messages.SwitchView) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) ToggleHelpDialog() (tea.Model, tea.Cmd) {
+	if m.dialogs.open && m.dialogs.active != help_dialog {
+		return m, nil
+	}
 	m.dialogs.open = !m.dialogs.open
+	if m.dialogs.open {
+		m.dialogs.active = help_dialog
+	}
 	return m, nil
+}
+
+func (m Model) ToggleRegionsDialog() (tea.Model, tea.Cmd) {
+	if m.dialogs.open && m.dialogs.active != regions_dialog {
+		return m, nil
+	}
+	m.dialogs.open = !m.dialogs.open
+	if m.dialogs.open {
+		m.dialogs.active = regions_dialog
+	}
+	return m, nil
+}
+
+type dialog interface {
+	View() string
+	Width() int
+	Height() int
 }
 
 func (m Model) View() tea.View {
@@ -206,10 +253,16 @@ func (m Model) View() tea.View {
 	c := lipgloss.NewCompositor(mainLayer)
 	c.AddLayers(mainLayer)
 	if m.dialogs.open {
-		dialog := m.dialogs.help.View()
-		dialogLayer := lipgloss.NewLayer(dialog).
-			X(m.window.width/2 - m.dialogs.help.Width()/2).
-			Y(m.window.height/2 - m.dialogs.help.Height()/2)
+		var dialog dialog
+		switch m.dialogs.active {
+		case help_dialog:
+			dialog = m.dialogs.help
+		case regions_dialog:
+			dialog = m.dialogs.region
+		}
+		dialogLayer := lipgloss.NewLayer(dialog.View()).
+			X(m.window.width/2 - dialog.Width()/2).
+			Y(m.window.height/2 - dialog.Height()/2)
 		c.AddLayers(dialogLayer)
 	}
 
@@ -221,5 +274,11 @@ func (m Model) View() tea.View {
 func (m Model) SignalOpenHelpDialog() tea.Cmd {
 	return func() tea.Msg {
 		return messages.ToggleHelp{}
+	}
+}
+
+func (m Model) SignalOpenRegionsDialog() tea.Cmd {
+	return func() tea.Msg {
+		return messages.ToggleRegions{}
 	}
 }

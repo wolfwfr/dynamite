@@ -5,19 +5,20 @@ import "charm.land/bubbles/v2/key"
 // KeyMap defines keybindings. It satisfies to the help.KeyMap interface, which
 // is used to render the help menu.
 type KeyMap struct {
-	Quit key.Binding
-	Help key.Binding
+	Quit    key.Binding
+	Help    key.Binding
+	Regions key.Binding
 }
 
 // ShortHelp implements the KeyMap interface.
 func (km *KeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{km.Quit, km.Help}
+	return []key.Binding{km.Quit, km.Help, km.Regions}
 }
 
 // FullHelp implements the KeyMap interface.
 func (km *KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{km.Quit}, {km.Help},
+		{km.Quit}, {km.Help}, {km.Regions},
 	}
 }
 
@@ -31,6 +32,10 @@ func DefaultKeyMap() *KeyMap {
 		Help: key.NewBinding(
 			key.WithKeys("?"),
 			key.WithHelp("?", "help"),
+		),
+		Regions: key.NewBinding(
+			key.WithKeys("R"),
+			key.WithHelp("shift+r", "region select"),
 		),
 	}
 }
