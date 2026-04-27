@@ -43,10 +43,10 @@ type Model struct {
 		height int
 	}
 
-	helpDialog *dialogs.Help
-
-	dialog struct {
+	// dialogs
+	dialogs struct {
 		open bool
+		help *dialogs.Help
 	}
 
 	// top-level context
@@ -91,7 +91,7 @@ func NewModel(ctx context.Context, cfg appconfig.Config) Model {
 	m.tableSelection = tableselection.NewTableSelectionView(ctx, &cfg, tableselection.WithAdditionalKeys(keymaps.AdditionalKeys(inheritedKeys)))
 	m.itemselection = itemselection.NewItemSelectionView(ctx, &cfg, itemselection.WithAdditionalKeys(keymaps.AdditionalKeys(inheritedKeys)))
 
-	m.helpDialog = dialogs.NewHelp(m.tableSelection, m.itemselection)
+	m.dialogs.help = dialogs.NewHelp(m.tableSelection, m.itemselection)
 
 	return m
 
@@ -136,7 +136,7 @@ func (m Model) forward(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds := []tea.Cmd{}
 		cmds = append(cmds, m.tableSelection.Update(msg))
 		cmds = append(cmds, m.itemselection.Update(msg))
-		cmds = append(cmds, m.helpDialog.Update(msg))
+		cmds = append(cmds, m.dialogs.help.Update(msg))
 		return m, tea.Batch(cmds...)
 	}
 
@@ -149,8 +149,8 @@ func (m Model) forward(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch {
-	case m.dialog.open:
-		return m, m.helpDialog.Update(msg)
+	case m.dialogs.open:
+		return m, m.dialogs.help.Update(msg)
 	case m.activeView == table_selection:
 		return m.handleTableSelectionMode(msg)
 	case m.activeView == item_selection:
@@ -176,11 +176,11 @@ func (m Model) handleSwitchView(msg messages.SwitchView) (tea.Model, tea.Cmd) {
 	case messages.Item_selection:
 		m.activeView = item_selection
 	}
-	return m, m.helpDialog.Update(msg)
+	return m, m.dialogs.help.Update(msg)
 }
 
 func (m Model) ToggleHelpDialog() (tea.Model, tea.Cmd) {
-	m.dialog.open = !m.dialog.open
+	m.dialogs.open = !m.dialogs.open
 	return m, nil
 }
 
@@ -205,11 +205,11 @@ func (m Model) View() tea.View {
 	mainLayer := lipgloss.NewLayer(str)
 	c := lipgloss.NewCompositor(mainLayer)
 	c.AddLayers(mainLayer)
-	if m.dialog.open {
-		dialog := m.helpDialog.View()
+	if m.dialogs.open {
+		dialog := m.dialogs.help.View()
 		dialogLayer := lipgloss.NewLayer(dialog).
-			X(m.window.width/2 - m.helpDialog.Width()/2).
-			Y(m.window.height/2 - m.helpDialog.Height()/2)
+			X(m.window.width/2 - m.dialogs.help.Width()/2).
+			Y(m.window.height/2 - m.dialogs.help.Height()/2)
 		c.AddLayers(dialogLayer)
 	}
 
