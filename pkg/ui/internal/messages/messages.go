@@ -42,4 +42,4 @@ type ScanPageReady struct {
 	Response apitypes.ScanResponse
 }
 
-type OpenHelp struct{}
+type ToggleHelp struct{}
