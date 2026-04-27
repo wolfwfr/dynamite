@@ -522,10 +522,10 @@ func (m *Model) ViewAtEnd() bool {
 
 // SetCursor sets the cursor position in the table.
 func (m *Model) SetCursor(n int) {
-	n = clamp(n, 0, len(m.VisualRows())-1)
+	n = clamp(n, 0, max(0, len(m.VisualRows())-1))
 	if m.cursor < n {
 		m.MoveUp(n - m.cursor)
-	} else {
+	} else if m.cursor > n {
 		m.MoveDown(m.cursor - n)
 	}
 }
