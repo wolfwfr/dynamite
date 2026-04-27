@@ -49,7 +49,7 @@ func (km *TablePaneKeyMap) ShortHelp() []key.Binding {
 // FullHelp implements the KeyMap interface.
 func (km *TablePaneKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{km.Select}, {km.Search}, {km.Zoom}, {km.Esc},
+		{km.Select, km.Search, km.Zoom, km.Esc},
 	}
 }
 

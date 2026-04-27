@@ -32,7 +32,7 @@ func (m *ItemSelection) FullHelp() [][]key.Binding {
 	case itemsPaneID:
 		return appendFullHelp(m.itemsPane.FullHelp(), m.KeyMap.FullHelp())
 	case detailsPaneID:
-		return m.detailsPane.FullHelp()
+		return appendFullHelp(m.detailsPane.FullHelp(), m.KeyMap.FullHelp())
 	}
 	return nil
 }
@@ -44,7 +44,9 @@ func (m *ItemSelectionPane) FullHelp() [][]key.Binding {
 
 // DETAILS PANE
 func (m *detailsPane) FullHelp() [][]key.Binding {
-	return nil
+	km := m.content.KeyMap
+	viewportHelp := []key.Binding{km.Up, km.Down, km.Left, km.Right}
+	return appendFullHelp([][]key.Binding{viewportHelp}, m.KeyMap.FullHelp())
 }
 
 func appendShortHelp(help []key.Binding, extra []key.Binding) []key.Binding {

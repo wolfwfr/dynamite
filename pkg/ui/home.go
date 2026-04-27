@@ -13,6 +13,7 @@ import (
 	appconfig "github.com/wolfwfr/dynamite/pkg"
 	"github.com/wolfwfr/dynamite/pkg/aws"
 	"github.com/wolfwfr/dynamite/pkg/aws/dynamodb"
+	"github.com/wolfwfr/dynamite/pkg/ui/internal/dialogs"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	itemselection "github.com/wolfwfr/dynamite/pkg/ui/internal/views/item_selection"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/keymaps"
@@ -30,9 +31,16 @@ type Model struct {
 	// ActiveView determines tea.Msg forwarding
 	activeView View
 
-	// awaitingInput enables/disables letter-based-keymaps
-	// TODO: consider handling all keymaps, including global, in views
-	awaitingInput bool
+	window struct {
+		width  int
+		height int
+	}
+
+	helpDialog *dialogs.Help
+
+	dialog struct {
+		open bool
+	}
 
 	// top-level context
 	ctx context.Context
@@ -75,6 +83,9 @@ func NewModel(ctx context.Context, cfg appconfig.Config) Model {
 
 	m.tableSelection = tableselection.NewTableSelectionView(ctx, &cfg, tableselection.WithAdditionalKeys(keymaps.AdditionalKeys(inheritedKeys)))
 	m.itemselection = itemselection.NewItemSelectionView(ctx, &cfg, itemselection.WithAdditionalKeys(keymaps.AdditionalKeys(inheritedKeys)))
+
+	m.helpDialog = dialogs.NewHelp(m.tableSelection, m.itemselection)
+
 	return m
 
 }
@@ -98,12 +109,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case messages.SwitchView:
 		return m.handleSwitchView(msg)
 	case tea.WindowSizeMsg:
-		m.Help.SetWidth(msg.Width)
-	case messages.OpenHelp:
-		// TODO: open help dialog
+		m = m.applySize(msg.Height, msg.Width).(Model)
+	case messages.ToggleHelp:
+		return m.ToggleHelpDialog()
 	}
 
 	return m.forward(msg)
+}
+
+func (m Model) applySize(height, width int) tea.Model {
+	m.Help.SetWidth(width)
+	m.window.height = height
+	m.window.width = width
+	return m
 }
 
 func (m Model) forward(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -111,6 +129,7 @@ func (m Model) forward(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds := []tea.Cmd{}
 		cmds = append(cmds, m.tableSelection.Update(msg))
 		cmds = append(cmds, m.itemselection.Update(msg))
+		cmds = append(cmds, m.helpDialog.Update(msg))
 		return m, tea.Batch(cmds...)
 	}
 
@@ -122,10 +141,12 @@ func (m Model) forward(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, m.itemselection.Update(msg)
 	}
 
-	switch m.activeView {
-	case table_selection:
+	switch {
+	case m.dialog.open:
+		return m, m.helpDialog.Update(msg)
+	case m.activeView == table_selection:
 		return m.handleTableSelectionMode(msg)
-	case item_selection:
+	case m.activeView == item_selection:
 		return m.handleItemSelectionMode(msg)
 	default:
 		log.Fatalf("could not identify active view '%d'", int(m.activeView))
@@ -148,6 +169,11 @@ func (m Model) handleSwitchView(msg messages.SwitchView) (tea.Model, tea.Cmd) {
 	case messages.Item_selection:
 		m.activeView = item_selection
 	}
+	return m, m.helpDialog.Update(msg)
+}
+
+func (m Model) ToggleHelpDialog() (tea.Model, tea.Cmd) {
+	m.dialog.open = !m.dialog.open
 	return m, nil
 }
 
@@ -163,13 +189,26 @@ func (m Model) View() tea.View {
 		help = m.Help.ShortHelpView(m.itemselection.ShortHelp())
 	}
 	str = lipgloss.JoinVertical(lipgloss.Top, str, help)
-	v := tea.NewView(str)
+
+	// dialog compositing
+	mainLayer := lipgloss.NewLayer(str)
+	c := lipgloss.NewCompositor(mainLayer)
+	c.AddLayers(mainLayer)
+	if m.dialog.open {
+		dialog := m.helpDialog.View()
+		dialogLayer := lipgloss.NewLayer(dialog).
+			X(m.window.width/2 - m.helpDialog.Width()/2).
+			Y(m.window.height/2 - m.helpDialog.Height()/2)
+		c.AddLayers(dialogLayer)
+	}
+
+	v := tea.NewView(c.Render())
 	v.AltScreen = true // fullscreen
 	return v
 }
 
 func (m Model) SignalOpenHelpDialog() tea.Cmd {
 	return func() tea.Msg {
-		return messages.OpenHelp{}
+		return messages.ToggleHelp{}
 	}
 }

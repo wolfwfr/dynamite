@@ -12,4 +12,9 @@ var (
 				Align(lipgloss.Left, lipgloss.Top).
 				BorderStyle(lipgloss.RoundedBorder()).
 				BorderForeground(lipgloss.Color("#2381CF"))
+
+	DialogStyle = lipgloss.NewStyle().
+			Align(lipgloss.Center, lipgloss.Center).
+			BorderStyle(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("#F58427"))
 )

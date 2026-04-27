@@ -17,7 +17,7 @@ func (km *DetailsPaneKeyMap) ShortHelp() []key.Binding {
 // FullHelp implements the KeyMap interface.
 func (km *DetailsPaneKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{km.Zoom}, {km.ToggleFmt},
+		{km.Zoom, km.ToggleFmt},
 	}
 }
 
@@ -55,7 +55,7 @@ func (km *ItemPaneKeyMap) ShortHelp() []key.Binding {
 // FullHelp implements the KeyMap interface.
 func (km *ItemPaneKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{km.Search}, {km.Zoom}, {km.Esc}, {km.ChCols}, {km.ToggleFmt},
+		{km.Search, km.Zoom, km.Esc, km.ChCols, km.ToggleFmt},
 	}
 }
 

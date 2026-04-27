@@ -29,9 +29,10 @@ func (km *KeyMap) ShortHelp() []key.Binding {
 // FullHelp implements the KeyMap interface.
 func (km *KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{km.LineUp, km.LineDown, km.GotoTop, km.GotoBottom},
-		{km.ScrollLeft}, {km.ScrollRight}, {km.ShiftLeft}, {km.ShiftRight}, {km.GotoLeft}, {km.GotoRight},
-		{km.PageUp, km.PageDown, km.HalfPageUp, km.HalfPageDown},
+		{km.LineUp, km.LineDown, km.ScrollLeft, km.ScrollRight},
+		{km.GotoTop, km.GotoBottom, km.GotoLeft, km.GotoRight},
+		{km.HalfPageUp, km.HalfPageDown, km.ShiftLeft, km.ShiftRight},
+		{km.PageUp, km.PageDown},
 	}
 }
 
@@ -56,11 +57,11 @@ func DefaultKeyMap() *KeyMap {
 		),
 		ShiftRight: key.NewBinding(
 			key.WithKeys("L"),
-			key.WithHelp("shift+l", "half-width right"),
+			key.WithHelp("shift+l", "½ width right"),
 		),
 		ShiftLeft: key.NewBinding(
 			key.WithKeys("H"),
-			key.WithHelp("shift+h", "half-width left"),
+			key.WithHelp("shift+h", "½ width left"),
 		),
 		PageUp: key.NewBinding(
 			key.WithKeys("b", "pgup"),
