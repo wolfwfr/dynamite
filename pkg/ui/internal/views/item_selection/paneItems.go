@@ -31,6 +31,11 @@ const (
 	QueryMode
 )
 
+type SessionData struct {
+	queryMode   queryMode
+	chosenIndex *string
+}
+
 type ItemSelectionPane struct {
 	// top-level context
 	ctx context.Context
@@ -61,11 +66,15 @@ type ItemSelectionPane struct {
 
 	content *table.Model
 
+	// sessions (per table ARN)
+	sessions map[string]SessionData
+
 	// query & scan parameters
 	queryMode   queryMode
-	scanLimit   int
-	queryLimit  int
 	chosenIndex *string
+
+	scanLimit  int
+	queryLimit int
 
 	items           types.Items
 	filteredItems   []int // indices referring to items
@@ -114,6 +123,7 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 		stdTO:         5 * time.Second,
 		content:       t,
 		KeyMap:        DefaultItemPaneKeyMap(),
+		sessions:      map[string]SessionData{},
 		queryMode:     ScanMode,
 		previewFormat: JSONformat,
 		scanLimit:     10,
@@ -339,6 +349,15 @@ func (m *ItemSelectionPane) ProcessScanPage(msg messages.ScanPageReady) tea.Cmd 
 // item-selection-view is opened because a table has been selected. It will
 // default to scanning the first page of items.
 func (m *ItemSelectionPane) selectTable(tableName string, details types.DescribeTableResponse) tea.Cmd {
+	if session, remembered := m.sessions[*details.TableArn]; remembered {
+		// restore session parameters
+		m.queryMode = session.queryMode
+		m.chosenIndex = session.chosenIndex
+	} else {
+		// defaults on newly opened table
+		m.queryMode = ScanMode
+		m.chosenIndex = nil
+	}
 	// resetting state
 	m.cleanSlate()
 	m.content.ResetVirtualRows()
