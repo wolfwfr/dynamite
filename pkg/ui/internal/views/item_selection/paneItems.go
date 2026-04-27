@@ -220,13 +220,13 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 	// paginate when not filtering and at end of content
 	if len(m.filteredItems) == 0 && m.content.ViewAtEnd() {
 		// TODO: spinner
-		cmds = append(cmds, m.PageNext())
+		cmds = append(cmds, m.PageNext(false))
 	}
 	return tea.Batch(cmds...)
 }
 
-func (m *ItemSelectionPane) PageNext() tea.Cmd {
-	if len(m.pageKey) == 0 || m.paging {
+func (m *ItemSelectionPane) PageNext(init bool) tea.Cmd {
+	if (len(m.pageKey) == 0 && !init) || m.paging {
 		return nil
 	}
 	m.paging = true
@@ -342,38 +342,10 @@ func (m *ItemSelectionPane) selectTable(tableName string, details types.Describe
 	// resetting state
 	m.cleanSlate()
 	m.content.ResetVirtualRows()
-
 	m.selectedTable = details
+
 	// TODO: spinner & async
-	ctx, cc := context.WithTimeout(m.ctx, m.stdTO)
-	defer cc()
-	scan, err := dynamodb.ScanTable(m.config.Client, ctx, tableName, types.ScanParameters{
-		KeyDetails: details.AttributeDefinitions,
-		KeySchema:  details.KeySchema,
-		Limit:      m.scanLimit,
-	})
-	if err != nil {
-		m.err = err
-		return nil
-	}
-
-	m.items = scan.Items
-	m.pageKey = scan.LastEvaluatedKey
-
-	if len(scan.Items.TableKeys) > 0 {
-		// set columns
-		_, rang := primaryKeysFromSchema(details.KeySchema)
-		m.keysComplete = compileCompleteKeys(scan.Items.TableKeys, nil, rang != nil)
-		cols := make([]table.Column, len(m.keysComplete))
-		for i, k := range m.keysComplete {
-			cols[i] = table.Column{Title: k, Width: clamp(len(k), 16, 32)}
-		}
-
-		// set rows
-		rows := parseRows(m.keysComplete, scan.Items.TableKeys)
-		m.content.SetContent(cols, rows)
-	}
-	return m.MaybePreviewItem(true)
+	return m.PageNext(true)
 }
 
 // compileCompleteKeys takes a table of key-value pairs, observes all keys and
