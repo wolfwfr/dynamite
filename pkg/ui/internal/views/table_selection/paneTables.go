@@ -145,6 +145,8 @@ func (m *tableSelectionPane) cleanSlate() {
 }
 
 func (m *tableSelectionPane) Init() tea.Cmd {
+	m.content.ResetVirtualRows()
+	m.content.SetCursor(0)
 	m.cleanSlate()
 	m.lastPageKey = nil
 	m.tables = []string{}
