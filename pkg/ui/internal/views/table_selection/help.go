@@ -4,11 +4,12 @@ import "charm.land/bubbles/v2/key"
 
 // VIEW
 func (m *TableSelection) ShortHelp() []key.Binding {
+	ah := appendShortHelp
 	switch m.focused {
 	case tablePaneID:
-		return appendShortHelp(m.tablePane.ShortHelp(), m.KeyMap.ShortHelp())
+		return ah(ah(m.tablePane.ShortHelp(), m.KeyMap.ShortHelp()), m.tablePane.AddKeyMap.Bindings())
 	case detailsPaneID:
-		return appendShortHelp(m.detailsPane.ShortHelp(), m.KeyMap.ShortHelp())
+		return ah(ah(m.detailsPane.ShortHelp(), m.KeyMap.ShortHelp()), m.detailsPane.AddKeyMap.Bindings())
 	}
 	return nil
 }
