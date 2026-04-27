@@ -6,30 +6,30 @@ import "charm.land/bubbles/v2/key"
 func (m *TableSelection) ShortHelp() []key.Binding {
 	switch m.focused {
 	case tablePaneID:
-		return augmentShortHelp(m.tablePane.ShortHelp(), m.KeyMap.ShortHelp())
+		return appendShortHelp(m.tablePane.ShortHelp(), m.KeyMap.ShortHelp())
 	case detailsPaneID:
-		return augmentShortHelp(m.detailsPane.ShortHelp(), m.KeyMap.ShortHelp())
+		return appendShortHelp(m.detailsPane.ShortHelp(), m.KeyMap.ShortHelp())
 	}
 	return nil
 }
 
 // ITEM PANE
 func (m *tableSelectionPane) ShortHelp() []key.Binding {
-	return augmentShortHelp(m.content.KeyMap.ShortHelp(), m.KeyMap.ShortHelp())
+	return appendShortHelp(m.content.KeyMap.ShortHelp(), m.KeyMap.ShortHelp())
 }
 
 // DETAILS PANE
 func (m *detailsPane) ShortHelp() []key.Binding {
 	km := m.content.KeyMap
 	viewportHelp := []key.Binding{km.Up, km.Down, km.Left, km.Right}
-	return augmentShortHelp(viewportHelp, m.KeyMap.ShortHelp())
+	return appendShortHelp(viewportHelp, m.KeyMap.ShortHelp())
 }
 
 // VIEW
 func (m *TableSelection) FullHelp() [][]key.Binding {
 	switch m.focused {
 	case tablePaneID:
-		return augmentFullHelp(m.tablePane.FullHelp(), m.KeyMap.FullHelp())
+		return appendFullHelp(m.tablePane.FullHelp(), m.KeyMap.FullHelp())
 	case detailsPaneID:
 		return m.detailsPane.FullHelp()
 	}
@@ -38,7 +38,7 @@ func (m *TableSelection) FullHelp() [][]key.Binding {
 
 // ITEM PANE
 func (m *tableSelectionPane) FullHelp() [][]key.Binding {
-	return augmentFullHelp(m.content.KeyMap.FullHelp(), m.KeyMap.FullHelp())
+	return appendFullHelp(m.content.KeyMap.FullHelp(), m.KeyMap.FullHelp())
 }
 
 // DETAILS PANE
@@ -46,14 +46,14 @@ func (m *detailsPane) FullHelp() [][]key.Binding {
 	return nil
 }
 
-func augmentShortHelp(help []key.Binding, extra []key.Binding) []key.Binding {
+func appendShortHelp(help []key.Binding, extra []key.Binding) []key.Binding {
 	res := make([]key.Binding, len(help)+len(extra))
 	copy(res[:len(help)], help)
 	copy(res[len(help):], extra)
 	return res
 }
 
-func augmentFullHelp(help [][]key.Binding, extra [][]key.Binding) [][]key.Binding {
+func appendFullHelp(help [][]key.Binding, extra [][]key.Binding) [][]key.Binding {
 	res := make([][]key.Binding, len(help)+len(extra))
 	copy(res[:len(help)], help)
 	copy(res[len(help):], extra)
