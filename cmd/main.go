@@ -18,6 +18,7 @@ const (
 	aws_profile_key = "aws_profile"
 	config_key      = "config"
 	dynamo_url_key  = "dynamo_url"
+	region_key      = "region"
 
 	corrupt_config_dir = "<config_dir_not_found>"
 )
@@ -48,6 +49,12 @@ func main() {
 				Aliases: []string{"p"},
 				Value:   "",
 				Usage:   "aws-profile",
+			},
+			&cli.StringFlag{
+				Name:    region_key,
+				Aliases: []string{"r"},
+				Value:   "",
+				Usage:   "aws-region (takes precedence over default or region in config-file, when set)",
 			},
 			&cli.StringFlag{
 				Name:    config_key,
@@ -84,7 +91,7 @@ func runApplication(ctx context.Context, cmd *cli.Command) error {
 
 	cfg := appconfig.Config{
 		Profile: resolveProfile(cmd, cfgf),
-		Region:  cfgf.DefaultRegion,
+		Region:  resolveRegion(cmd, cfgf),
 	}
 
 	p := tea.NewProgram(ui.NewModel(ctx, cfg))
@@ -103,4 +110,18 @@ func resolveProfile(cmd *cli.Command, cfg configfile.ConfigFile) *string {
 		return &pr
 	}
 	return nil
+}
+
+func resolveRegion(cmd *cli.Command, cfg configfile.ConfigFile) string {
+	if r := cmd.String(region_key); r != "" {
+		return r
+	}
+	if r := os.Getenv("AWS_REGION"); r != "" {
+		return r
+	}
+	if r := cfg.DefaultRegion; r != "" {
+		return r
+	}
+	return "us-east-1"
+
 }
