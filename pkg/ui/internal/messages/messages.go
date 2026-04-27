@@ -41,3 +41,5 @@ type ScanPageReady struct {
 	Index    *string
 	Response apitypes.ScanResponse
 }
+
+type OpenHelp struct{}

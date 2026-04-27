@@ -15,6 +15,7 @@ import (
 	"github.com/wolfwfr/dynamite/pkg/aws/dynamodb"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	itemselection "github.com/wolfwfr/dynamite/pkg/ui/internal/views/item_selection"
+	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/keymaps"
 	tableselection "github.com/wolfwfr/dynamite/pkg/ui/internal/views/table_selection"
 )
 
@@ -33,8 +34,6 @@ type Model struct {
 	// TODO: consider handling all keymaps, including global, in views
 	awaitingInput bool
 
-	KeyMap *KeyMap
-
 	// top-level context
 	ctx context.Context
 
@@ -50,18 +49,34 @@ type Model struct {
 }
 
 func NewModel(ctx context.Context, cfg appconfig.Config) Model {
-	return Model{
+	m := Model{
 		ctx:    ctx,
 		config: &cfg,
 
-		KeyMap: DefaultKeyMap(),
-
-		activeView:     table_selection,
-		tableSelection: tableselection.NewTableSelectionView(ctx, &cfg),
-		itemselection:  itemselection.NewItemSelectionView(ctx, &cfg),
-
-		Help: help.New(),
+		activeView: table_selection,
+		Help:       help.New(),
 	}
+
+	inheritedKeys := []keymaps.AdditionalKey{
+		{
+			Binding: key.NewBinding(
+				key.WithKeys("q", "ctrl+c"),
+				key.WithHelp("q/ctrl+c", "quit"),
+			),
+			Call: tea.Quit,
+		}, {
+			Binding: key.NewBinding(
+				key.WithKeys("?"),
+				key.WithHelp("?", "help"),
+			),
+			Call: m.SignalOpenHelpDialog(),
+		},
+	}
+
+	m.tableSelection = tableselection.NewTableSelectionView(ctx, &cfg, tableselection.WithAdditionalKeys(keymaps.AdditionalKeys(inheritedKeys)))
+	m.itemselection = itemselection.NewItemSelectionView(ctx, &cfg, itemselection.WithAdditionalKeys(keymaps.AdditionalKeys(inheritedKeys)))
+	return m
+
 }
 
 func (m Model) Init() tea.Cmd {
@@ -79,20 +94,13 @@ func (m Model) Init() tea.Cmd {
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	if msg, ok := msg.(tea.KeyPressMsg); ok {
-		switch s := msg.String(); s {
-		case "ctrl+c", "q":
-			if s != "q" || !m.awaitingInput {
-				return m, tea.Quit
-			}
-		}
-	}
-
 	switch msg := msg.(type) {
 	case messages.SwitchView:
 		return m.handleSwitchView(msg)
 	case tea.WindowSizeMsg:
 		m.Help.SetWidth(msg.Width)
+	case messages.OpenHelp:
+		// TODO: open help dialog
 	}
 
 	return m.forward(msg)
@@ -145,10 +153,10 @@ func (m Model) View() tea.View {
 	switch m.activeView {
 	case table_selection:
 		str = m.tableSelection.View()
-		help = m.Help.ShortHelpView(m.augmentHelp(m.tableSelection.ShortHelp()))
+		help = m.Help.ShortHelpView(m.tableSelection.ShortHelp())
 	case item_selection:
 		str = m.itemselection.View()
-		help = m.Help.ShortHelpView(m.augmentHelp(m.itemselection.ShortHelp()))
+		help = m.Help.ShortHelpView(m.itemselection.ShortHelp())
 	}
 	str = lipgloss.JoinVertical(lipgloss.Top, str, help)
 	v := tea.NewView(str)
@@ -156,10 +164,8 @@ func (m Model) View() tea.View {
 	return v
 }
 
-func (m Model) augmentHelp(help []key.Binding) []key.Binding {
-	h := m.KeyMap.ShortHelp()
-	res := make([]key.Binding, len(help)+len(h))
-	copy(res[:len(help)], help)
-	copy(res[len(help):], h)
-	return res
+func (m Model) SignalOpenHelpDialog() tea.Cmd {
+	return func() tea.Msg {
+		return messages.OpenHelp{}
+	}
 }

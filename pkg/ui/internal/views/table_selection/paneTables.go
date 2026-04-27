@@ -14,6 +14,7 @@ import (
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/internal/search"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/internal/table"
+	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/keymaps"
 )
 
 type tableSelectionPane struct {
@@ -45,6 +46,9 @@ type tableSelectionPane struct {
 	// key map
 	KeyMap *TablePaneKeyMap
 
+	// Additional Keys
+	AddKeyMap keymaps.AdditionalKeys
+
 	content *table.Model
 
 	tables           []string
@@ -53,7 +57,16 @@ type tableSelectionPane struct {
 	details          apitypes.DescribeTableResponse
 }
 
-func newTableSelectionPane(ctx context.Context, config *appconfig.Config) *tableSelectionPane {
+type tablePaneOption func(p *tableSelectionPane)
+
+// withTablePaneKeys
+func withTablePaneKeys(keys keymaps.AdditionalKeys) tablePaneOption {
+	return func(t *tableSelectionPane) {
+		t.AddKeyMap = keys
+	}
+}
+
+func newTableSelectionPane(ctx context.Context, config *appconfig.Config, opts ...tablePaneOption) *tableSelectionPane {
 	t := table.New(
 		table.WithColumns([]table.Column{{Title: "table-name", Width: 64}}),
 		table.WithFocused(true),
@@ -110,6 +123,15 @@ func newTableSelectionPane(ctx context.Context, config *appconfig.Config) *table
 			},
 		},
 	)
+
+	for _, o := range opts {
+		o(p)
+	}
+
+	if !keymaps.UniqueKeyMaps(p.KeyMap.ShortHelp(), p.AddKeyMap.Bindings()) {
+		panic("overlapping keymaps!")
+	}
+
 	return p
 }
 
@@ -169,6 +191,10 @@ func (m *tableSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 			return m.Zoom()
 		case key.Matches(msg, m.KeyMap.Esc):
 			m.search.Reset()
+		default:
+			if match, call := m.AddKeyMap.Matches(msg); match {
+				return call
+			}
 		}
 	}
 	cmds = append(cmds, m.content.Update(msg))

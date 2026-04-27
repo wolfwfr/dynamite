@@ -11,6 +11,7 @@ import (
 	appconfig "github.com/wolfwfr/dynamite/pkg"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
+	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/keymaps"
 )
 
 type paneID int
@@ -38,6 +39,9 @@ type ItemSelection struct {
 
 	KeyMap *ItemViewKeyMap
 
+	// Additional Keys
+	AddKeyMap keymaps.AdditionalKeys
+
 	focused    paneID
 	zoomtarget paneID
 }
@@ -54,13 +58,27 @@ func (m *ItemSelection) renderBorder(paneID paneID, content string) string {
 	return borderStyle.Render(content)
 }
 
-func NewItemSelectionView(ctx context.Context, config *appconfig.Config) *ItemSelection {
-	return &ItemSelection{
-		config:      config,
-		itemsPane:   NewItemSelectionPane(ctx, config),
-		detailsPane: newDetailsPane(ctx, config),
-		KeyMap:      DefaultItemViewKeyMap(),
+type Option func(t *ItemSelection)
+
+func WithAdditionalKeys(keys keymaps.AdditionalKeys) Option {
+	return func(t *ItemSelection) {
+		t.AddKeyMap = keys
 	}
+}
+
+func NewItemSelectionView(ctx context.Context, config *appconfig.Config, opts ...Option) *ItemSelection {
+	i := &ItemSelection{
+		config: config,
+		KeyMap: DefaultItemViewKeyMap(),
+	}
+	for _, o := range opts {
+		o(i)
+	}
+
+	i.itemsPane = newItemSelectionPane(ctx, config, withItemsPaneKeys(i.AddKeyMap))
+	i.detailsPane = newDetailsPane(ctx, config, withDetailsPaneKeys(i.AddKeyMap))
+
+	return i
 }
 
 func (m *ItemSelection) Init() tea.Cmd {

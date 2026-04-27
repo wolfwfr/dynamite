@@ -11,6 +11,7 @@ import (
 	appconfig "github.com/wolfwfr/dynamite/pkg"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
+	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/keymaps"
 )
 
 type paneID int
@@ -32,6 +33,9 @@ type TableSelection struct {
 
 	// key map
 	KeyMap *TableViewKeyMap
+
+	// Additional Keys
+	AddKeyMap keymaps.AdditionalKeys
 
 	// panes
 	tablePane   *tableSelectionPane
@@ -55,13 +59,28 @@ func (m *TableSelection) renderBorder(paneID paneID, content string) string {
 	return borderStyle.Render(content)
 }
 
-func NewTableSelectionView(ctx context.Context, config *appconfig.Config) *TableSelection {
-	return &TableSelection{
-		config:      config,
-		tablePane:   newTableSelectionPane(ctx, config),
-		detailsPane: newDetailsPane(ctx, config),
-		KeyMap:      DefaultTableViewKeyMap(),
+type Option func(t *TableSelection)
+
+func WithAdditionalKeys(keys keymaps.AdditionalKeys) Option {
+	return func(t *TableSelection) {
+		t.AddKeyMap = keys
 	}
+}
+
+func NewTableSelectionView(ctx context.Context, config *appconfig.Config, opts ...Option) *TableSelection {
+	t := &TableSelection{
+		config: config,
+		KeyMap: DefaultTableViewKeyMap(),
+	}
+
+	for _, o := range opts {
+		o(t)
+	}
+
+	t.tablePane = newTableSelectionPane(ctx, config, withTablePaneKeys(t.AddKeyMap))
+	t.detailsPane = newDetailsPane(ctx, config, withDetailsPaneKeys(t.AddKeyMap))
+
+	return t
 }
 
 func (m *TableSelection) Init() tea.Cmd {

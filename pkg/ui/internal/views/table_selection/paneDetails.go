@@ -15,6 +15,7 @@ import (
 	appconfig "github.com/wolfwfr/dynamite/pkg"
 	apitypes "github.com/wolfwfr/dynamite/pkg/aws/dynamodb/types"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
+	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/keymaps"
 )
 
 type detailsPane struct {
@@ -33,21 +34,40 @@ type detailsPane struct {
 	// key map
 	KeyMap *DetailsPaneKeyMap
 
+	// Additional Keys
+	AddKeyMap keymaps.AdditionalKeys
+
 	content viewport.Model
 }
 
-func newDetailsPane(ctx context.Context, config *appconfig.Config) *detailsPane {
+type detailsPaneOption func(p *detailsPane)
+
+func withDetailsPaneKeys(keys keymaps.AdditionalKeys) detailsPaneOption {
+	return func(t *detailsPane) {
+		t.AddKeyMap = keys
+	}
+}
+
+func newDetailsPane(ctx context.Context, config *appconfig.Config, opts ...detailsPaneOption) *detailsPane {
 	step := 5
 	c := viewport.New(viewport.WithHeight(20)) // content
 	c.SoftWrap = false
 	c.SetHorizontalStep(step)
 	c.KeyMap.Left.SetHelp("←/h", "left")
 	c.KeyMap.Right.SetHelp("→/l", "right")
-	return &detailsPane{
+	p := &detailsPane{
 		config:  config,
 		content: c,
 		KeyMap:  DefaultDetailsKeyMap(),
 	}
+	for _, o := range opts {
+		o(p)
+	}
+
+	if !keymaps.UniqueKeyMaps(p.KeyMap.ShortHelp(), p.AddKeyMap.Bindings()) {
+		panic("overlapping keymaps!")
+	}
+	return p
 }
 
 func (m *detailsPane) cleanSlate() {
@@ -65,6 +85,10 @@ func (m *detailsPane) Update(msg tea.Msg) (cmd tea.Cmd) {
 		switch {
 		case key.Matches(msg, m.KeyMap.Zoom):
 			return m.Zoom()
+		default:
+			if match, call := m.AddKeyMap.Matches(msg); match {
+				return call
+			}
 		}
 	case messages.TableDetails:
 		m.content.SetContent(renderDetails(msg.Details))
