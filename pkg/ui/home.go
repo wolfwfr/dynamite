@@ -27,6 +27,13 @@ const (
 	item_selection
 )
 
+var regionBlock = lipgloss.NewStyle().
+	Background(lipgloss.Color("#80380E")).
+	Align(lipgloss.Left, lipgloss.Top).
+	PaddingLeft(1).
+	PaddingRight(1).
+	Height(1)
+
 type Model struct {
 	// ActiveView determines tea.Msg forwarding
 	activeView View
@@ -188,7 +195,11 @@ func (m Model) View() tea.View {
 		str = m.itemselection.View()
 		help = m.Help.ShortHelpView(m.itemselection.ShortHelp())
 	}
-	str = lipgloss.JoinVertical(lipgloss.Top, str, help)
+
+	region := regionBlock.Render(m.config.Region)
+	gutter := lipgloss.JoinHorizontal(lipgloss.Left, region, " ", help)
+
+	str = lipgloss.JoinVertical(lipgloss.Top, str, gutter)
 
 	// dialog compositing
 	mainLayer := lipgloss.NewLayer(str)
