@@ -179,38 +179,38 @@ func (m Model) applySize(height, width int) tea.Model {
 }
 
 func (m Model) forward(msg tea.Msg) (tea.Model, tea.Cmd) {
-	if msg, ok := msg.(tea.WindowSizeMsg); ok {
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
 		cmds := []tea.Cmd{}
 		cmds = append(cmds, m.tableSelection.Update(msg))
 		cmds = append(cmds, m.itemselection.Update(msg))
 		cmds = append(cmds, m.dialogs.help.Update(msg))
 		cmds = append(cmds, m.dialogs.region.Update(msg))
 		return m, tea.Batch(cmds...)
-	}
 
-	if msg, ok := msg.(messages.SelectTable); ok {
+	case messages.SelectTable, messages.PreviewItem:
 		return m, m.itemselection.Update(msg)
-	}
-
-	if msg, ok := msg.(messages.PreviewItem); ok {
-		return m, m.itemselection.Update(msg)
-	}
-
-	switch {
-	case m.dialogs.open:
-		switch m.dialogs.active {
-		case help_dialog:
-			return m, m.dialogs.help.Update(msg)
-		case regions_dialog:
-			return m, m.dialogs.region.Update(msg)
+	case tea.KeyPressMsg:
+		// exclusively forward keypresses to dialogs if open
+		if m.dialogs.open {
+			switch m.dialogs.active {
+			case help_dialog:
+				return m, m.dialogs.help.Update(msg)
+			case regions_dialog:
+				return m, m.dialogs.region.Update(msg)
+			}
 		}
-	case m.activeView == table_selection:
+	}
+
+	switch m.activeView {
+	case table_selection:
 		return m.handleTableSelectionMode(msg)
-	case m.activeView == item_selection:
+	case item_selection:
 		return m.handleItemSelectionMode(msg)
 	default:
 		log.Fatalf("could not identify active view '%d'", int(m.activeView))
 	}
+
 	return m, nil
 }
 
