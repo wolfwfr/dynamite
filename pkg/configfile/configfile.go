@@ -55,11 +55,16 @@ var builtInRegions = []string{
 type ConfigFile struct {
 	AWSRegions          []string `yaml:"aws_regions"`
 	StarredRegions      []string `yaml:"starred_regions"`
-	DefaultRegion       string   `yaml:""`
-	LastUsedRegion      string
-	DefaultToLastRegion bool
+	DefaultRegion       string   `yaml:"default_region"`
+	LastUsedRegion      string   `yaml:"last_used_region"`       // TODO: impl
+	DefaultToLastRegion bool     `yaml:"default_to_last_region"` // TODO: impl
 
-	DefaultProfile string
+	DefaultProfile string `yaml:"default_profile"`
+
+	// tables will be paged in automatically on boot. To prevent excessive
+	// calls, we specify a limit on how many pages (size of 100) can be
+	// retrieved. This parameter specifies the number of tables, not pages.
+	MaxTables int `yaml:"max_tables"`
 }
 
 func defaultConfig() ConfigFile {
@@ -70,6 +75,7 @@ func defaultConfig() ConfigFile {
 		LastUsedRegion:      "",
 		DefaultToLastRegion: false,
 		DefaultProfile:      "",
+		MaxTables:           1000,
 	}
 }
 
@@ -92,14 +98,19 @@ func (m *ConfigManager) LoadConfig(create bool) (ConfigFile, error) {
 	}
 	defer f.Close()
 
+	dflt := defaultConfig()
 	var cfg ConfigFile
 	bytes, err := io.ReadAll(f)
 	if err != nil {
-		return defaultConfig(), fmt.Errorf("failed to read config file; %w", err)
+		return dflt, fmt.Errorf("failed to read config file; %w", err)
 	}
 	err = yaml.Unmarshal(bytes, &cfg)
 	if err != nil {
-		return defaultConfig(), fmt.Errorf("failed to unmarshal config file; %w", err)
+		return dflt, fmt.Errorf("failed to unmarshal config file; %w", err)
+	}
+
+	if cfg.MaxTables == 0 {
+		cfg.MaxTables = dflt.MaxTables
 	}
 
 	return cfg, nil

@@ -21,17 +21,22 @@ type dynamodbClient interface {
 }
 
 // ListTables lists the tables available to the specified dynamodb-client. It
-// simply returns a `[]string` with the table-names.
-func ListTables(client dynamodbClient, ctx context.Context) ([]string, error) {
+// returns a response containing table names and optionally a pagination-key.
+// Note that only up to 100 tables can be retrieved at once.
+func ListTables(client dynamodbClient, ctx context.Context, req apitypes.ListTablesRequest) (*apitypes.ListTablesResponse, error) {
 	p := dynamodb.ListTablesInput{
-		// ExclusiveStartTableName: new(string),
-		// Limit:                   new(int32),
+		ExclusiveStartTableName: req.LastEvaluatedTableName,
+		Limit:                   req.Limit,
 	}
 	out, err := client.ListTables(ctx, &p)
 	if err != nil {
 		return nil, err
 	}
-	return out.TableNames, nil
+	resp := &apitypes.ListTablesResponse{
+		TableNames:             out.TableNames,
+		LastEvaluatedTableName: out.LastEvaluatedTableName,
+	}
+	return resp, nil
 }
 
 // DescribeTable describes the specified table and returns a curated

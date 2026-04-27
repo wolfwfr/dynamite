@@ -11,6 +11,17 @@ type KeyValue struct {
 	Value string
 }
 
+type ( // LIST TABLES
+	ListTablesRequest struct {
+		LastEvaluatedTableName *string
+		Limit                  *int32
+	}
+	ListTablesResponse struct {
+		TableNames             []string
+		LastEvaluatedTableName *string
+	}
+)
+
 type ( // DESCRIBE TABLE
 	// for more information on
 	// `github.com/aws/aws-sdk-go-v2/service/dynamodb/types/types.go:TableDescription`

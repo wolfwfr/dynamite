@@ -8,4 +8,5 @@ type Config struct {
 	AvailableRegions []string
 	StarredRegions   []string
 	Client           *dynamodb.Client
+	MaxTables        int
 }

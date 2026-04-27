@@ -22,8 +22,12 @@ type tableSelectionPane struct {
 	ctx context.Context
 
 	// cancel last call context (debounce)
-	cancelLast  func()
-	debounceDur time.Duration
+	cancelDetails func()
+	debounceDur   time.Duration
+
+	// paging tables
+	cancelTables func()
+	lastPageKey  *string
 
 	// standard timeout
 	stdTO time.Duration
@@ -84,12 +88,13 @@ func newTableSelectionPane(ctx context.Context, config *appconfig.Config, opts .
 	t.SetStyles(s)
 
 	p := &tableSelectionPane{
-		ctx:         ctx,
-		cancelLast:  func() {}, // noop on init
-		debounceDur: 50 * time.Millisecond,
-		config:      config,
-		stdTO:       5 * time.Second,
-		KeyMap:      DefaultTablePaneKeyMap(),
+		ctx:           ctx,
+		cancelDetails: func() {}, // noop on init
+		cancelTables:  func() {}, // noop on init
+		debounceDur:   50 * time.Millisecond,
+		config:        config,
+		stdTO:         5 * time.Second,
+		KeyMap:        DefaultTablePaneKeyMap(),
 		// TODO: add table feature to hide header
 		content: t,
 	}
@@ -141,30 +146,88 @@ func (m *tableSelectionPane) cleanSlate() {
 
 func (m *tableSelectionPane) Init() tea.Cmd {
 	m.cleanSlate()
-	if client := m.config.Client; client != nil {
-		// TODO: async
-		ctx, cc := context.WithTimeout(m.ctx, m.stdTO)
+	m.lastPageKey = nil
+	m.tables = []string{}
+	m.cancelTables()
+	m.cancelDetails()
+	// TODO: spinner
+	return m.pageNext(true)
+}
+
+func (m *tableSelectionPane) pageNext(init bool) tea.Cmd {
+	if !init && m.lastPageKey == nil { // done paginating
+		return nil
+	}
+	client := m.config.Client
+	region := m.config.Region
+	ctx, cc := context.WithTimeout(m.ctx, m.stdTO)
+	m.cancelTables = cc
+	return func() tea.Msg {
 		defer cc()
-		tables, err := dynamodb.ListTables(client, ctx)
-		if err != nil {
-			m.err = err
+		limit := min(100, m.config.MaxTables-len(m.tables)) // 100 is max
+		if limit == 0 {
 			return nil
 		}
-		m.tables = tables
-		rows := make([]table.Row, len(tables))
-		for i := range tables {
-			rows[i] = table.Row([]string{tables[i]})
+		out, err := dynamodb.ListTables(client, ctx, apitypes.ListTablesRequest{
+			LastEvaluatedTableName: m.lastPageKey,
+			Limit:                  toPtr(int32(limit)),
+		})
+
+		msg := messages.TablePageReady{
+			Err:    err,
+			Region: region,
 		}
-		m.content.SetRows(rows)
+		if out != nil {
+			msg.Tables = out.TableNames
+			msg.PaginationKey = out.LastEvaluatedTableName
+		}
+		return msg
 	}
-	return m.MaybePreviewItem(true)
+}
+
+func (m *tableSelectionPane) processPage(msg messages.TablePageReady, preview bool) tea.Cmd {
+	if msg.Region != m.config.Region { // expired
+		return nil
+	}
+	if msg.Err != nil {
+		m.err = msg.Err // TODO: keymap for retry or continue on displaying error
+		return nil
+	}
+	init := len(m.tables) == 0
+	newTables := msg.Tables
+	m.tables = append(m.tables, newTables...)
+	m.lastPageKey = msg.PaginationKey
+
+	// parse and set rows of the new tables
+	rows := make([]table.Row, len(newTables))
+	for i := range newTables {
+		rows[i] = table.Row([]string{newTables[i]})
+	}
+	if init {
+		m.content.SetRows(rows)
+	} else {
+		m.content.AppendRows(rows)
+	}
+
+	// return commands
+	cmds := []tea.Cmd{}
+	if preview {
+		cmds = append(cmds, m.MaybePreviewItem(true))
+	}
+	if len(m.tables) < m.config.MaxTables {
+		cmds = append(cmds, m.pageNext(false))
+	}
+	return tea.Batch(cmds...)
 }
 
 func (m *tableSelectionPane) Update(msg tea.Msg) tea.Cmd {
 	cmds := []tea.Cmd{}
-	if msg, ok := msg.(messages.TableDetails); ok {
+	switch msg := msg.(type) {
+	case messages.TableDetails:
 		m.details = msg.Details
 		return nil
+	case messages.TablePageReady:
+		return m.processPage(msg, len(m.tables) == 0)
 	}
 
 	if search.IsSearchBoxMessage(msg) || m.search.IsFocused() {
@@ -214,9 +277,9 @@ func (m *tableSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
 	table := m.tables[idx]
 
 	// prepare debounce cancellation
-	m.cancelLast()
+	m.cancelDetails()
 	ctx, cc := context.WithCancel(m.ctx)
-	m.cancelLast = cc
+	m.cancelDetails = cc
 
 	return func() tea.Msg {
 		time.Sleep(m.debounceDur)
@@ -244,6 +307,8 @@ func (m *tableSelectionPane) Zoom() tea.Cmd {
 }
 
 func (m *tableSelectionPane) selectTable() tea.Cmd {
+	m.cancelDetails()
+	m.cancelTables()
 	switchView := func() tea.Msg {
 		return messages.SwitchView{
 			OldView: messages.Table_selection,

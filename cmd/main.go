@@ -94,6 +94,7 @@ func runApplication(ctx context.Context, cmd *cli.Command) error {
 		Region:           resolveRegion(cmd, cfgf),
 		AvailableRegions: cfgf.AWSRegions,
 		StarredRegions:   cfgf.StarredRegions,
+		MaxTables:        cfgf.MaxTables,
 	}
 
 	p := tea.NewProgram(ui.NewModel(ctx, cfg))

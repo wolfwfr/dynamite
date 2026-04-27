@@ -40,6 +40,14 @@ type ScanPageReady struct {
 	Table    apitypes.DescribeTableResponse
 	Index    *string
 	Response apitypes.ScanResponse
+	// TODO: add error
+}
+
+type TablePageReady struct {
+	Tables        []string
+	PaginationKey *string
+	Err           error
+	Region        string
 }
 
 type ToggleHelp struct{}
