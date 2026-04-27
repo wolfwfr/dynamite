@@ -413,7 +413,7 @@ func (m *Model) SetVirtualRows(r []Row) {
 	if r == nil {
 		r = []Row{} // ensure this function cannot be abused to replace ResetVirtualRows
 	}
-	if m.virtualRows == nil && len(r) > 0 { // virtual rows come into view
+	if m.virtualRows == nil { // virtual rows come into view
 		m.lastCursor = m.cursor
 	}
 
@@ -533,7 +533,7 @@ func (m *Model) SetCursor(n int) {
 // MoveUp moves the selection up by any number of rows.
 // It can not go above the first row.
 func (m *Model) MoveUp(n int) {
-	m.cursor = clamp(m.cursor-n, 0, len(m.VisualRows())-1)
+	m.cursor = clamp(m.cursor-n, 0, max(0, len(m.VisualRows())-1))
 	if m.cursorOutOfBounds() {
 		m.MoveContentBoundaries(-n)
 	}
@@ -545,7 +545,7 @@ func (m *Model) MoveUp(n int) {
 // MoveDown moves the selection down by any number of rows.
 // It can not go below the last row.
 func (m *Model) MoveDown(n int) {
-	m.cursor = clamp(m.cursor+n, 0, len(m.VisualRows())-1)
+	m.cursor = clamp(m.cursor+n, 0, max(0, len(m.VisualRows())-1))
 	if m.cursorOutOfBounds() {
 		m.MoveContentBoundaries(n)
 	}
