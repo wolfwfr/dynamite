@@ -39,8 +39,8 @@ type ToggleJSONYAML struct{}
 type ScanPageReady struct {
 	Table    apitypes.DescribeTableResponse
 	Index    *string
-	Response apitypes.ScanResponse
-	// TODO: add error
+	Response *apitypes.ScanResponse
+	Err      error
 }
 
 type TablePageReady struct {

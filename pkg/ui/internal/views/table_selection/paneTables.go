@@ -178,13 +178,13 @@ func (m *tableSelectionPane) Init() tea.Cmd {
 	// cancel any lingering calls
 	m.cancelTables()
 	m.cancelDetails()
-	// TODO: spinner
 	return m.pageNext(true)
 }
 
-func (m *tableSelectionPane) activateSpinner() {
+func (m *tableSelectionPane) activateSpinner() tea.Cmd {
 	m.spinner.active = true
 	m.updateSize()
+	return m.spinner.model.Tick
 }
 
 func (m *tableSelectionPane) deactivateSpinner() {
@@ -193,7 +193,7 @@ func (m *tableSelectionPane) deactivateSpinner() {
 }
 
 func (m *tableSelectionPane) pageNext(init bool) tea.Cmd {
-	m.activateSpinner()
+	spinnerCmd := m.activateSpinner()
 	if !init && m.lastPageKey == nil { // done paginating
 		m.deactivateSpinner()
 		return nil
@@ -223,8 +223,7 @@ func (m *tableSelectionPane) pageNext(init bool) tea.Cmd {
 		}
 		return msg
 	}
-	spinner := m.spinner.model.Tick
-	return tea.Batch(page, spinner)
+	return tea.Batch(page, spinnerCmd)
 }
 
 func (m *tableSelectionPane) processPage(msg messages.TablePageReady, preview bool) tea.Cmd {

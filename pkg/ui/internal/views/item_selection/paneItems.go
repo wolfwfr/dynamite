@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/spinner"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
@@ -41,6 +42,12 @@ type SessionData struct {
 type ItemSelectionPane struct {
 	// top-level context
 	ctx context.Context
+
+	spinner struct {
+		active bool
+		model  spinner.Model
+		text   string
+	}
 
 	// standard timeout
 	stdTO time.Duration
@@ -104,26 +111,10 @@ func withItemsPaneKeys(keys keymaps.AdditionalKeys) itemsPaneOption {
 }
 
 func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ...itemsPaneOption) *ItemSelectionPane {
-	t := table.New(
-		table.WithFocused(true),
-		table.WithDynamicColumnWidth(false), // TODO: configurable
-	)
-	s := table.DefaultStyles()
-	s.Header = s.Header.
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color("240")).
-		BorderBottom(true).
-		Bold(false)
-	s.Selected = s.Selected.
-		Foreground(lipgloss.Color("229")).
-		Background(lipgloss.Color("57")).
-		Bold(false)
-	t.SetStyles(s)
 	p := &ItemSelectionPane{
 		ctx:           ctx,
 		config:        config,
 		stdTO:         5 * time.Second,
-		content:       t,
 		KeyMap:        DefaultItemPaneKeyMap(),
 		sessions:      map[string]SessionData{},
 		queryMode:     ScanMode,
@@ -132,36 +123,69 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 		queryLimit:    10,
 		pageCancel:    func() {}, // init as noop
 	}
-	p.search = search.NewSearchBox(
-		search.SearchCallbacks{
-			ToSearch: func() []string {
-				return table.Rows(p.content.Rows()).ToStrings()
+
+	{ // contents table
+		t := table.New(
+			table.WithFocused(true),
+			table.WithDynamicColumnWidth(false), // TODO: configurable
+		)
+		s := table.DefaultStyles()
+		s.Header = s.Header.
+			BorderStyle(lipgloss.NormalBorder()).
+			BorderForeground(lipgloss.Color("240")).
+			BorderBottom(true).
+			Bold(false)
+		s.Selected = s.Selected.
+			Foreground(lipgloss.Color("229")).
+			Background(lipgloss.Color("57")).
+			Bold(false)
+		t.SetStyles(s)
+
+		p.content = t
+	}
+
+	{ // spinner
+		sp := spinner.New()
+		sp.Spinner = spinner.Dot
+		sp.Style = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("205")).
+			PaddingLeft(1)
+		p.spinner.model = sp
+		p.spinner.text = "obtaining next page..."
+	}
+
+	{ // search box
+		p.search = search.NewSearchBox(
+			search.SearchCallbacks{
+				ToSearch: func() []string {
+					return table.Rows(p.content.Rows()).ToStrings()
+				},
+				EmptyInput: func() tea.Cmd {
+					p.filteredItems = make([]int, 0)
+					p.content.ResetVirtualRows()
+					return nil
+				},
+				Results: func(results []search.FilteredItem) {
+					p.filteredItems = make([]int, len(results))
+					rows := p.content.Rows()
+					filtered := make([]table.Row, len(results))
+					for i, match := range results {
+						filtered[i] = rows[match.Index]
+						p.filteredItems[i] = match.Index
+					}
+					p.content.SetVirtualRows(filtered)
+				},
+				Reset: func(searchHeight int) {
+					p.filteredItems = make([]int, 0)
+					p.content.ResetVirtualRows()
+					p.content.SetHeight(p.content.Height() + searchHeight)
+				},
+				SearchBoxOpens: func(searchHeight int) {
+					p.content.SetHeight(p.content.Height() - searchHeight)
+				},
 			},
-			EmptyInput: func() tea.Cmd {
-				p.filteredItems = make([]int, 0)
-				p.content.ResetVirtualRows()
-				return nil
-			},
-			Results: func(results []search.FilteredItem) {
-				p.filteredItems = make([]int, len(results))
-				rows := p.content.Rows()
-				filtered := make([]table.Row, len(results))
-				for i, match := range results {
-					filtered[i] = rows[match.Index]
-					p.filteredItems[i] = match.Index
-				}
-				p.content.SetVirtualRows(filtered)
-			},
-			Reset: func(searchHeight int) {
-				p.filteredItems = make([]int, 0)
-				p.content.ResetVirtualRows()
-				p.content.SetHeight(p.content.Height() + searchHeight)
-			},
-			SearchBoxOpens: func(searchHeight int) {
-				p.content.SetHeight(p.content.Height() - searchHeight)
-			},
-		},
-	)
+		)
+	}
 
 	for _, o := range opts {
 		o(p)
@@ -178,7 +202,24 @@ func (m *ItemSelectionPane) cleanSlate() {
 	m.err = nil
 }
 
+func (m *ItemSelectionPane) activateSpinner() tea.Cmd {
+	m.spinner.active = true
+	m.updateSize()
+	return m.spinner.model.Tick
+}
+
+func (m *ItemSelectionPane) deactivateSpinner() {
+	m.spinner.active = false
+	m.updateSize()
+}
+
 func (m *ItemSelectionPane) Init() tea.Cmd {
+	m.content.ResetVirtualRows()
+	m.content.SetCursor(0)
+
+	// cancel any lingering calls
+	m.pageCancel()
+
 	return nil
 }
 
@@ -186,8 +227,9 @@ func (m *ItemSelectionPane) Update(msg tea.Msg) (cmd tea.Cmd) {
 	cmds := []tea.Cmd{}
 	_, isSelect := msg.(messages.SelectTable)
 	_, isToggleFmt := msg.(messages.ToggleJSONYAML)
+	_, isTick := msg.(spinner.TickMsg)
 
-	excludeSearch := isSelect || isToggleFmt
+	excludeSearch := isSelect || isToggleFmt || isTick
 
 	if search.IsSearchBoxMessage(msg) || (!excludeSearch && m.search.IsFocused()) {
 		cmds = append(cmds, m.search.Update(msg))
@@ -229,11 +271,17 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 		return m.ToggleJSONYAMLFormat()
 	case messages.ScanPageReady:
 		return m.ProcessScanPage(msg)
+	case spinner.TickMsg:
+		if !m.spinner.active {
+			return nil
+		}
+		var cmd tea.Cmd
+		m.spinner.model, cmd = m.spinner.model.Update(msg)
+		return cmd
 	}
 	cmds = append(cmds, m.content.Update(msg))
 	// paginate when not filtering and at end of content
 	if len(m.filteredItems) == 0 && m.content.ViewAtEnd() {
-		// TODO: spinner
 		cmds = append(cmds, m.PageNext(false))
 	}
 	return tea.Batch(cmds...)
@@ -244,13 +292,14 @@ func (m *ItemSelectionPane) PageNext(init bool) tea.Cmd {
 		return nil
 	}
 	m.paging = true
+	spinnerCmd := m.activateSpinner()
 	mode := m.queryMode
 	table := m.selectedTable
 	key := m.pageKey
 	idx := m.chosenIndex
 	ctx, cc := context.WithTimeout(m.ctx, m.stdTO)
 	m.pageCancel = cc
-	return func() tea.Msg {
+	pageCmd := func() tea.Msg {
 		defer cc()
 		switch mode {
 		case QueryMode:
@@ -263,17 +312,16 @@ func (m *ItemSelectionPane) PageNext(init bool) tea.Cmd {
 				Limit:            m.scanLimit,
 				LastEvaluatedKey: key,
 			})
-			if err != nil {
-				return nil
-			}
 			return messages.ScanPageReady{
 				Table:    table,
 				Index:    idx,
-				Response: *scan,
+				Response: scan,
+				Err:      err,
 			}
 		}
 		return nil
 	}
+	return tea.Batch(pageCmd, spinnerCmd)
 }
 
 func (m *ItemSelectionPane) ToggleJSONYAMLFormat() tea.Cmd {
@@ -318,6 +366,12 @@ func (m *ItemSelectionPane) Zoom() tea.Cmd {
 }
 
 func (m *ItemSelectionPane) ProcessScanPage(msg messages.ScanPageReady) tea.Cmd {
+	defer func() { m.deactivateSpinner() }()
+
+	if msg.Err != nil {
+		m.err = msg.Err // TODO: allow user to exit error message state
+	}
+
 	scan := msg.Response
 	details := m.selectedTable
 
@@ -370,7 +424,6 @@ func (m *ItemSelectionPane) selectTable(tableName string, details types.Describe
 	m.content.ResetVirtualRows()
 	m.selectedTable = details
 
-	// TODO: spinner & async
 	return m.PageNext(true)
 }
 
@@ -379,7 +432,6 @@ func (m *ItemSelectionPane) selectTable(tableName string, details types.Describe
 // This ensures that when individual table rows have keys missing, the final
 // result still contains these keys when they are present in other rows in the
 // specified table.
-// TODO: accept existing key-slice for pagination compatibility
 func compileCompleteKeys(table [][]types.KeyValue, existing []string, hasRangeKey bool) []string {
 	res := make([]string, 0)
 	seen := map[string]struct{}{}
@@ -409,17 +461,24 @@ func compileCompleteKeys(table [][]types.KeyValue, existing []string, hasRangeKe
 }
 
 func (m *ItemSelectionPane) applySize(height, width int) {
-	searchBoxH := m.search.GetHeight()
-	if !m.search.IsEnabled() {
-		searchBoxH = 0
-	}
 	m.window.height = height
 	m.window.width = width
-	m.content.SetHeight(height - searchBoxH)
-	m.content.SetWidth(width)
-	m.search.SetWidth(width)
-	m.queryLimit = height
-	m.scanLimit = height
+	m.updateSize()
+}
+
+// updateSize updates dimensions of the pane's contents based on the current
+// window dimensions.
+func (m *ItemSelectionPane) updateSize() {
+	h, w := m.window.height, m.window.width
+
+	searchBoxH := ternary(m.search.GetHeight(), 0, m.search.IsEnabled())
+	m.window.height = h
+	m.window.width = w
+	m.content.SetHeight(h - searchBoxH - ternary(1, 0, m.spinner.active))
+	m.content.SetWidth(w)
+	m.search.SetWidth(w)
+	m.queryLimit = h
+	m.scanLimit = h
 }
 
 func (m *ItemSelectionPane) resetQueryParameters() {
@@ -456,10 +515,16 @@ func (m *ItemSelectionPane) View() string {
 		return m.err.Error()
 	}
 	content := m.content.View()
-	return lipgloss.JoinVertical(lipgloss.Left,
-		ternary(content, m.noContentMessage(), !emptyContent(content)),
-		m.search.View(),
-	)
+	content = ternary(content, m.noContentMessage(), !emptyContent(content))
+	rendering := []string{content, m.search.View()}
+	if m.spinner.active {
+		rendering = slices.Insert(rendering, 1, fmt.Sprintf("%s %s", m.spinner.model.View(), m.spinner.text))
+	}
+	return lipgloss.JoinVertical(lipgloss.Left, rendering...)
+	// return lipgloss.JoinVertical(lipgloss.Left,
+	// 	ternary(content, m.noContentMessage(), !emptyContent(content)),
+	// 	m.search.View(),
+	// )
 }
 
 func emptyContent(content string) bool {
