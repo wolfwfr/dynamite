@@ -2,7 +2,9 @@ package itemselection
 
 import (
 	"context"
+	"fmt"
 	"slices"
+	"strings"
 	"time"
 
 	"charm.land/bubbles/v2/key"
@@ -184,7 +186,9 @@ func (m *ItemSelectionPane) Update(msg tea.Msg) (cmd tea.Cmd) {
 	cmds := []tea.Cmd{}
 	_, isSelect := msg.(messages.SelectTable)
 	_, isToggleFmt := msg.(messages.ToggleJSONYAML)
+
 	excludeSearch := isSelect || isToggleFmt
+
 	if search.IsSearchBoxMessage(msg) || (!excludeSearch && m.search.IsFocused()) {
 		cmds = append(cmds, m.search.Update(msg))
 	} else {
@@ -282,6 +286,9 @@ func (m *ItemSelectionPane) ToggleJSONYAMLFormat() tea.Cmd {
 
 // force is used on new pane initialization because lastPreviewItem could be 0
 func (m *ItemSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
+	if len(m.items.Raw) == 0 {
+		return nil
+	}
 	idx := m.content.Cursor()
 	if len(m.filteredItems) > 0 { // cursor refers to filtered items
 		idx = m.filteredItems[idx]
@@ -418,30 +425,59 @@ func (m *ItemSelectionPane) applySize(height, width int) {
 func (m *ItemSelectionPane) resetQueryParameters() {
 	m.paging = false
 	m.keysComplete = []string{}
-	m.chosenIndex = nil
 	m.queryMode = ScanMode
 	m.pageKey = nil
+	m.items = types.Items{}
+	m.filteredItems = []int{}
+	m.lastPreviewItem = 0
 }
 
 func (m *ItemSelectionPane) escape() tea.Cmd {
 	m.pageCancel()
 	m.resetQueryParameters()
-	return func() tea.Msg {
+	m.content.SetContent([]table.Column{}, []table.Row{})
+	switchView := func() tea.Msg {
 		return messages.SwitchView{
 			OldView: messages.Item_selection,
 			NewView: messages.Table_selection,
 		}
 	}
+	resetPreview := func() tea.Msg {
+		return messages.PreviewItem{
+			Item: "",
+		}
+	}
+
+	return tea.Batch(resetPreview, switchView)
 }
 
 func (m *ItemSelectionPane) View() string {
-	if m.err != nil { // TODO: formatting
+	if m.err != nil {
 		return m.err.Error()
 	}
+	content := m.content.View()
 	return lipgloss.JoinVertical(lipgloss.Left,
-		m.content.View(),
+		ternary(content, m.noContentMessage(), !emptyContent(content)),
 		m.search.View(),
 	)
+}
+
+func emptyContent(content string) bool {
+	content = strings.ReplaceAll(content, " ", "")
+	content = strings.ReplaceAll(content, "\n", "")
+	content = strings.ReplaceAll(content, "\t", "")
+	return content == ""
+}
+
+func (m *ItemSelectionPane) noContentMessage() string {
+	if m.paging {
+		return ""
+	}
+	s := strings.Builder{}
+	fmt.Fprintf(&s, "==================================================\n")
+	fmt.Fprintf(&s, "                    NO CONTENT                    \n")
+	fmt.Fprintf(&s, "==================================================\n")
+	return s.String()
 }
 
 func (m *ItemSelectionPane) appendItems(newItems types.Items) {

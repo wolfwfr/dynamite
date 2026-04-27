@@ -118,6 +118,10 @@ func (m Model) forward(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, m.itemselection.Update(msg)
 	}
 
+	if msg, ok := msg.(messages.PreviewItem); ok {
+		return m, m.itemselection.Update(msg)
+	}
+
 	switch m.activeView {
 	case table_selection:
 		return m.handleTableSelectionMode(msg)
