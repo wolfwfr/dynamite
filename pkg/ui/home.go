@@ -2,6 +2,7 @@ package ui
 
 import (
 	"context"
+	"fmt"
 	"log"
 
 	tea "charm.land/bubbletea/v2"
@@ -30,8 +31,21 @@ const (
 	regions_dialog Dialog = iota
 )
 
+var (
+	queryColour = "#046645"
+	scanColour  = "#0E3080"
+	adminColour = "#0E5680"
+)
+
 var regionBlock = lipgloss.NewStyle().
 	Background(lipgloss.Color("#80380E")).
+	Align(lipgloss.Left, lipgloss.Top).
+	PaddingLeft(1).
+	PaddingRight(1).
+	Height(1)
+
+var queryModeBlock = lipgloss.NewStyle().
+	Background(lipgloss.Color(scanColour)).
 	Align(lipgloss.Left, lipgloss.Top).
 	PaddingLeft(1).
 	PaddingRight(1).
@@ -40,6 +54,8 @@ var regionBlock = lipgloss.NewStyle().
 type Model struct {
 	// ActiveView determines tea.Msg forwarding
 	activeView View
+
+	QueryMode messages.ItemsQueryMode
 
 	window struct {
 		width  int
@@ -132,9 +148,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.ToggleRegionsDialog()
 	case messages.SwitchRegion:
 		return m.switchRegion(msg.OldRegion, msg.NewRegion)
+	case messages.SwitchQueryMode:
+		return m.SwitchQueryMode(msg)
 	}
 
 	return m.forward(msg)
+}
+
+func (m Model) SwitchQueryMode(msg messages.SwitchQueryMode) (tea.Model, tea.Cmd) {
+	m.QueryMode = msg.NewMode
+	switch m.QueryMode {
+	case messages.ScanMode:
+		queryModeBlock = queryModeBlock.Background(lipgloss.Color(scanColour))
+	case messages.QueryMode:
+		queryModeBlock = queryModeBlock.Background(lipgloss.Color(queryColour))
+	}
+	return m, nil
 }
 
 func (m Model) switchRegion(oldr, newr string) (tea.Model, tea.Cmd) {
@@ -232,24 +261,27 @@ type dialog interface {
 }
 
 func (m Model) View() tea.View {
-	var str string
+	var page string
 	var help string
 	switch m.activeView {
 	case table_selection:
-		str = m.tableSelection.View()
+		page = m.tableSelection.View()
 		help = m.Help.ShortHelpView(m.tableSelection.ShortHelp())
 	case item_selection:
-		str = m.itemselection.View()
+		page = m.itemselection.View()
 		help = m.Help.ShortHelpView(m.itemselection.ShortHelp())
 	}
 
+	// assemble gutter
 	region := regionBlock.Render(m.config.Region)
-	gutter := lipgloss.JoinHorizontal(lipgloss.Left, region, " ", help)
+	queryMode := ternary("QUERY", "SCAN", m.QueryMode == messages.QueryMode)
+	query := ternary(fmt.Sprintf(" %s", queryModeBlock.Render(queryMode)), "", m.activeView == item_selection)
+	gutter := lipgloss.JoinHorizontal(lipgloss.Left, region, query, " ", help)
 
-	str = lipgloss.JoinVertical(lipgloss.Top, str, gutter)
+	page = lipgloss.JoinVertical(lipgloss.Top, page, gutter)
 
 	// dialog compositing
-	mainLayer := lipgloss.NewLayer(str)
+	mainLayer := lipgloss.NewLayer(page)
 	c := lipgloss.NewCompositor(mainLayer)
 	c.AddLayers(mainLayer)
 	if m.dialogs.open {
@@ -281,4 +313,11 @@ func (m Model) SignalOpenRegionsDialog() tea.Cmd {
 	return func() tea.Msg {
 		return messages.ToggleRegions{}
 	}
+}
+
+func ternary[T any](first, second T, cond bool) T {
+	if cond {
+		return first
+	}
+	return second
 }

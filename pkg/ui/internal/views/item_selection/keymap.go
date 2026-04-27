@@ -45,17 +45,19 @@ type ItemPaneKeyMap struct {
 	Esc       key.Binding
 	ChCols    key.Binding
 	ToggleFmt key.Binding
+	Scan      key.Binding
+	Query     key.Binding
 }
 
 // ShortHelp implements the KeyMap interface.
 func (km *ItemPaneKeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{km.Search, km.Zoom, km.Esc, km.ChCols, km.ToggleFmt}
+	return []key.Binding{km.Search, km.Zoom, km.Esc, km.ChCols, km.ToggleFmt, km.Scan, km.Query}
 }
 
 // FullHelp implements the KeyMap interface.
 func (km *ItemPaneKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{km.Search, km.Zoom, km.Esc, km.ChCols, km.ToggleFmt},
+		{km.Search, km.Zoom, km.Esc, km.ChCols, km.ToggleFmt, km.Scan, km.Query},
 	}
 }
 
@@ -81,6 +83,14 @@ func DefaultItemPaneKeyMap() *ItemPaneKeyMap {
 		ToggleFmt: key.NewBinding(
 			key.WithKeys("J"),
 			key.WithHelp("shift+j", "toggle json/yaml"),
+		),
+		Scan: key.NewBinding(
+			key.WithKeys("S"),
+			key.WithHelp("shift+s", "scan"),
+		),
+		Query: key.NewBinding(
+			key.WithKeys("Q"),
+			key.WithHelp("shift+q", "query"),
 		),
 	}
 }

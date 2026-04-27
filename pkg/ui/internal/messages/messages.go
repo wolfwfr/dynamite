@@ -5,10 +5,14 @@ import (
 )
 
 type View int
+type ItemsQueryMode int
 
 const (
 	Table_selection View = iota
 	Item_selection
+
+	ScanMode ItemsQueryMode = iota
+	QueryMode
 )
 
 type SwitchView struct {
@@ -56,4 +60,9 @@ type ToggleRegions struct{}
 type SwitchRegion struct {
 	OldRegion string
 	NewRegion string
+}
+
+type SwitchQueryMode struct {
+	OldMode ItemsQueryMode
+	NewMode ItemsQueryMode
 }

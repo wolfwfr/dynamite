@@ -29,13 +29,10 @@ type queryMode int
 const (
 	YAMLformat previewFormat = iota
 	JSONformat
-
-	ScanMode queryMode = iota
-	QueryMode
 )
 
 type SessionData struct {
-	queryMode   queryMode
+	queryMode   messages.ItemsQueryMode
 	chosenIndex *string
 }
 
@@ -79,7 +76,7 @@ type ItemSelectionPane struct {
 	sessions map[string]SessionData
 
 	// query & scan parameters
-	queryMode   queryMode
+	queryMode   messages.ItemsQueryMode
 	chosenIndex *string
 
 	scanLimit  int
@@ -117,7 +114,7 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 		stdTO:         5 * time.Second,
 		KeyMap:        DefaultItemPaneKeyMap(),
 		sessions:      map[string]SessionData{},
-		queryMode:     ScanMode,
+		queryMode:     messages.ScanMode,
 		previewFormat: JSONformat,
 		scanLimit:     10,
 		queryLimit:    10,
@@ -260,6 +257,10 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 			return m.Zoom()
 		case key.Matches(msg, m.KeyMap.ToggleFmt):
 			return m.ToggleJSONYAMLFormat()
+		case key.Matches(msg, m.KeyMap.Query):
+			return m.enableQueryMode()
+		case key.Matches(msg, m.KeyMap.Scan):
+			return m.enableScanMode()
 		default:
 			if match, call := m.AddKeyMap.Matches(msg); match {
 				return call
@@ -302,9 +303,9 @@ func (m *ItemSelectionPane) PageNext(init bool) tea.Cmd {
 	pageCmd := func() tea.Msg {
 		defer cc()
 		switch mode {
-		case QueryMode:
+		case messages.QueryMode:
 			panic("not supported yet")
-		case ScanMode:
+		case messages.ScanMode:
 			scan, err := dynamodb.ScanTable(m.config.Client, ctx, *table.TableName, types.ScanParameters{
 				KeyDetails:       m.selectedTable.AttributeDefinitions,
 				IndexName:        idx,
@@ -416,7 +417,7 @@ func (m *ItemSelectionPane) selectTable(tableName string, details types.Describe
 		m.chosenIndex = session.chosenIndex
 	} else {
 		// defaults on newly opened table
-		m.queryMode = ScanMode
+		m.queryMode = messages.ScanMode
 		m.chosenIndex = nil
 	}
 	// resetting state
@@ -484,7 +485,7 @@ func (m *ItemSelectionPane) updateSize() {
 func (m *ItemSelectionPane) resetQueryParameters() {
 	m.paging = false
 	m.keysComplete = []string{}
-	m.queryMode = ScanMode
+	m.queryMode = messages.ScanMode
 	m.pageKey = nil
 	m.items = types.Items{}
 	m.filteredItems = []int{}
