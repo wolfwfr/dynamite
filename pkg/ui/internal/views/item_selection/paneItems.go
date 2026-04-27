@@ -157,7 +157,7 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 				p.content.ResetVirtualRows()
 				p.content.SetHeight(p.content.Height() + searchHeight)
 			},
-			ViewBoxOpens: func(searchHeight int) {
+			SearchBoxOpens: func(searchHeight int) {
 				p.content.SetHeight(p.content.Height() - searchHeight)
 			},
 		},

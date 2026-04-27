@@ -16,11 +16,11 @@ var (
 )
 
 type SearchCallbacks struct {
-	ToSearch     func() []string
-	EmptyInput   func() tea.Cmd
-	Results      func([]FilteredItem)
-	Reset        func(searchHeight int)
-	ViewBoxOpens func(searchHeight int)
+	ToSearch       func() []string
+	EmptyInput     func() tea.Cmd
+	Results        func([]FilteredItem)
+	Reset          func(searchHeight int)
+	SearchBoxOpens func(searchHeight int)
 }
 
 type SearchBox struct {
@@ -157,7 +157,7 @@ func (s *SearchBox) OpenSearchBox() tea.Cmd {
 	}
 	cmds = append(cmds, func() tea.Msg { return textinput.Blink })
 	s.enabled = true
-	s.Callbacks.ViewBoxOpens(s.height)
+	s.Callbacks.SearchBoxOpens(s.height)
 	return tea.Batch(cmds...)
 }
 

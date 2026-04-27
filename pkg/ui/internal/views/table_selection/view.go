@@ -84,7 +84,7 @@ func NewTableSelectionView(ctx context.Context, config *appconfig.Config, opts .
 }
 
 func (m *TableSelection) Init() tea.Cmd {
-	return m.tablePane.Init()
+	return tea.Batch(m.tablePane.Init(), m.detailsPane.Init())
 }
 
 func (m *TableSelection) Update(msg tea.Msg) tea.Cmd {
