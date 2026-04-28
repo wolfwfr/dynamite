@@ -66,3 +66,5 @@ type SwitchQueryMode struct {
 	OldMode ItemsQueryMode
 	NewMode ItemsQueryMode
 }
+
+type CopyItem struct{}

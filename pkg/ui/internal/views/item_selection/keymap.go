@@ -7,17 +7,18 @@ import "charm.land/bubbles/v2/key"
 type DetailsPaneKeyMap struct {
 	Zoom      key.Binding
 	ToggleFmt key.Binding
+	Copy      key.Binding
 }
 
 // ShortHelp implements the KeyMap interface.
 func (km *DetailsPaneKeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{km.Zoom, km.ToggleFmt}
+	return []key.Binding{km.Zoom, km.ToggleFmt, km.Copy}
 }
 
 // FullHelp implements the KeyMap interface.
 func (km *DetailsPaneKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{km.Zoom, km.ToggleFmt},
+		{km.Zoom, km.ToggleFmt, km.Copy},
 	}
 }
 
@@ -31,6 +32,10 @@ func DefaultDetailsKeyMap() *DetailsPaneKeyMap {
 		ToggleFmt: key.NewBinding(
 			key.WithKeys("J"),
 			key.WithHelp("shift+j", "toggle json/yaml"),
+		),
+		Copy: key.NewBinding(
+			key.WithKeys("Y"),
+			key.WithHelp("shift+y", "copy"),
 		),
 	}
 }
@@ -47,6 +52,7 @@ type ItemPaneKeyMap struct {
 	ToggleFmt key.Binding
 	Scan      key.Binding
 	Query     key.Binding
+	Copy      key.Binding
 }
 
 // ShortHelp implements the KeyMap interface.
@@ -57,7 +63,7 @@ func (km *ItemPaneKeyMap) ShortHelp() []key.Binding {
 // FullHelp implements the KeyMap interface.
 func (km *ItemPaneKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{km.Search, km.Zoom, km.Esc, km.ChCols, km.ToggleFmt, km.Scan, km.Query},
+		{km.Search, km.Zoom, km.Esc, km.ChCols, km.ToggleFmt, km.Scan, km.Query, km.Copy},
 	}
 }
 
@@ -74,11 +80,11 @@ func DefaultItemPaneKeyMap() *ItemPaneKeyMap {
 		),
 		Esc: key.NewBinding(
 			key.WithKeys("esc"),
-			key.WithHelp("esc", "cancel search/return"),
+			key.WithHelp("esc", "cancel/return"),
 		),
 		ChCols: key.NewBinding(
 			key.WithKeys("W"),
-			key.WithHelp("shift+w", "toggle dynamic column width"),
+			key.WithHelp("shift+w", "toggle column width"),
 		),
 		ToggleFmt: key.NewBinding(
 			key.WithKeys("J"),
@@ -91,6 +97,10 @@ func DefaultItemPaneKeyMap() *ItemPaneKeyMap {
 		Query: key.NewBinding(
 			key.WithKeys("Q"),
 			key.WithHelp("shift+q", "query"),
+		),
+		Copy: key.NewBinding(
+			key.WithKeys("Y"),
+			key.WithHelp("shift+y", "copy"),
 		),
 	}
 }

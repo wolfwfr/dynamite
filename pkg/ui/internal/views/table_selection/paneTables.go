@@ -12,6 +12,8 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
+	"github.com/atotto/clipboard"
+
 	appconfig "github.com/wolfwfr/dynamite/pkg"
 	"github.com/wolfwfr/dynamite/pkg/aws/dynamodb"
 	apitypes "github.com/wolfwfr/dynamite/pkg/aws/dynamodb/types"
@@ -307,6 +309,8 @@ func (m *tableSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 			return m.Zoom()
 		case key.Matches(msg, m.KeyMap.Esc):
 			m.search.Reset()
+		case key.Matches(msg, m.KeyMap.Copy):
+			return m.copy()
 		default:
 			if match, call := m.AddKeyMap.Matches(msg); match {
 				return call
@@ -315,6 +319,19 @@ func (m *tableSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 	}
 	cmds = append(cmds, m.content.Update(msg))
 	return tea.Batch(cmds...)
+}
+
+func (m *tableSelectionPane) copy() tea.Cmd {
+	r := m.content.VisualRows()
+	c := max(0, m.content.Cursor())
+	if c >= len(r) {
+		return nil
+	}
+
+	if err := clipboard.WriteAll(r[c].String()); err != nil {
+		// TODO: notify user
+	}
+	return nil
 }
 
 // force is used on new pane initialization because lastPreviewItem could be 0

@@ -38,6 +38,7 @@ type TablePaneKeyMap struct {
 	Select key.Binding
 	Search key.Binding
 	Zoom   key.Binding
+	Copy   key.Binding
 	Esc    key.Binding
 }
 
@@ -49,7 +50,7 @@ func (km *TablePaneKeyMap) ShortHelp() []key.Binding {
 // FullHelp implements the KeyMap interface.
 func (km *TablePaneKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{km.Select, km.Search, km.Zoom, km.Esc},
+		{km.Select, km.Search, km.Zoom, km.Esc, km.Copy},
 	}
 }
 
@@ -67,6 +68,10 @@ func DefaultTablePaneKeyMap() *TablePaneKeyMap {
 		Zoom: key.NewBinding(
 			key.WithKeys("Z"),
 			key.WithHelp("shift+z", "zoom"),
+		),
+		Copy: key.NewBinding(
+			key.WithKeys("Y"),
+			key.WithHelp("shift+y", "copy"),
 		),
 		Esc: key.NewBinding(
 			key.WithKeys("esc"),

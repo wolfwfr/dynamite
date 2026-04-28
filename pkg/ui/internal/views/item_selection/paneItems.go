@@ -265,6 +265,8 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 			return m.enableQueryMode()
 		case key.Matches(msg, m.KeyMap.Scan):
 			return m.enableScanMode()
+		case key.Matches(msg, m.KeyMap.Copy):
+			return m.copy()
 		default:
 			if match, call := m.AddKeyMap.Matches(msg); match {
 				return call
@@ -518,6 +520,12 @@ func (m *ItemSelectionPane) escape() tea.Cmd {
 	}
 
 	return tea.Batch(resetPreview, switchView)
+}
+
+func (m *ItemSelectionPane) copy() tea.Cmd {
+	return func() tea.Msg {
+		return messages.CopyItem{}
+	}
 }
 
 func (m *ItemSelectionPane) View() string {

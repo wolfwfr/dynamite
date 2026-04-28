@@ -7,6 +7,8 @@ import (
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/atotto/clipboard"
+
 	appconfig "github.com/wolfwfr/dynamite/pkg"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/keymaps"
@@ -80,6 +82,8 @@ func (m *detailsPane) Update(msg tea.Msg) (cmd tea.Cmd) {
 			return m.Zoom()
 		case key.Matches(msg, m.KeyMap.ToggleFmt):
 			return m.ToggleFmt()
+		case key.Matches(msg, m.KeyMap.Copy):
+			return m.copy()
 		default:
 			if match, call := m.AddKeyMap.Matches(msg); match {
 				return call
@@ -88,6 +92,8 @@ func (m *detailsPane) Update(msg tea.Msg) (cmd tea.Cmd) {
 	case messages.PreviewItem:
 		m.content.SetContent(msg.Item)
 		return nil
+	case messages.CopyItem:
+		return m.copy()
 	}
 
 	m.content, cmd = m.content.Update(msg)
@@ -104,6 +110,14 @@ func (m *detailsPane) Zoom() tea.Cmd {
 	return func() tea.Msg {
 		return messages.ZoomToggleItemDetailsPane{}
 	}
+}
+
+func (m *detailsPane) copy() tea.Cmd {
+	c := m.content.GetContent()
+	if err := clipboard.WriteAll(c); err != nil {
+		// TODO: inform user of error (dialog?)
+	}
+	return nil
 }
 
 func (m *detailsPane) applySize(height, width int) {

@@ -125,7 +125,8 @@ func (m *ItemSelection) forward(msg tea.Msg) tea.Cmd {
 	_, isPreview := msg.(messages.PreviewItem)
 	_, isToggleFormat := msg.(messages.ToggleJSONYAML)
 	_, isScanResult := msg.(messages.ScanPageReady)
-	if m.focused == itemsPaneID && !isPreview || isToggleFormat || isScanResult {
+	_, isCopy := msg.(messages.CopyItem)
+	if m.focused == itemsPaneID && !isPreview && !isCopy || isToggleFormat || isScanResult {
 		return m.itemsPane.Update(msg)
 	}
 	return m.detailsPane.Update(msg)
