@@ -45,7 +45,7 @@ func (m *tableSelectionPane) FullHelp() [][]key.Binding {
 // DETAILS PANE
 func (m *detailsPane) FullHelp() [][]key.Binding {
 	km := m.content.KeyMap
-	viewportHelp := []key.Binding{km.Up, km.Down, km.Left, km.Right}
+	viewportHelp := []key.Binding{km.Up, km.Down, km.Left, km.Right, km.HalfPageUp, km.HalfPageDown, km.PageUp, km.PageDown}
 	return appendFullHelp([][]key.Binding{viewportHelp}, m.KeyMap.FullHelp())
 }
 
