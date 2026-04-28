@@ -97,6 +97,9 @@ type ItemSelectionPane struct {
 	selectedTable types.DescribeTableResponse
 
 	previewFormat previewFormat
+
+	// specifies whether the first page has been loaded
+	initialised bool
 }
 
 type itemsPaneOption func(p *ItemSelectionPane)
@@ -217,6 +220,7 @@ func (m *ItemSelectionPane) deactivateSpinner() {
 func (m *ItemSelectionPane) Init() tea.Cmd {
 	m.content.ResetVirtualRows()
 	m.content.SetCursor(0)
+	m.initialised = false
 
 	// cancel any lingering calls
 	m.pageCancel()
@@ -295,6 +299,7 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 }
 
 func (m *ItemSelectionPane) PageNext(init bool) tea.Cmd {
+	// don't page when at end of paging and not the initialising call
 	if (len(m.pageKey) == 0 && !init) || m.paging {
 		return nil
 	}
@@ -341,7 +346,8 @@ func (m *ItemSelectionPane) ToggleJSONYAMLFormat() tea.Cmd {
 
 // force is used on new pane initialization because lastPreviewItem could be 0
 func (m *ItemSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
-	if len(m.items.Raw) == 0 || m.filtering && len(m.filteredItems) == 0 {
+	// render empty preview when no items or no filter results
+	if m.initialised && len(m.items.Raw) == 0 || m.filtering && len(m.filteredItems) == 0 {
 		return func() tea.Msg {
 			return messages.PreviewItem{
 				Item: "",
@@ -353,6 +359,7 @@ func (m *ItemSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
 	if len(m.filteredItems) > 0 { // cursor refers to filtered items
 		idx = m.filteredItems[idx]
 	}
+	// if preview was already instructed to preview this item, skip
 	if idx == m.lastPreviewItem && !force {
 		return nil
 	}
@@ -415,6 +422,7 @@ func (m *ItemSelectionPane) ProcessScanPage(msg messages.ScanPageReady) tea.Cmd 
 		}
 	}
 	m.paging = false
+	m.initialised = true
 	return m.MaybePreviewItem(true)
 }
 
@@ -493,7 +501,9 @@ func (m *ItemSelectionPane) updateSize() {
 	m.scanLimit = h
 }
 
+// TODO: merge Init, reset, & cleanslate
 func (m *ItemSelectionPane) resetQueryParameters() {
+	m.initialised = false
 	m.paging = false
 	m.keysComplete = []string{}
 	m.queryMode = messages.ScanMode
