@@ -436,10 +436,15 @@ func (m *Model) SetVirtualRows(r []Row) {
 func (m *Model) ResetVirtualRows() {
 	m.virtualRows = nil
 	m.cursor = m.lastCursor
+
+	// ensure that new cursor location is visible
 	if m.cursorOutOfBounds() {
 		m.start = clamp(m.cursor, 0, max(0, len(m.rows)-m.content.Height()))
-		m.end = clamp(m.start+m.content.Height(), m.start, len(m.rows))
 	}
+
+	// ensures m.start & m.end are readjusted to newly visible rows
+	m.MoveContentBoundaries(0)
+
 	if colChanged := m.UpdateContent(); colChanged {
 		m.UpdateHeader()
 	}
