@@ -6,7 +6,6 @@ import (
 	"math"
 	"strings"
 
-	"charm.land/bubbles/v2/help"
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/list"
 	tea "charm.land/bubbletea/v2"
@@ -42,13 +41,14 @@ type Regions struct {
 	width  int
 	height int
 
-	help help.Model
+	styles regionListStyles
 
 	content list.Model
 }
 
 type regionListStyles struct {
 	title        lipgloss.Style
+	content      lipgloss.Style
 	item         lipgloss.Style
 	selectedItem lipgloss.Style
 	header       lipgloss.Style
@@ -57,11 +57,12 @@ type regionListStyles struct {
 
 func newStyles(darkBG bool) regionListStyles {
 	var s regionListStyles
-	s.title = lipgloss.NewStyle().MarginLeft(2)
+	s.title = lipgloss.NewStyle()
+	s.content = lipgloss.NewStyle().PaddingTop(1).PaddingBottom(2)
 	s.item = lipgloss.NewStyle().PaddingLeft(4)
 	s.selectedItem = lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("170"))
 	s.header = lipgloss.NewStyle().Foreground(lipgloss.Color("#B0B0B0"))
-	s.help = list.DefaultStyles(darkBG).HelpStyle.PaddingLeft(4).PaddingBottom(1)
+	s.help = list.DefaultStyles(darkBG).HelpStyle.PaddingLeft(4).PaddingBottom(1).PaddingTop(1)
 	return s
 }
 
@@ -140,10 +141,8 @@ func NewRegionsDialog(available, starred []string, current string, close key.Bin
 			),
 		},
 
-		defaultDialogHeight: 45,
+		defaultDialogHeight: 46,
 		defaultDialogWidth:  50,
-
-		help: help.New(),
 	}
 	r.width = r.defaultDialogWidth // TODO: make more robust & dynamic
 	r.height = r.defaultDialogHeight
@@ -152,10 +151,16 @@ func NewRegionsDialog(available, starred []string, current string, close key.Bin
 	sorted, r.unstarred = compileSortedList(available, starred)
 
 	l := list.New(sorted, itemDelegate{}, r.width, r.height)
-	l.SetShowHelp(false)
-	l.SetShowTitle(false)
+	l.Title = "AWS Regions"
 	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(false)
+	l.SetShowHelp(false)
+
+	// replace '?' with 'm'
+	l.KeyMap.ShowFullHelp.SetKeys("m")
+	l.KeyMap.ShowFullHelp.SetHelp("m", "more")
+	l.KeyMap.CloseFullHelp.SetKeys("m")
+	l.KeyMap.CloseFullHelp.SetHelp("m", "close help")
 
 	r.content = l
 	r.updateStyles(true) // default to dark styles.
@@ -204,6 +209,8 @@ func (m *Regions) updateStyles(isDark bool) {
 	s := newStyles(isDark)
 	m.content.Styles.Title = s.title
 	m.content.Styles.HelpStyle = s.help
+
+	m.styles = s
 	m.content.SetDelegate(m.newDelegate(&s))
 }
 
@@ -272,11 +279,10 @@ func (m *Regions) applySize(height, width int) {
 }
 
 func (m *Regions) View() string {
-	title := "AWS Regions"
-	content := m.content.View()
-	help := m.help.ShortHelpView((m.keyMap.ShortHelp()))
-	// help = ""
-	return regionsDialogStyle.Render("\n" + title + "\n\n" + content + help)
+	content := m.styles.content.Render(m.content.View())
+	// render help separately to ensure everything is nicely centered
+	help := m.styles.help.Render(m.content.Help.View(m.content))
+	return regionsDialogStyle.Render(content + help)
 }
 
 func ternary[T any](first, second T, cond bool) T {
