@@ -66,7 +66,7 @@ func main() {
 				Name:    dynamo_url_key,
 				Aliases: []string{"u"},
 				Value:   "",
-				Usage:   "override the dynamodb host URL, useful for connecting to a local dynamodb compatible API",
+				Usage:   "override the dynamodb host URL, useful for connecting to a local dynamodb compatible API (e.g. 'http://localhost:8000')",
 			},
 		},
 		Action: runApplication,
@@ -89,9 +89,16 @@ func runApplication(ctx context.Context, cmd *cli.Command) error {
 		// TODO: handling
 	}
 
+	urlS := cmd.String(dynamo_url_key)
+	var urlP *string
+	if urlS != "" {
+		urlP = &urlS
+	}
+
 	cfg := appconfig.Config{
 		Profile:          resolveProfile(cmd, cfgf),
 		Region:           resolveRegion(cmd, cfgf),
+		URL:              urlP,
 		AvailableRegions: cfgf.AWSRegions,
 		StarredRegions:   cfgf.StarredRegions,
 		MaxTables:        cfgf.MaxTables,

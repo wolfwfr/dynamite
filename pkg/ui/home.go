@@ -129,7 +129,7 @@ func (m Model) Init() tea.Cmd {
 	if err != nil {
 		// TODO: handling
 	}
-	m.config.Client = dynamodb.NewClient(cfg)
+	m.config.Client = dynamodb.NewClient(cfg, m.config.URL)
 	var cmds []tea.Cmd
 	cmds = append(cmds, m.tableSelection.Init())
 	cmds = append(cmds, m.itemselection.Init())
