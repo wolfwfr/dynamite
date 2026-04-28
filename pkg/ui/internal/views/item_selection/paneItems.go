@@ -84,7 +84,8 @@ type ItemSelectionPane struct {
 
 	items           types.Items
 	filteredItems   []int // indices referring to items
-	lastPreviewItem int   // index
+	filtering       bool
+	lastPreviewItem int // index
 	pageKey         map[string]dynamotypes.AttributeValue
 	pageCancel      func()
 	paging          bool
@@ -158,11 +159,13 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 					return table.Rows(p.content.Rows()).ToStrings()
 				},
 				EmptyInput: func() tea.Cmd {
+					p.filtering = false
 					p.filteredItems = make([]int, 0)
 					p.content.ResetVirtualRows()
 					return nil
 				},
 				Results: func(results []search.FilteredItem) {
+					p.filtering = true
 					p.filteredItems = make([]int, len(results))
 					rows := p.content.Rows()
 					filtered := make([]table.Row, len(results))
@@ -173,6 +176,7 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 					p.content.SetVirtualRows(filtered)
 				},
 				Reset: func(searchHeight int) {
+					p.filtering = false
 					p.filteredItems = make([]int, 0)
 					p.content.ResetVirtualRows()
 					p.content.SetHeight(p.content.Height() + searchHeight)
@@ -282,7 +286,7 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 	}
 	cmds = append(cmds, m.content.Update(msg))
 	// paginate when not filtering and at end of content
-	if len(m.filteredItems) == 0 && m.content.ViewAtEnd() {
+	if !m.filtering && m.content.ViewAtEnd() {
 		cmds = append(cmds, m.PageNext(false))
 	}
 	return tea.Batch(cmds...)
@@ -335,8 +339,13 @@ func (m *ItemSelectionPane) ToggleJSONYAMLFormat() tea.Cmd {
 
 // force is used on new pane initialization because lastPreviewItem could be 0
 func (m *ItemSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
-	if len(m.items.Raw) == 0 {
-		return nil
+	if len(m.items.Raw) == 0 || m.filtering && len(m.filteredItems) == 0 {
+		return func() tea.Msg {
+			return messages.PreviewItem{
+				Item: "",
+			}
+		}
+
 	}
 	idx := m.content.Cursor()
 	if len(m.filteredItems) > 0 { // cursor refers to filtered items
