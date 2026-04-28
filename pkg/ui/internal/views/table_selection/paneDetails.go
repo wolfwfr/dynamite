@@ -118,13 +118,18 @@ func renderDetails(details *apitypes.DescribeTableResponse) string {
 		localIdxSize += *i.IndexSizeBytes
 		localIdxItemCount += *i.ItemCount
 	}
+
+	name := ternarySafe(details.TableName, "", details.TableName != nil)
+	arn := ternarySafe(details.TableArn, "", details.TableArn != nil)
+	id := ternarySafe(details.TableId, "", details.TableId != nil)
+
 	s := strings.Builder{}
 	fmt.Fprintf(&s, "----------------------------------------------------\n")
 	fmt.Fprintf(&s, "[GENERAL]\n")
 	fmt.Fprintf(&s, "----------------------------------------------------\n\n")
-	fmt.Fprintf(&s, "Table name:   %s\n", *details.TableName)
-	fmt.Fprintf(&s, "Table ARN:    %s\n", *details.TableArn)
-	fmt.Fprintf(&s, "Table ID:     %s\n", *details.TableId)
+	fmt.Fprintf(&s, "Table name:   %s\n", name)
+	fmt.Fprintf(&s, "Table ARN:    %s\n", arn)
+	fmt.Fprintf(&s, "Table ID:     %s\n", id)
 	fmt.Fprintf(&s, "\n")
 	if details.TableClassSummary != nil {
 		fmt.Fprintf(&s, "Table Class:  %s\n", details.TableClassSummary.TableClass)
@@ -278,4 +283,12 @@ func primaryKeysFromSchema(s []dynamodbtypes.KeySchemaElement) (hash string, ran
 
 func toPtr[T any](t T) *T {
 	return &t
+}
+
+// with appropriate condition, it escapes nil-pointers
+func ternarySafe[T any](first *T, second T, cond bool) T {
+	if cond {
+		return *first
+	}
+	return second
 }
