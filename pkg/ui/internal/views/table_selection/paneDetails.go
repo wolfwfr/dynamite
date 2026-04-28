@@ -99,7 +99,10 @@ func (m *detailsPane) Update(msg tea.Msg) (cmd tea.Cmd) {
 	return
 }
 
-func renderDetails(details apitypes.DescribeTableResponse) string {
+func renderDetails(details *apitypes.DescribeTableResponse) string {
+	if details == nil {
+		return ""
+	}
 	totalSize := *details.TableSizeBytes
 	globalIdxSize := int64(0)
 	globalIdxItemCount := int64(0)

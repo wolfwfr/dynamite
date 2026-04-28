@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strings"
 	"time"
 
 	"charm.land/bubbles/v2/key"
@@ -65,8 +66,9 @@ type tableSelectionPane struct {
 
 	tables           []string
 	filteredTables   []int // indices referring to tables
-	lastTableDetails int   // index
-	details          apitypes.DescribeTableResponse
+	filtering        bool
+	lastTableDetails int // index
+	details          *apitypes.DescribeTableResponse
 }
 
 type tablePaneOption func(p *tableSelectionPane)
@@ -127,11 +129,13 @@ func newTableSelectionPane(ctx context.Context, config *appconfig.Config, opts .
 					return table.Rows(p.content.Rows()).ToStrings()
 				},
 				EmptyInput: func() tea.Cmd {
+					p.filtering = false
 					p.filteredTables = make([]int, 0)
 					p.content.ResetVirtualRows()
 					return nil
 				},
 				Results: func(results []search.FilteredItem) {
+					p.filtering = true
 					p.filteredTables = make([]int, len(results))
 					rows := p.content.Rows()
 					filtered := make([]table.Row, len(results))
@@ -142,6 +146,7 @@ func newTableSelectionPane(ctx context.Context, config *appconfig.Config, opts .
 					p.content.SetVirtualRows(filtered)
 				},
 				Reset: func(searchHeight int) {
+					p.filtering = false
 					p.filteredTables = make([]int, 0)
 					p.content.ResetVirtualRows()
 					p.updateSize()
@@ -314,6 +319,14 @@ func (m *tableSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 
 // force is used on new pane initialization because lastPreviewItem could be 0
 func (m *tableSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
+	if len(m.tables) == 0 || (m.filtering && len(m.filteredTables) == 0) {
+		return func() tea.Msg {
+			return messages.TableDetails{
+				Details: nil,
+			}
+		}
+	}
+
 	idx := m.content.Cursor()
 	if len(m.filteredTables) > 0 { // cursor refers to filtered items
 		idx = m.filteredTables[idx]
@@ -343,7 +356,7 @@ func (m *tableSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
 		}
 
 		return messages.TableDetails{
-			Details: *details,
+			Details: details,
 		}
 	}
 }
@@ -367,7 +380,7 @@ func (m *tableSelectionPane) selectTable() tea.Cmd {
 	if len(r) == 0 {
 		return nil // nothing to select
 	}
-	if m.details.TableName != nil && *m.details.TableName != r[0] {
+	if m.details == nil || (m.details.TableName != nil && *m.details.TableName != r[0]) {
 		m.cleanSlate()
 		ctx, cc := context.WithTimeout(m.ctx, m.stdTO)
 		defer cc()
@@ -376,13 +389,13 @@ func (m *tableSelectionPane) selectTable() tea.Cmd {
 			m.err = err
 			return nil
 		}
-		m.details = *details
+		m.details = details
 	}
 
 	selectTable := func() tea.Msg {
 		return messages.SelectTable{
 			TableName:    r[0],
-			TableDetails: m.details,
+			TableDetails: *m.details,
 		}
 	}
 	return tea.Batch(switchView, selectTable)
@@ -409,9 +422,21 @@ func (m *tableSelectionPane) View() string {
 	if m.err != nil {
 		return m.err.Error()
 	}
-	rendering := []string{m.content.View(), m.search.View()}
+	content := ternary(m.content.View(), m.noContentMessage(), len(m.content.Rows()) > 0)
+	rendering := []string{content, m.search.View()}
 	if m.spinner.active {
 		rendering = slices.Insert(rendering, 1, fmt.Sprintf("%s %s", m.spinner.model.View(), m.spinner.text))
 	}
 	return lipgloss.JoinVertical(lipgloss.Left, rendering...)
+}
+
+func (m *tableSelectionPane) noContentMessage() string {
+	if m.spinner.active {
+		return ""
+	}
+	s := strings.Builder{}
+	fmt.Fprintf(&s, "==================================================\n")
+	fmt.Fprintf(&s, "             NO TABLES IN THIS REGION             \n")
+	fmt.Fprintf(&s, "==================================================\n")
+	return s.String()
 }

@@ -35,7 +35,7 @@ type PreviewItem struct {
 }
 
 type TableDetails struct {
-	Details apitypes.DescribeTableResponse
+	Details *apitypes.DescribeTableResponse
 }
 
 type ToggleJSONYAML struct{}
