@@ -1,6 +1,10 @@
 package ui
 
-import "charm.land/bubbles/v2/key"
+import (
+	"fmt"
+
+	"charm.land/bubbles/v2/key"
+)
 
 // KeyMap defines keybindings. It satisfies to the help.KeyMap interface, which
 // is used to render the help menu.
@@ -38,4 +42,21 @@ func DefaultKeyMap() *KeyMap {
 			key.WithHelp("shift+r", "region select"),
 		),
 	}
+}
+
+// DialogCloseKeymapFrom returns a keymap that is intended to close a dialog. It
+// includes the first key mapped to the dialog to allow for closing it too. This
+// ensures that fluid dialog UX.
+func DialogCloseKeymapFrom(keymap key.Binding) key.Binding {
+	k := keymap.Keys()
+	if len(k) == 0 {
+		return key.NewBinding(
+			key.WithKeys("esc", "q"),
+			key.WithHelp("esc/q", "close"),
+		)
+	}
+	return key.NewBinding(
+		key.WithKeys(k[0], "esc", "q"),
+		key.WithHelp(fmt.Sprintf("%s/esc/q", k[0]), "close"),
+	)
 }

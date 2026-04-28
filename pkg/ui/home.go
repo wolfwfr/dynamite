@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -117,8 +118,8 @@ func NewModel(ctx context.Context, cfg appconfig.Config) Model {
 	m.tableSelection = tableselection.NewTableSelectionView(ctx, &cfg, tableselection.WithAdditionalKeys(keymaps.AdditionalKeys(tableViewInherit)))
 	m.itemselection = itemselection.NewItemSelectionView(ctx, &cfg, itemselection.WithAdditionalKeys(keymaps.AdditionalKeys(inheritedKeys)))
 
-	m.dialogs.help = dialogs.NewHelp(m.tableSelection, m.itemselection)
-	m.dialogs.region = dialogs.NewRegionsDialog(m.config.AvailableRegions, m.config.StarredRegions, m.config.Region)
+	m.dialogs.help = dialogs.NewHelp(m.tableSelection, m.itemselection, DialogCloseKeymapFrom(km.Help))
+	m.dialogs.region = dialogs.NewRegionsDialog(m.config.AvailableRegions, m.config.StarredRegions, m.config.Region, DialogCloseKeymapFrom(km.Regions))
 
 	return m
 
@@ -257,7 +258,6 @@ func (m Model) ToggleRegionsDialog() (tea.Model, tea.Cmd) {
 type dialog interface {
 	View() string
 	Width() int
-	Height() int
 }
 
 func (m Model) View() tea.View {
@@ -292,15 +292,20 @@ func (m Model) View() tea.View {
 		case regions_dialog:
 			dialog = m.dialogs.region
 		}
-		dialogLayer := lipgloss.NewLayer(dialog.View()).
+		renderedDialog := dialog.View()
+		dialogLayer := lipgloss.NewLayer(renderedDialog).
 			X(m.window.width/2 - dialog.Width()/2).
-			Y(m.window.height/2 - dialog.Height()/2)
+			Y(m.window.height/2 - heightFromView(renderedDialog)/2)
 		c.AddLayers(dialogLayer)
 	}
 
 	v := tea.NewView(c.Render())
 	v.AltScreen = true // fullscreen
 	return v
+}
+
+func heightFromView(v string) int {
+	return strings.Count(v, "\n")
 }
 
 func (m Model) SignalOpenHelpDialog() tea.Cmd {

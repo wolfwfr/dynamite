@@ -3,6 +3,7 @@ package dialogs
 import (
 	"fmt"
 	"io"
+	"math"
 	"strings"
 
 	"charm.land/bubbles/v2/help"
@@ -30,6 +31,7 @@ func (h regionsKeyMap) ShortHelp() []key.Binding {
 type Regions struct {
 	available []string
 	starred   []string
+	unstarred []string
 	selected  string
 
 	keyMap regionsKeyMap
@@ -49,9 +51,8 @@ type regionListStyles struct {
 	title        lipgloss.Style
 	item         lipgloss.Style
 	selectedItem lipgloss.Style
-	pagination   lipgloss.Style
+	header       lipgloss.Style
 	help         lipgloss.Style
-	quitText     lipgloss.Style
 }
 
 func newStyles(darkBG bool) regionListStyles {
@@ -59,9 +60,8 @@ func newStyles(darkBG bool) regionListStyles {
 	s.title = lipgloss.NewStyle().MarginLeft(2)
 	s.item = lipgloss.NewStyle().PaddingLeft(4)
 	s.selectedItem = lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("170"))
-	s.pagination = list.DefaultStyles(darkBG).PaginationStyle.PaddingLeft(4)
+	s.header = lipgloss.NewStyle().Foreground(lipgloss.Color("#B0B0B0"))
 	s.help = list.DefaultStyles(darkBG).HelpStyle.PaddingLeft(4).PaddingBottom(1)
-	s.quitText = lipgloss.NewStyle().Margin(1, 0, 2, 4)
 	return s
 }
 
@@ -70,7 +70,9 @@ type item string
 func (i item) FilterValue() string { return "" }
 
 type itemDelegate struct {
-	styles *regionListStyles
+	styles       *regionListStyles
+	firstStarred *string
+	firstNormal  string
 }
 
 func (d itemDelegate) Height() int                             { return 1 }
@@ -82,7 +84,19 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 		return
 	}
 
-	str := fmt.Sprintf("%d. %s", index+1, i)
+	str := string(i)
+
+	// NOTE: not pretty but good enough for now
+	headerFmt := func(s string) string {
+		return d.styles.header.Render(fmt.Sprintf("\n%s\n%s", headerPadding(s, 16), "_________________\n")) + "\n"
+	}
+	var header string
+	if d.firstStarred != nil && string(i) == *d.firstStarred {
+		header = headerFmt("* starred *")
+	}
+	if d.firstNormal != "" && string(i) == d.firstNormal && d.firstStarred != nil {
+		header = headerFmt("normal")
+	}
 
 	fn := d.styles.item.Render
 	if index == m.Index() {
@@ -91,41 +105,56 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 		}
 	}
 
-	fmt.Fprint(w, fn(str))
+	fmt.Fprint(w, fmt.Sprintf("%s%s", header, fn(str)))
 }
 
-func NewRegionsDialog(available, starred []string, current string) *Regions {
+// headerPadding returns a best effort centralised header with padding on each side
+func headerPadding(h string, l int) string {
+	ll := len(h)
+	if ll >= l {
+		return h
+	}
+	pd := int(math.Round(float64(l-ll) / 2))
+	s := strings.Builder{}
+	for range pd {
+		fmt.Fprint(&s, " ")
+	}
+	fmt.Fprint(&s, h)
+	for range l - ll - pd {
+		fmt.Fprint(&s, " ")
+	}
+	return s.String()
+}
+
+func NewRegionsDialog(available, starred []string, current string, close key.Binding) *Regions {
 	r := &Regions{
 		available: available,
 		starred:   starred,
 		selected:  current,
 
 		keyMap: regionsKeyMap{
-			close: key.NewBinding(
-				key.WithKeys("?", "esc", "q"),
-				key.WithHelp("?/esc/q", "close"),
-			),
+			close: close,
 			enter: key.NewBinding(
 				key.WithKeys("enter"),
 				key.WithHelp("enter", "select"),
 			),
 		},
 
-		defaultDialogHeight: 50,
+		defaultDialogHeight: 45,
 		defaultDialogWidth:  50,
 
 		help: help.New(),
 	}
-	r.width = r.defaultDialogWidth
+	r.width = r.defaultDialogWidth // TODO: make more robust & dynamic
 	r.height = r.defaultDialogHeight
 
-	// TODO: separate section for starred regions
-	items := make([]list.Item, len(available))
-	for i, a := range available {
-		items[i] = item(a)
-	}
+	var sorted []list.Item
+	sorted, r.unstarred = compileSortedList(available, starred)
 
-	l := list.New(items, itemDelegate{}, r.width, r.height)
+	l := list.New(sorted, itemDelegate{}, r.width, r.height)
+	l.SetShowHelp(false)
+	l.SetShowTitle(false)
+	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(false)
 
 	r.content = l
@@ -134,12 +163,48 @@ func NewRegionsDialog(available, starred []string, current string) *Regions {
 	return r
 }
 
+func compileSortedList(available, starred []string) (full []list.Item, unstarred []string) {
+	seen := map[string]struct{}{}
+	items := make([]list.Item, 0, len(available))
+	unstarred = make([]string, 0, max(0, len(available)-len(starred)))
+
+	for _, s := range starred {
+		items = append(items, item(s))
+		seen[s] = struct{}{}
+	}
+
+	for _, a := range available {
+		if _, ok := seen[a]; ok {
+			continue
+		}
+		items = append(items, item(a))
+		unstarred = append(unstarred, a)
+	}
+
+	return items, unstarred
+}
+
+func (m *Regions) newDelegate(s *regionListStyles) itemDelegate {
+	var firstStarred *string
+	var firstNormal string
+	if len(m.starred) > 0 {
+		firstStarred = &m.starred[0]
+	}
+	if len(m.unstarred) > 0 {
+		firstNormal = m.unstarred[0]
+	}
+	return itemDelegate{
+		styles:       s,
+		firstStarred: firstStarred,
+		firstNormal:  firstNormal,
+	}
+}
+
 func (m *Regions) updateStyles(isDark bool) {
 	s := newStyles(isDark)
 	m.content.Styles.Title = s.title
-	m.content.Styles.PaginationStyle = s.pagination
 	m.content.Styles.HelpStyle = s.help
-	m.content.SetDelegate(itemDelegate{styles: &s})
+	m.content.SetDelegate(m.newDelegate(&s))
 }
 
 func (m *Regions) Init() tea.Cmd {
@@ -148,10 +213,6 @@ func (m *Regions) Init() tea.Cmd {
 
 func (m *Regions) Width() int {
 	return m.width
-}
-
-func (m *Regions) Height() int {
-	return m.height
 }
 
 func (m *Regions) Update(msg tea.Msg) tea.Cmd {
@@ -202,6 +263,9 @@ func (m *Regions) toggleDialog() tea.Cmd {
 func (m *Regions) applySize(height, width int) {
 	m.width = m.defaultDialogWidth
 	m.height = m.defaultDialogHeight
+	padding := 4 // title + newlines + help
+	m.content.SetHeight(m.height - padding)
+	m.content.SetWidth(m.width)
 	regionsDialogStyle = regionsDialogStyle.
 		Height(m.height).
 		Width(m.width)
@@ -211,7 +275,13 @@ func (m *Regions) View() string {
 	title := "AWS Regions"
 	content := m.content.View()
 	help := m.help.ShortHelpView((m.keyMap.ShortHelp()))
-	help = ""
-	return regionsDialogStyle.Render(title + content + help)
-	// regionsDialogStyle.Render(title + nl + fullhelp + nl + m.Help.ShortHelpView((m.keyMap.ShortHelp())))
+	// help = ""
+	return regionsDialogStyle.Render("\n" + title + "\n\n" + content + help)
+}
+
+func ternary[T any](first, second T, cond bool) T {
+	if cond {
+		return first
+	}
+	return second
 }

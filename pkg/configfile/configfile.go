@@ -112,7 +112,6 @@ func (m *ConfigManager) LoadConfig(create bool) (ConfigFile, error) {
 	if cfg.MaxTables == 0 {
 		cfg.MaxTables = dflt.MaxTables
 	}
-
 	return cfg, nil
 }
 

@@ -40,7 +40,7 @@ type Help struct {
 	itemselection  help.KeyMap
 }
 
-func NewHelp(tableView, itemView help.KeyMap) *Help {
+func NewHelp(tableView, itemView help.KeyMap, close key.Binding) *Help {
 	h := &Help{
 		activeView: 0,
 
@@ -48,10 +48,7 @@ func NewHelp(tableView, itemView help.KeyMap) *Help {
 		defaultDialogWidth:  180,
 
 		keyMap: helpKeyMap{
-			close: key.NewBinding(
-				key.WithKeys("?", "esc", "q"),
-				key.WithHelp("?/esc/q", "close help"),
-			),
+			close: close,
 		},
 
 		Help: help.New(),
@@ -121,7 +118,7 @@ func (m *Help) View() string {
 
 	helpHeight := height(fullhelp)
 	padding := 1
-	availableHeight := m.height - helpHeight - 2 - 2*padding
+	availableHeight := m.height - 1 - helpHeight - 2 - 2*padding
 	nl := newLines(int(availableHeight / 2))
 
 	title := "Help"
