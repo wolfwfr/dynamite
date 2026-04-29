@@ -18,9 +18,9 @@ var (
 type SearchCallbacks struct {
 	ToSearch       func() []string
 	EmptyInput     func() tea.Cmd
-	Results        func([]FilteredItem)
-	Reset          func(searchHeight int)
-	SearchBoxOpens func(searchHeight int)
+	Results        func([]FilteredItem) tea.Cmd
+	Reset          func(searchHeight int) tea.Cmd
+	SearchBoxOpens func(searchHeight int) tea.Cmd
 }
 
 type SearchBox struct {
@@ -113,7 +113,7 @@ func (s *SearchBox) Update(msg tea.Msg) tea.Cmd {
 		for i, match := range msg {
 			filtered[i] = match.Item.Content
 		}
-		s.Callbacks.Results(msg)
+		cmds = append(cmds, s.Callbacks.Results(msg))
 	default:
 		s.input, cmd = s.input.Update(msg)
 		cmds = append(cmds, cmd)
@@ -157,7 +157,7 @@ func (s *SearchBox) OpenSearchBox() tea.Cmd {
 	}
 	cmds = append(cmds, func() tea.Msg { return textinput.Blink })
 	s.enabled = true
-	s.Callbacks.SearchBoxOpens(s.height)
+	cmds = append(cmds, s.Callbacks.SearchBoxOpens(s.height))
 	return tea.Batch(cmds...)
 }
 
@@ -170,15 +170,15 @@ func (s *SearchBox) UnFocus() {
 
 // Reset removes any text and completely disables the search-box. It will also
 // call the appropriate callback if the search-box was not already disabled.
-func (s *SearchBox) Reset() {
+func (s *SearchBox) Reset() tea.Cmd {
 	if !s.enabled {
-		return
+		return nil
 	}
 	s.input.Reset()
 	s.enabled = false
 	s.focused = false
 
-	s.Callbacks.Reset(s.height)
+	return s.Callbacks.Reset(s.height)
 }
 
 func (s *SearchBox) View() string {

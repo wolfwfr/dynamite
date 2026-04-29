@@ -165,9 +165,9 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 					p.filtering = false
 					p.filteredItems = make([]int, 0)
 					p.content.ResetVirtualRows()
-					return nil
+					return p.MaybePreviewItem(true)
 				},
-				Results: func(results []search.FilteredItem) {
+				Results: func(results []search.FilteredItem) tea.Cmd {
 					p.filtering = true
 					p.filteredItems = make([]int, len(results))
 					rows := p.content.Rows()
@@ -177,15 +177,18 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 						p.filteredItems[i] = match.Index
 					}
 					p.content.SetVirtualRows(filtered)
+					return nil
 				},
-				Reset: func(searchHeight int) {
+				Reset: func(searchHeight int) tea.Cmd {
 					p.filtering = false
 					p.filteredItems = make([]int, 0)
 					p.content.ResetVirtualRows()
 					p.content.SetHeight(p.content.Height() + searchHeight)
+					return p.MaybePreviewItem(true)
 				},
-				SearchBoxOpens: func(searchHeight int) {
+				SearchBoxOpens: func(searchHeight int) tea.Cmd {
 					p.content.SetHeight(p.content.Height() - searchHeight)
+					return nil
 				},
 			},
 		)
@@ -255,7 +258,7 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 			cmds = append(cmds, m.search.OpenSearchBox())
 		case key.Matches(msg, m.KeyMap.Esc):
 			if m.search.IsEnabled() {
-				m.search.Reset()
+				return m.search.Reset()
 			} else {
 				return m.escape()
 			}

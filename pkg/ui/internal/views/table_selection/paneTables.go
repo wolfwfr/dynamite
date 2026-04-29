@@ -134,9 +134,9 @@ func newTableSelectionPane(ctx context.Context, config *appconfig.Config, opts .
 					p.filtering = false
 					p.filteredTables = make([]int, 0)
 					p.content.ResetVirtualRows()
-					return nil
+					return p.MaybePreviewItem(true)
 				},
-				Results: func(results []search.FilteredItem) {
+				Results: func(results []search.FilteredItem) tea.Cmd {
 					p.filtering = true
 					p.filteredTables = make([]int, len(results))
 					rows := p.content.Rows()
@@ -146,15 +146,18 @@ func newTableSelectionPane(ctx context.Context, config *appconfig.Config, opts .
 						p.filteredTables[i] = match.Index
 					}
 					p.content.SetVirtualRows(filtered)
+					return nil
 				},
-				Reset: func(searchHeight int) {
+				Reset: func(searchHeight int) tea.Cmd {
 					p.filtering = false
 					p.filteredTables = make([]int, 0)
 					p.content.ResetVirtualRows()
 					p.updateSize()
+					return p.MaybePreviewItem(true)
 				},
-				SearchBoxOpens: func(searchHeight int) {
+				SearchBoxOpens: func(searchHeight int) tea.Cmd {
 					p.updateSize()
+					return nil
 				},
 			},
 		)
