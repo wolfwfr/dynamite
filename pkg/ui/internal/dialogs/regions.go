@@ -63,7 +63,7 @@ type regionListStyles struct {
 	helpLine     lipgloss.Style
 }
 
-func newStyles(darkBG bool) regionListStyles {
+func newRegionStyles(darkBG bool) regionListStyles {
 	var s regionListStyles
 	s.title = lipgloss.NewStyle().Padding(1, 0, 2, 0)
 	s.content = lipgloss.NewStyle().PaddingTop(1).PaddingBottom(2)
@@ -222,7 +222,7 @@ func (m *Regions) newDelegate(s *regionListStyles) regionsItemDelegate {
 }
 
 func (m *Regions) updateStyles(isDark bool) {
-	s := newStyles(isDark)
+	s := newRegionStyles(isDark)
 	m.content.Styles.Title = s.title
 	m.content.Styles.HelpStyle = s.help
 
