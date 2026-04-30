@@ -3,6 +3,7 @@
 package table
 
 import (
+	"fmt"
 	"math"
 	"slices"
 	"strings"
@@ -70,6 +71,7 @@ func (r Rows) ToStrings() []string {
 // Column defines the table structure.
 type Column struct {
 	Title        string
+	Suffix       string
 	Width        int
 	DynamicWidth int
 	InVisible    bool
@@ -310,7 +312,7 @@ func (m *Model) UpdateContent() (updateHeader bool) {
 	var colChanged bool
 	if m.dynCols {
 		for j := range m.cols {
-			mx := ternary(m.cols[j].DynamicWidth, len(m.cols[j].Title), m.cols[j].DynamicWidth > 0)
+			mx := len(m.cols[j].Title) + len(m.cols[j].Suffix)
 			for i := m.start; i < m.end; i++ {
 				mx = max(mx, len(m.VisualRows()[i][j]))
 			}
@@ -626,7 +628,11 @@ func (m *Model) renderHeader() string {
 			continue
 		}
 		style := lipgloss.NewStyle().Width(width).MaxWidth(width).Inline(true)
-		renderedCell := style.Render(ansi.Truncate(col.Title, width, "…"))
+		renderedCell := style.Render(fmt.Sprintf(
+			"%s%s",
+			ansi.Truncate(col.Title, width-len(col.Suffix), "…"),
+			col.Suffix,
+		))
 		s = append(s, m.styles.Header.Render(renderedCell))
 	}
 	return lipgloss.JoinHorizontal(lipgloss.Top, slices.Clip(s)...)
