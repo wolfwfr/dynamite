@@ -113,24 +113,22 @@ func NewModel(ctx context.Context, cfg appconfig.Config) Model {
 		},
 	}
 
-	tableViewInherit := make([]keymaps.AdditionalKey, len(inheritedKeys)+1)
-	copy(tableViewInherit[:len(inheritedKeys)], inheritedKeys)
-	copy(tableViewInherit[len(inheritedKeys):], []keymaps.AdditionalKey{
-		{
-			Binding: km.Regions,
-			Call:    m.SignalOpenRegionsDialog(),
-		},
-	})
+	{ // views
+		m.tableSelection = tableselection.NewTableSelectionView(ctx, &cfg, tableselection.WithAdditionalKeys(keymaps.AdditionalKeys(inheritedKeys)))
+		m.itemselection = itemselection.NewItemSelectionView(ctx, &cfg, itemselection.WithAdditionalKeys(keymaps.AdditionalKeys(inheritedKeys)))
+	}
 
-	m.tableSelection = tableselection.NewTableSelectionView(ctx, &cfg, tableselection.WithAdditionalKeys(keymaps.AdditionalKeys(tableViewInherit)))
-	m.itemselection = itemselection.NewItemSelectionView(ctx, &cfg, itemselection.WithAdditionalKeys(keymaps.AdditionalKeys(inheritedKeys)))
+	{ // table view bound dialogs
+		tableViewDialogKeys := m.tableSelection.DialogKeyMaps()
+		m.dialogs.help = dialogs.NewHelp(m.tableSelection, m.itemselection, DialogCloseKeymapFrom(km.Help))
+		m.dialogs.region = dialogs.NewRegionsDialog(m.config.AvailableRegions, m.config.StarredRegions, m.config.Region, DialogCloseKeymapFrom(tableViewDialogKeys.RegionDialog))
+	}
 
-	m.dialogs.help = dialogs.NewHelp(m.tableSelection, m.itemselection, DialogCloseKeymapFrom(km.Help))
-	m.dialogs.region = dialogs.NewRegionsDialog(m.config.AvailableRegions, m.config.StarredRegions, m.config.Region, DialogCloseKeymapFrom(km.Regions))
-
-	itemViewDialogKeys := m.itemselection.DialogKeyMaps()
-	m.dialogs.columnVisibility = dialogs.NewColumnVisibilityDialog(DialogCloseKeymapFrom(itemViewDialogKeys.ColumnVisibility))
-	m.dialogs.columnSorting = dialogs.NewColumnSortingDialog(DialogCloseKeymapFrom(itemViewDialogKeys.ColumnSorting))
+	{ // table view bound dialogs
+		itemViewDialogKeys := m.itemselection.DialogKeyMaps()
+		m.dialogs.columnVisibility = dialogs.NewColumnVisibilityDialog(DialogCloseKeymapFrom(itemViewDialogKeys.ColumnVisibility))
+		m.dialogs.columnSorting = dialogs.NewColumnSortingDialog(DialogCloseKeymapFrom(itemViewDialogKeys.ColumnSorting))
+	}
 
 	return m
 
@@ -148,30 +146,89 @@ func (m Model) Init() tea.Cmd {
 	return tea.Batch(cmds...)
 }
 
+// update handles the message and proceeds to forward it to the model's children
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
 	switch msg := msg.(type) {
 	case messages.SwitchView:
-		return m.handleSwitchView(msg)
+		m, cmd = m.handleSwitchView(msg)
 	case tea.WindowSizeMsg:
 		m = m.applySize(msg.Height, msg.Width).(Model)
 	case messages.ToggleHelp:
-		return m.ToggleHelpDialog()
+		m, cmd = m.ToggleHelpDialog()
 	case messages.ToggleRegions:
-		return m.ToggleRegionsDialog()
+		m, cmd = m.ToggleRegionsDialog()
 	case messages.ToggleColumnVisibility:
-		return m.ToggleColumnsDialog()
+		m, cmd = m.ToggleColumnsDialog()
 	case messages.ToggleColumnSorting:
-		return m.ToggleColumnSortingDialog()
+		m, cmd = m.ToggleColumnSortingDialog()
 	case messages.SwitchRegion:
-		return m.switchRegion(msg.OldRegion, msg.NewRegion)
+		m, cmd = m.switchRegion(msg.OldRegion, msg.NewRegion)
 	case messages.SwitchQueryMode:
-		return m.SwitchQueryMode(msg)
+		m, cmd = m.SwitchQueryMode(msg)
 	}
 
-	return m.forward(msg)
+	var fwdCmd tea.Cmd
+	m, fwdCmd = m.forward(msg)
+	return m, tea.Batch(cmd, fwdCmd)
 }
 
-func (m Model) SwitchQueryMode(msg messages.SwitchQueryMode) (tea.Model, tea.Cmd) {
+// forward takes a message and decides to broadcast or to forward only to active
+// children
+func (m Model) forward(msg tea.Msg) (Model, tea.Cmd) {
+	if _, isKeyPress := msg.(tea.KeyPressMsg); isKeyPress {
+		return m.routeToActiveOnly(msg)
+	}
+	return m.broadcast(msg)
+}
+
+// broadcast takes a message and forwards it to all children
+func (m Model) broadcast(msg tea.Msg) (Model, tea.Cmd) {
+	cmds := []tea.Cmd{}
+
+	// views
+	cmds = append(cmds, m.tableSelection.Update(msg))
+	cmds = append(cmds, m.itemselection.Update(msg))
+
+	// dialogs
+	cmds = append(cmds, m.dialogs.help.Update(msg))
+	cmds = append(cmds, m.dialogs.region.Update(msg))
+	cmds = append(cmds, m.dialogs.columnVisibility.Update(msg))
+	cmds = append(cmds, m.dialogs.columnSorting.Update(msg))
+
+	return m, tea.Batch(cmds...)
+}
+
+// routeToActiveOnly takes a message and only routes it to a single child, the
+// active child with highest precedence (dialogs take precedence over views)
+func (m Model) routeToActiveOnly(msg tea.Msg) (Model, tea.Cmd) {
+	// exclusively forward keypresses to dialogs if open
+	if m.dialogs.open {
+		switch m.dialogs.active {
+		case help_dialog:
+			return m, m.dialogs.help.Update(msg)
+		case regions_dialog:
+			return m, m.dialogs.region.Update(msg)
+		case columns_dialog:
+			return m, m.dialogs.columnVisibility.Update(msg)
+		case column_sorting_dialog:
+			return m, m.dialogs.columnSorting.Update(msg)
+		}
+	}
+
+	switch m.activeView {
+	case table_selection:
+		return m, m.tableSelection.Update(msg)
+	case item_selection:
+		return m, m.itemselection.Update(msg)
+	default:
+		log.Fatalf("could not identify active view '%d'", int(m.activeView))
+	}
+
+	return m, nil
+}
+
+func (m Model) SwitchQueryMode(msg messages.SwitchQueryMode) (Model, tea.Cmd) {
 	m.QueryMode = msg.NewMode
 	switch m.QueryMode {
 	case messages.ScanMode:
@@ -182,7 +239,7 @@ func (m Model) SwitchQueryMode(msg messages.SwitchQueryMode) (tea.Model, tea.Cmd
 	return m, nil
 }
 
-func (m Model) switchRegion(oldr, newr string) (tea.Model, tea.Cmd) {
+func (m Model) switchRegion(oldr, newr string) (Model, tea.Cmd) {
 	m.config.Region = newr
 	return m, m.Init()
 }
@@ -194,61 +251,7 @@ func (m Model) applySize(height, width int) tea.Model {
 	return m
 }
 
-func (m Model) forward(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-		cmds := []tea.Cmd{}
-		cmds = append(cmds, m.tableSelection.Update(msg))
-		cmds = append(cmds, m.itemselection.Update(msg))
-		cmds = append(cmds, m.dialogs.help.Update(msg))
-		cmds = append(cmds, m.dialogs.region.Update(msg))
-		cmds = append(cmds, m.dialogs.columnVisibility.Update(msg))
-		cmds = append(cmds, m.dialogs.columnSorting.Update(msg))
-		return m, tea.Batch(cmds...)
-
-	case messages.SelectTable, messages.PreviewItem, messages.ToggleColumnVisibility:
-		return m, m.itemselection.Update(msg)
-	case messages.InitColumnVisibility:
-		return m, m.dialogs.columnVisibility.Update(msg)
-	case messages.InitColumnSorting:
-		return m, m.dialogs.columnSorting.Update(msg)
-	case tea.KeyPressMsg:
-		// exclusively forward keypresses to dialogs if open
-		if m.dialogs.open {
-			switch m.dialogs.active {
-			case help_dialog:
-				return m, m.dialogs.help.Update(msg)
-			case regions_dialog:
-				return m, m.dialogs.region.Update(msg)
-			case columns_dialog:
-				return m, m.dialogs.columnVisibility.Update(msg)
-			case column_sorting_dialog:
-				return m, m.dialogs.columnSorting.Update(msg)
-			}
-		}
-	}
-
-	switch m.activeView {
-	case table_selection:
-		return m.handleTableSelectionMode(msg)
-	case item_selection:
-		return m.handleItemSelectionMode(msg)
-	default:
-		log.Fatalf("could not identify active view '%d'", int(m.activeView))
-	}
-
-	return m, nil
-}
-
-func (m Model) handleTableSelectionMode(msg tea.Msg) (tea.Model, tea.Cmd) {
-	return m, m.tableSelection.Update(msg)
-}
-
-func (m Model) handleItemSelectionMode(msg tea.Msg) (tea.Model, tea.Cmd) {
-	return m, m.itemselection.Update(msg)
-}
-
-func (m Model) handleSwitchView(msg messages.SwitchView) (tea.Model, tea.Cmd) {
+func (m Model) handleSwitchView(msg messages.SwitchView) (Model, tea.Cmd) {
 	switch msg.NewView {
 	case messages.Table_selection:
 		m.activeView = table_selection
@@ -258,7 +261,7 @@ func (m Model) handleSwitchView(msg messages.SwitchView) (tea.Model, tea.Cmd) {
 	return m, m.dialogs.help.Update(msg)
 }
 
-func (m Model) ToggleHelpDialog() (tea.Model, tea.Cmd) {
+func (m Model) ToggleHelpDialog() (Model, tea.Cmd) {
 	if m.dialogs.open && m.dialogs.active != help_dialog {
 		return m, nil
 	}
@@ -269,7 +272,7 @@ func (m Model) ToggleHelpDialog() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m Model) ToggleRegionsDialog() (tea.Model, tea.Cmd) {
+func (m Model) ToggleRegionsDialog() (Model, tea.Cmd) {
 	if m.dialogs.open && m.dialogs.active != regions_dialog {
 		return m, nil
 	}
@@ -280,7 +283,7 @@ func (m Model) ToggleRegionsDialog() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m Model) ToggleColumnsDialog() (tea.Model, tea.Cmd) {
+func (m Model) ToggleColumnsDialog() (Model, tea.Cmd) {
 	if m.dialogs.open && m.dialogs.active != columns_dialog {
 		return m, nil
 	}
@@ -291,7 +294,7 @@ func (m Model) ToggleColumnsDialog() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m Model) ToggleColumnSortingDialog() (tea.Model, tea.Cmd) {
+func (m Model) ToggleColumnSortingDialog() (Model, tea.Cmd) {
 	if m.dialogs.open && m.dialogs.active != column_sorting_dialog {
 		return m, nil
 	}
@@ -362,11 +365,5 @@ func heightFromView(v string) int {
 func (m Model) SignalOpenHelpDialog() tea.Cmd {
 	return func() tea.Msg {
 		return messages.ToggleHelp{}
-	}
-}
-
-func (m Model) SignalOpenRegionsDialog() tea.Cmd {
-	return func() tea.Msg {
-		return messages.ToggleRegions{}
 	}
 }

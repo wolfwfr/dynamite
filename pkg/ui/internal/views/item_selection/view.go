@@ -85,7 +85,10 @@ func (m *ItemSelection) Init() tea.Cmd {
 	return m.itemsPane.Init()
 }
 
+// update handles the message and if it does not detect a keypress that it can
+// map itself proceeds to forward the message to the model's children
 func (m *ItemSelection) Update(msg tea.Msg) tea.Cmd {
+	var cmd tea.Cmd
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
 		switch {
@@ -97,15 +100,42 @@ func (m *ItemSelection) Update(msg tea.Msg) tea.Cmd {
 		m.window.height = msg.Height
 		m.window.width = msg.Width
 		m.applySize()
-		return nil
 	case messages.ZoomToggleItemSelectionPane, messages.ZoomToggleItemDetailsPane:
-		m.handleZoom(msg)
-		return nil
+		cmd = m.handleZoom(msg)
 	}
 
-	return m.forward(msg)
+	return tea.Batch(cmd, m.forward(msg))
 }
 
+// forward takes a message and decides to broadcast or to forward only to focused
+// children
+func (m *ItemSelection) forward(msg tea.Msg) tea.Cmd {
+	if _, isKeyPress := msg.(tea.KeyPressMsg); isKeyPress {
+		return m.routeToFocusedOnly(msg)
+	}
+	return m.broadcast(msg)
+}
+
+// broadcast takes a message and forwards it to all children
+func (m ItemSelection) broadcast(msg tea.Msg) tea.Cmd {
+	cmds := []tea.Cmd{}
+	cmds = append(cmds, m.itemsPane.Update(msg))
+	cmds = append(cmds, m.detailsPane.Update(msg))
+	return tea.Batch(cmds...)
+}
+
+// routeToFocusedOnly takes a message and only routes it to a single child, the
+// active child with highest precedence (dialogs take precedence over views)
+func (m *ItemSelection) routeToFocusedOnly(msg tea.Msg) tea.Cmd {
+	switch m.focused {
+	case itemsPaneID:
+		return m.itemsPane.Update(msg)
+	case detailsPaneID:
+		return m.detailsPane.Update(msg)
+	default:
+		panic("focused pane not found")
+	}
+}
 func (m *ItemSelection) handleZoom(msg tea.Msg) tea.Cmd {
 	switch msg.(type) {
 	case messages.ZoomToggleItemSelectionPane:
@@ -119,25 +149,6 @@ func (m *ItemSelection) handleZoom(msg tea.Msg) tea.Cmd {
 	}
 	m.applySize()
 	return nil
-}
-
-func (m *ItemSelection) DialogKeyMaps() DialogKeyMaps {
-	return DialogKeyMaps{
-		ColumnVisibility: m.itemsPane.KeyMap.ColVis,
-		ColumnSorting:    m.itemsPane.KeyMap.ColSort,
-	}
-}
-
-func (m *ItemSelection) forward(msg tea.Msg) tea.Cmd {
-	_, isPreview := msg.(messages.PreviewItem)
-	_, isToggleFormat := msg.(messages.ToggleJSONYAML)
-	_, isScanResult := msg.(messages.ScanPageReady)
-	_, isCopy := msg.(messages.CopyItem)
-	_, isColVis := msg.(messages.ToggleColumnVisibility)
-	if m.focused == itemsPaneID && !isPreview && !isCopy || isToggleFormat || isScanResult || isColVis {
-		return m.itemsPane.Update(msg)
-	}
-	return m.detailsPane.Update(msg)
 }
 
 func (m *ItemSelection) moveFocus() {

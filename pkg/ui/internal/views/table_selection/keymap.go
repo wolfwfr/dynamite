@@ -86,17 +86,29 @@ func DefaultTablePaneKeyMap() *TablePaneKeyMap {
 // is used to render the help menu.
 type TableViewKeyMap struct {
 	MoveFocus key.Binding
+	Regions   key.Binding
+}
+
+// DialogKeyMaps collects keys that toggle view-specific dailogs
+type DialogKeyMaps struct {
+	RegionDialog key.Binding
+}
+
+func (m *TableSelection) DialogKeyMaps() DialogKeyMaps {
+	return DialogKeyMaps{
+		RegionDialog: m.KeyMap.Regions,
+	}
 }
 
 // ShortHelp implements the KeyMap interface.
 func (km *TableViewKeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{km.MoveFocus}
+	return []key.Binding{km.MoveFocus, km.Regions}
 }
 
 // FullHelp implements the KeyMap interface.
 func (km *TableViewKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{km.MoveFocus},
+		{km.MoveFocus, km.Regions},
 	}
 }
 
@@ -106,6 +118,10 @@ func DefaultTableViewKeyMap() *TableViewKeyMap {
 		MoveFocus: key.NewBinding(
 			key.WithKeys("tab", "shift+tab"),
 			key.WithHelp("tab/shift+tab", "switch panes"),
+		),
+		Regions: key.NewBinding(
+			key.WithKeys("R"),
+			key.WithHelp("shift+r", "region select"),
 		),
 	}
 }

@@ -124,10 +124,16 @@ type ItemViewKeyMap struct {
 }
 
 // DialogKeyMaps collects keys that toggle view-specific dailogs
-// TODO: consider dialog-keymap-management at home layer
 type DialogKeyMaps struct {
 	ColumnVisibility key.Binding
 	ColumnSorting    key.Binding
+}
+
+func (m *ItemSelection) DialogKeyMaps() DialogKeyMaps {
+	return DialogKeyMaps{
+		ColumnVisibility: m.itemsPane.KeyMap.ColVis,
+		ColumnSorting:    m.itemsPane.KeyMap.ColSort,
+	}
 }
 
 // ShortHelp implements the KeyMap interface.

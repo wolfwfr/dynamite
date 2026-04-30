@@ -9,20 +9,19 @@ import (
 // KeyMap defines keybindings. It satisfies to the help.KeyMap interface, which
 // is used to render the help menu.
 type KeyMap struct {
-	Quit    key.Binding
-	Help    key.Binding
-	Regions key.Binding
+	Quit key.Binding
+	Help key.Binding
 }
 
 // ShortHelp implements the KeyMap interface.
 func (km *KeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{km.Quit, km.Help, km.Regions}
+	return []key.Binding{km.Quit, km.Help}
 }
 
 // FullHelp implements the KeyMap interface.
 func (km *KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{km.Quit}, {km.Help}, {km.Regions},
+		{km.Quit}, {km.Help},
 	}
 }
 
@@ -36,10 +35,6 @@ func DefaultKeyMap() *KeyMap {
 		Help: key.NewBinding(
 			key.WithKeys("?"),
 			key.WithHelp("?", "help"),
-		),
-		Regions: key.NewBinding(
-			key.WithKeys("R"),
-			key.WithHelp("shift+r", "region select"),
 		),
 	}
 }

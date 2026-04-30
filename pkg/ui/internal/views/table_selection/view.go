@@ -88,25 +88,58 @@ func (m *TableSelection) Init() tea.Cmd {
 	return tea.Batch(m.tablePane.Init(), m.detailsPane.Init())
 }
 
+// update handles the message and if it does not detect a keypress that it can
+// map itself proceeds to forward the message to the model's children
 func (m *TableSelection) Update(msg tea.Msg) tea.Cmd {
+	var cmd tea.Cmd
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, m.KeyMap.MoveFocus):
 			m.moveFocus()
 			return nil
+		case key.Matches(msg, m.KeyMap.Regions):
+			return m.ToggleRegionsDialog()
 		}
 	case tea.WindowSizeMsg:
 		m.window.height = msg.Height
 		m.window.width = msg.Width
 		m.applySize()
-		return nil
 	case messages.ZoomToggleTableSelectionPane, messages.ZoomToggleTableDetailsPane:
-		m.handleZoom(msg)
-		return nil
+		cmd = m.handleZoom(msg)
 	}
 
-	return m.foward(msg)
+	return tea.Batch(cmd, m.forward(msg))
+}
+
+// forward takes a message and decides to broadcast or to forward only to focused
+// children
+func (m *TableSelection) forward(msg tea.Msg) tea.Cmd {
+	if _, isKeyPress := msg.(tea.KeyPressMsg); isKeyPress {
+		return m.routeToFocusedOnly(msg)
+	}
+	return m.broadcast(msg)
+}
+
+// broadcast takes a message and forwards it to all children
+func (m TableSelection) broadcast(msg tea.Msg) tea.Cmd {
+	cmds := []tea.Cmd{}
+	cmds = append(cmds, m.tablePane.Update(msg))
+	cmds = append(cmds, m.detailsPane.Update(msg))
+	return tea.Batch(cmds...)
+}
+
+// routeToFocusedOnly takes a message and only routes it to a single child, the
+// active child with highest precedence (dialogs take precedence over views)
+func (m *TableSelection) routeToFocusedOnly(msg tea.Msg) tea.Cmd {
+	switch m.focused {
+	case tablePaneID:
+		return m.tablePane.Update(msg)
+	case detailsPaneID:
+		return m.detailsPane.Update(msg)
+	default:
+		panic("focused pane not found")
+	}
 }
 
 func (m *TableSelection) handleZoom(msg tea.Msg) tea.Cmd {
@@ -124,21 +157,10 @@ func (m *TableSelection) handleZoom(msg tea.Msg) tea.Cmd {
 	return nil
 }
 
-func (m *TableSelection) foward(msg tea.Msg) tea.Cmd {
-	if _, isDetails := msg.(messages.TableDetails); isDetails {
-		cmds := []tea.Cmd{}
-		cmds = append(cmds, m.tablePane.Update(msg))
-		cmds = append(cmds, m.detailsPane.Update(msg))
-		return tea.Batch(cmds...)
+func (m TableSelection) ToggleRegionsDialog() tea.Cmd {
+	return func() tea.Msg {
+		return messages.ToggleRegions{}
 	}
-
-	switch m.focused {
-	case tablePaneID:
-		return m.tablePane.Update(msg)
-	case detailsPaneID:
-		return m.detailsPane.Update(msg)
-	}
-	return nil
 }
 
 func (m *TableSelection) applySize() {
