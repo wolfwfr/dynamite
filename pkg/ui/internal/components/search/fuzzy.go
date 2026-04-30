@@ -31,7 +31,10 @@ func (f FilteredItems) items() []Item {
 // FilterMatchesMsg contains data about items matched during filtering. The
 // message should be routed to Update for processing.
 // TODO: move to messages package
-type FilterMatchesMsg []FilteredItem
+type FilterMatchesMsg struct {
+	ID    string
+	Items []FilteredItem
+}
 
 // FilterFunc takes a term and a list of strings to search through
 // (defined by Item#FilterValue).

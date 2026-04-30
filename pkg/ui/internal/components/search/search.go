@@ -4,6 +4,7 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/google/uuid"
 )
 
 var (
@@ -24,6 +25,8 @@ type SearchCallbacks struct {
 }
 
 type SearchBox struct {
+	id string
+
 	height int
 	width  int
 
@@ -45,6 +48,8 @@ func NewSearchBox(cb SearchCallbacks) *SearchBox {
 	searchInput.Placeholder = "type to search..."
 
 	return &SearchBox{
+		id: uuid.New().String(),
+
 		height: 2,
 		width:  64,
 		input:  searchInput,
@@ -105,15 +110,18 @@ func (s *SearchBox) Update(msg tea.Msg) tea.Cmd {
 			s.input = newQuery
 		}
 	case FilterMatchesMsg:
+		if msg.ID != s.id {
+			return nil
+		}
 		if s.input.Value() == "" {
 			cmds = append(cmds, s.Callbacks.EmptyInput())
 			break
 		}
-		filtered := make([]string, len(msg))
-		for i, match := range msg {
+		filtered := make([]string, len(msg.Items))
+		for i, match := range msg.Items {
 			filtered[i] = match.Item.Content
 		}
-		cmds = append(cmds, s.Callbacks.Results(msg))
+		cmds = append(cmds, s.Callbacks.Results(msg.Items))
 	default:
 		s.input, cmd = s.input.Update(msg)
 		cmds = append(cmds, cmd)
@@ -139,7 +147,10 @@ func (s *SearchBox) Search(query string) tea.Cmd {
 			}
 			filtered[i] = item
 		}
-		return FilterMatchesMsg(filtered)
+		return FilterMatchesMsg{
+			ID:    s.id,
+			Items: filtered,
+		}
 	}
 }
 
