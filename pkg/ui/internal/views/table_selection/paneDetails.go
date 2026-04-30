@@ -16,6 +16,7 @@ import (
 	apitypes "github.com/wolfwfr/dynamite/pkg/aws/dynamodb/types"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/keymaps"
+	u "github.com/wolfwfr/dynamite/pkg/util"
 )
 
 type detailsPane struct {
@@ -119,9 +120,9 @@ func renderDetails(details *apitypes.DescribeTableResponse) string {
 		localIdxItemCount += *i.ItemCount
 	}
 
-	name := ternarySafe(details.TableName, "", details.TableName != nil)
-	arn := ternarySafe(details.TableArn, "", details.TableArn != nil)
-	id := ternarySafe(details.TableId, "", details.TableId != nil)
+	name := u.IfNotNil(details.TableName, "")
+	arn := u.IfNotNil(details.TableArn, "")
+	id := u.IfNotNil(details.TableId, "")
 
 	s := strings.Builder{}
 	fmt.Fprintf(&s, "----------------------------------------------------\n")
@@ -222,7 +223,7 @@ func formatKeys(hash string, rang *string, indentation string, attrDef []dynamod
 			}
 		}
 		if rang != nil && *rang == *d.AttributeName {
-			rangAttr = toPtr(string(d.AttributeType))
+			rangAttr = u.ToPtr(string(d.AttributeType))
 			if hashAttr != "" {
 				break
 			}
@@ -279,16 +280,4 @@ func primaryKeysFromSchema(s []dynamodbtypes.KeySchemaElement) (hash string, ran
 		}
 	}
 	return
-}
-
-func toPtr[T any](t T) *T {
-	return &t
-}
-
-// with appropriate condition, it escapes nil-pointers
-func ternarySafe[T any](first *T, second T, cond bool) T {
-	if cond {
-		return *first
-	}
-	return second
 }

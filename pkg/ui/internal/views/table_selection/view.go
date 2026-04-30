@@ -12,6 +12,7 @@ import (
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/keymaps"
+	u "github.com/wolfwfr/dynamite/pkg/util"
 )
 
 type paneID int
@@ -141,7 +142,7 @@ func (m *TableSelection) foward(msg tea.Msg) tea.Cmd {
 }
 
 func (m *TableSelection) applySize() {
-	w := ternary(m.window.width, m.window.width/2, m.zoomEnabled)
+	w := u.Ternary(m.window.width, m.window.width/2, m.zoomEnabled)
 	borderStyle = borderStyle.
 		Height(m.window.height - 2).
 		Width(w)
@@ -164,15 +165,8 @@ func (m *TableSelection) moveFocus() {
 func (m *TableSelection) View() string {
 	s := strings.Builder{}
 	s.WriteString(lipgloss.JoinHorizontal(lipgloss.Top,
-		ternary(m.renderBorder(tablePaneID, m.tablePane.View()), "", !m.zoomEnabled || m.zoomtarget == tablePaneID),
-		ternary(m.renderBorder(detailsPaneID, m.detailsPane.View()), "", !m.zoomEnabled || m.zoomtarget == detailsPaneID),
+		u.Ternary(m.renderBorder(tablePaneID, m.tablePane.View()), "", !m.zoomEnabled || m.zoomtarget == tablePaneID),
+		u.Ternary(m.renderBorder(detailsPaneID, m.detailsPane.View()), "", !m.zoomEnabled || m.zoomtarget == detailsPaneID),
 	))
 	return s.String()
-}
-
-func ternary[T any](first T, second T, cond bool) T {
-	if cond {
-		return first
-	}
-	return second
 }

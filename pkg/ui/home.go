@@ -19,6 +19,7 @@ import (
 	itemselection "github.com/wolfwfr/dynamite/pkg/ui/internal/views/item_selection"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/keymaps"
 	tableselection "github.com/wolfwfr/dynamite/pkg/ui/internal/views/table_selection"
+	u "github.com/wolfwfr/dynamite/pkg/util"
 )
 
 type View int
@@ -320,8 +321,8 @@ func (m Model) View() tea.View {
 
 	// assemble gutter
 	region := regionBlock.Render(m.config.Region)
-	queryMode := ternary("QUERY", "SCAN", m.QueryMode == messages.QueryMode)
-	query := ternary(fmt.Sprintf(" %s", queryModeBlock.Render(queryMode)), "", m.activeView == item_selection)
+	queryMode := u.Ternary("QUERY", "SCAN", m.QueryMode == messages.QueryMode)
+	query := u.Ternary(fmt.Sprintf(" %s", queryModeBlock.Render(queryMode)), "", m.activeView == item_selection)
 	gutter := lipgloss.JoinHorizontal(lipgloss.Left, region, query, " ", help)
 
 	page = lipgloss.JoinVertical(lipgloss.Top, page, gutter)
@@ -368,11 +369,4 @@ func (m Model) SignalOpenRegionsDialog() tea.Cmd {
 	return func() tea.Msg {
 		return messages.ToggleRegions{}
 	}
-}
-
-func ternary[T any](first, second T, cond bool) T {
-	if cond {
-		return first
-	}
-	return second
 }

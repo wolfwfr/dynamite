@@ -12,6 +12,7 @@ import (
 
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	commonstyles "github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
+	u "github.com/wolfwfr/dynamite/pkg/util"
 )
 
 var columnSortingDialogStyle = commonstyles.DialogStyle
@@ -101,7 +102,7 @@ func (d sortingItemDelegate) Render(w io.Writer, m list.Model, index int, listIt
 		return
 	}
 
-	str := fmt.Sprintf("%s %s", i.name, ternary(ternary("[ASC] ", "[DESC]", i.ascending), "      ", i.checked))
+	str := fmt.Sprintf("%s %s", i.name, u.Ternary(u.Ternary("[ASC] ", "[DESC]", i.ascending), "      ", i.checked))
 
 	fn := d.styles.item.Render
 	if index == m.Index() {
@@ -251,7 +252,7 @@ func (m *ColumnSorting) selectItem() tea.Cmd {
 	if sel.name != m.state.SortingOn {
 		// when selecting new item, reset old item
 		if m.state.SortingOn != "" {
-			oldIdx := find(m.state.AllColumns, m.state.SortingOn)
+			oldIdx := u.Find(m.state.AllColumns, m.state.SortingOn)
 			itm := items[oldIdx].(sortingItem)
 			itm.checked = false
 			cmds = append(cmds, m.content.SetItem(oldIdx, itm))
@@ -343,13 +344,4 @@ func (m *ColumnSorting) JoinedHelp() string {
 	firstCol = append(firstCol, m.keyMap.reset)
 	listBindings[0] = firstCol
 	return m.content.Help.FullHelpView(listBindings)
-}
-
-func find[S []E, E comparable](slice S, target E) int {
-	for i, e := range slice {
-		if e == target {
-			return i
-		}
-	}
-	return -1
 }

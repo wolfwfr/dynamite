@@ -22,6 +22,7 @@ import (
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/internal/search"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/internal/table"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/keymaps"
+	u "github.com/wolfwfr/dynamite/pkg/util"
 )
 
 type previewFormat int
@@ -481,7 +482,7 @@ func (m *ItemSelectionPane) sortRows(rows []table.Row) []table.Row {
 	for i, c := range cols {
 		colsS[i] = c.Title
 	}
-	idx := find(colsS, m.columnSorting.SortingOn)
+	idx := u.Find(colsS, m.columnSorting.SortingOn)
 	if idx < 0 {
 		return rows
 	}
@@ -625,7 +626,7 @@ func (m *ItemSelectionPane) resetColumnVisibility() {
 }
 
 func (m *ItemSelectionPane) handleResetColumnSortingMessage(msg messages.ColumnSortingReset) {
-	if msg.TableARN != ternarySafe(m.selectedTable.TableArn, "", m.selectedTable.TableArn != nil) { // expired
+	if msg.TableARN != u.IfNotNil(m.selectedTable.TableArn, "") { // expired
 		return
 	}
 	m.resetColumnSorting()
@@ -668,7 +669,7 @@ func (m *ItemSelectionPane) escape() tea.Cmd {
 }
 
 func (m *ItemSelectionPane) UpdateColumnVisibility(msg messages.ColumnVisibilityUpdate) tea.Cmd {
-	if msg.TableARN != ternarySafe(m.selectedTable.TableArn, "", m.selectedTable.TableArn != nil) { // expired
+	if msg.TableARN != u.IfNotNil(m.selectedTable.TableArn, "") { // expired
 		return nil
 	}
 	cols := m.content.Columns()
@@ -711,7 +712,7 @@ func (m *ItemSelectionPane) toggleColumnVsibilityDialog(msg tea.Msg) tea.Cmd {
 		_, isInVisible := vis[c.Title]
 		visB = append(visB, !isInVisible)
 	}
-	arn := ternarySafe(m.selectedTable.TableArn, "", m.selectedTable.TableArn != nil)
+	arn := u.IfNotNil(m.selectedTable.TableArn, "")
 	toggle := func() tea.Msg {
 		return messages.ToggleColumnVisibility{}
 	}
@@ -726,7 +727,7 @@ func (m *ItemSelectionPane) toggleColumnVsibilityDialog(msg tea.Msg) tea.Cmd {
 }
 
 func (m *ItemSelectionPane) UpdateColumnSorting(msg messages.ColumnSortingUpdate) tea.Cmd {
-	if msg.TableARN != ternarySafe(m.selectedTable.TableArn, "", m.selectedTable.TableArn != nil) { // expired
+	if msg.TableARN != u.IfNotNil(m.selectedTable.TableArn, "") { // expired
 		return nil
 	}
 	cols := m.content.Columns()
@@ -768,7 +769,7 @@ func (m *ItemSelectionPane) toggleColumnSortingDialog(msg tea.Msg) tea.Cmd {
 	}
 	sorting := m.columnSorting.SortingOn
 	ascending := m.columnSorting.Ascending
-	arn := ternarySafe(m.selectedTable.TableArn, "", m.selectedTable.TableArn != nil)
+	arn := u.IfNotNil(m.selectedTable.TableArn, "")
 	toggle := func() tea.Msg {
 		return messages.ToggleColumnSorting{}
 	}
@@ -936,21 +937,4 @@ func parseRows(cols []string, tableKeys [][]types.KeyValue) []table.Row {
 		rows[i] = row
 	}
 	return rows
-}
-
-// with appropriate condition, it escapes nil-pointers
-func ternarySafe[T any](first *T, second T, cond bool) T {
-	if cond {
-		return *first
-	}
-	return second
-}
-
-func find[S []E, E comparable](slice S, target E) int {
-	for i, e := range slice {
-		if e == target {
-			return i
-		}
-	}
-	return -1
 }

@@ -21,6 +21,7 @@ import (
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/internal/search"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/internal/table"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/keymaps"
+	u "github.com/wolfwfr/dynamite/pkg/util"
 )
 
 type tableSelectionPane struct {
@@ -220,7 +221,7 @@ func (m *tableSelectionPane) pageNext(init bool) tea.Cmd {
 		}
 		out, err := dynamodb.ListTables(client, ctx, apitypes.ListTablesRequest{
 			LastEvaluatedTableName: m.lastPageKey,
-			Limit:                  toPtr(int32(limit)),
+			Limit:                  u.ToPtr(int32(limit)),
 		})
 
 		msg := messages.TablePageReady{
@@ -432,8 +433,8 @@ func (m *tableSelectionPane) applySize(height, width int) {
 func (m *tableSelectionPane) updateSize() {
 	h, w := m.window.height, m.window.width
 
-	searchBoxH := ternary(m.search.GetHeight(), 0, m.search.IsEnabled())
-	m.content.SetHeight(h - searchBoxH - ternary(1, 0, m.spinner.active))
+	searchBoxH := u.Ternary(m.search.GetHeight(), 0, m.search.IsEnabled())
+	m.content.SetHeight(h - searchBoxH - u.Ternary(1, 0, m.spinner.active))
 	m.content.SetWidth(w)
 	m.search.SetWidth(w)
 }
@@ -442,7 +443,7 @@ func (m *tableSelectionPane) View() string {
 	if m.err != nil {
 		return m.err.Error()
 	}
-	content := ternary(m.content.View(), m.noContentMessage(), len(m.content.Rows()) > 0)
+	content := u.Ternary(m.content.View(), m.noContentMessage(), len(m.content.Rows()) > 0)
 	rendering := []string{content, m.search.View()}
 	if m.spinner.active {
 		rendering = slices.Insert(rendering, 1, fmt.Sprintf("%s %s", m.spinner.model.View(), m.spinner.text))

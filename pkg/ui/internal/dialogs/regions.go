@@ -325,10 +325,3 @@ func (m *Regions) View() string {
 		),
 	)
 }
-
-func ternary[T any](first, second T, cond bool) T {
-	if cond {
-		return first
-	}
-	return second
-}

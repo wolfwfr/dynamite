@@ -11,6 +11,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	commonstyles "github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
+	u "github.com/wolfwfr/dynamite/pkg/util"
 )
 
 var columnsDialogStyle = commonstyles.DialogStyle
@@ -146,7 +147,7 @@ func (d columnsItemDelegate) Render(w io.Writer, m list.Model, index int, listIt
 		return
 	}
 
-	str := fmt.Sprintf("%s %s", ternary("[x]", "[ ]", i.checked), i.name)
+	str := fmt.Sprintf("%s %s", u.Ternary("[x]", "[ ]", i.checked), i.name)
 
 	fn := d.styles.item.Render
 	if index == m.Index() {
