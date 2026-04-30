@@ -38,8 +38,15 @@ type Regions struct {
 	defaultDialogHeight int
 	defaultDialogWidth  int
 
-	width  int
-	height int
+	window struct {
+		width  int
+		height int
+	}
+
+	dialog struct {
+		width  int
+		height int
+	}
 
 	styles regionListStyles
 
@@ -53,6 +60,7 @@ type regionListStyles struct {
 	selectedItem lipgloss.Style
 	header       lipgloss.Style
 	help         lipgloss.Style
+	helpLine     lipgloss.Style
 }
 
 func newStyles(darkBG bool) regionListStyles {
@@ -62,7 +70,8 @@ func newStyles(darkBG bool) regionListStyles {
 	s.item = lipgloss.NewStyle().PaddingLeft(4)
 	s.selectedItem = lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("170"))
 	s.header = lipgloss.NewStyle().Foreground(lipgloss.Color("#B0B0B0"))
-	s.help = list.DefaultStyles(darkBG).HelpStyle.PaddingLeft(4).PaddingBottom(1).PaddingTop(1)
+	s.help = list.DefaultStyles(darkBG).HelpStyle.Padding(1, 2, 0, 2)
+	s.helpLine = lipgloss.NewStyle().PaddingBottom(1)
 	return s
 }
 
@@ -70,16 +79,16 @@ type item string
 
 func (i item) FilterValue() string { return "" }
 
-type itemDelegate struct {
+type regionsItemDelegate struct {
 	styles       *regionListStyles
 	firstStarred *string
 	firstNormal  string
 }
 
-func (d itemDelegate) Height() int                             { return 1 }
-func (d itemDelegate) Spacing() int                            { return 0 }
-func (d itemDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
-func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
+func (d regionsItemDelegate) Height() int                             { return 1 }
+func (d regionsItemDelegate) Spacing() int                            { return 0 }
+func (d regionsItemDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
+func (d regionsItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
 	i, ok := listItem.(item)
 	if !ok {
 		return
@@ -142,15 +151,18 @@ func NewRegionsDialog(available, starred []string, current string, close key.Bin
 		},
 
 		defaultDialogHeight: 46,
-		defaultDialogWidth:  50,
+		defaultDialogWidth:  55,
 	}
-	r.width = r.defaultDialogWidth // TODO: make more robust & dynamic
-	r.height = r.defaultDialogHeight
+	r.dialog.width = r.defaultDialogWidth
+	r.dialog.height = r.defaultDialogHeight
+
+	r.window.width = 150
+	r.window.height = 100
 
 	var sorted []list.Item
 	sorted, r.unstarred = compileSortedList(available, starred)
 
-	l := list.New(sorted, itemDelegate{}, r.width, r.height)
+	l := list.New(sorted, regionsItemDelegate{}, r.dialog.width, r.dialog.height)
 	l.Title = "AWS Regions"
 	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(false)
@@ -161,9 +173,12 @@ func NewRegionsDialog(available, starred []string, current string, close key.Bin
 	l.KeyMap.ShowFullHelp.SetHelp("m", "more")
 	l.KeyMap.CloseFullHelp.SetKeys("m")
 	l.KeyMap.CloseFullHelp.SetHelp("m", "close help")
+	l.KeyMap.Quit.SetKeys(r.keyMap.close.Keys()...)
+	l.KeyMap.Quit.SetHelp(r.keyMap.close.Help().Key, r.keyMap.close.Help().Desc)
 
 	r.content = l
 	r.updateStyles(true) // default to dark styles.
+	r.updateSize()
 
 	return r
 }
@@ -189,7 +204,7 @@ func compileSortedList(available, starred []string) (full []list.Item, unstarred
 	return items, unstarred
 }
 
-func (m *Regions) newDelegate(s *regionListStyles) itemDelegate {
+func (m *Regions) newDelegate(s *regionListStyles) regionsItemDelegate {
 	var firstStarred *string
 	var firstNormal string
 	if len(m.starred) > 0 {
@@ -198,7 +213,7 @@ func (m *Regions) newDelegate(s *regionListStyles) itemDelegate {
 	if len(m.unstarred) > 0 {
 		firstNormal = m.unstarred[0]
 	}
-	return itemDelegate{
+	return regionsItemDelegate{
 		styles:       s,
 		firstStarred: firstStarred,
 		firstNormal:  firstNormal,
@@ -219,7 +234,7 @@ func (m *Regions) Init() tea.Cmd {
 }
 
 func (m *Regions) Width() int {
-	return m.width
+	return m.dialog.width
 }
 
 func (m *Regions) Update(msg tea.Msg) tea.Cmd {
@@ -268,21 +283,45 @@ func (m *Regions) toggleDialog() tea.Cmd {
 }
 
 func (m *Regions) applySize(height, width int) {
-	m.width = m.defaultDialogWidth
-	m.height = m.defaultDialogHeight
-	padding := 4 // title + newlines + help
-	m.content.SetHeight(m.height - padding)
-	m.content.SetWidth(m.width)
-	regionsDialogStyle = regionsDialogStyle.
-		Height(m.height).
-		Width(m.width)
+	m.window.width = width
+	m.window.height = height
+	m.updateSize()
+}
+
+func (m *Regions) updateSize() {
+	items := m.content.Items()
+
+	// set height of the list within the dialog
+	padding := 4
+	m.content.SetHeight(min(len(m.content.Items())+padding, m.window.height))
+
+	// determine the width of the list within the dialog
+	width := m.defaultDialogWidth
+	for _, itm := range items {
+		width = max(width, len(itm.(item)))
+	}
+	// set width of the list within the dialog
+	m.content.SetWidth(width)
+
+	// set height & width of dialog itself
+	columnsDialogStyle = columnsDialogStyle.
+		Height(m.content.Height() + 2).
+		Width(width + 2)
+
 }
 
 func (m *Regions) View() string {
 	content := m.styles.content.Render(m.content.View())
 	// render help separately to ensure everything is nicely centered
-	help := m.styles.help.Render(m.content.Help.View(m.content))
-	return regionsDialogStyle.Render(content + help)
+	help := m.styles.help.Render(
+		m.styles.helpLine.Render(m.content.Help.View(m.content)),
+	)
+	return regionsDialogStyle.Render(
+		lipgloss.JoinVertical(lipgloss.Center,
+			content,
+			help,
+		),
+	)
 }
 
 func ternary[T any](first, second T, cond bool) T {
