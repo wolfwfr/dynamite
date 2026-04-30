@@ -57,6 +57,20 @@ type TablePageReady struct {
 type ToggleHelp struct{}
 type ToggleRegions struct{}
 
+type ToggleColumns struct{}
+
+type InitColumnVisibility struct {
+	TableARN   string
+	AllColumns []string // matching by index
+	Visible    []bool   // matching by index
+}
+
+type ColumnVisibilityUpdate struct {
+	TableARN   string
+	AllColumns []string // matching by index
+	Visible    []bool   // matching by index
+}
+
 type SwitchRegion struct {
 	OldRegion string
 	NewRegion string

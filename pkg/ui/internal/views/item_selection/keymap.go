@@ -53,6 +53,7 @@ type ItemPaneKeyMap struct {
 	Scan      key.Binding
 	Query     key.Binding
 	Copy      key.Binding
+	ColVis    key.Binding
 }
 
 // ShortHelp implements the KeyMap interface.
@@ -63,7 +64,7 @@ func (km *ItemPaneKeyMap) ShortHelp() []key.Binding {
 // FullHelp implements the KeyMap interface.
 func (km *ItemPaneKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{km.Search, km.Zoom, km.Esc, km.ChCols, km.ToggleFmt, km.Scan, km.Query, km.Copy},
+		{km.Search, km.Zoom, km.Esc, km.ChCols, km.ToggleFmt, km.Scan, km.Query, km.Copy, km.ColVis},
 	}
 }
 
@@ -102,6 +103,10 @@ func DefaultItemPaneKeyMap() *ItemPaneKeyMap {
 			key.WithKeys("Y"),
 			key.WithHelp("shift+y", "copy"),
 		),
+		ColVis: key.NewBinding(
+			key.WithKeys("V"),
+			key.WithHelp("shift+v", "configure column visibility"),
+		),
 	}
 }
 
@@ -111,6 +116,12 @@ func DefaultItemPaneKeyMap() *ItemPaneKeyMap {
 // is used to render the help menu.
 type ItemViewKeyMap struct {
 	MoveFocus key.Binding
+}
+
+// DialogKeyMaps collects keys that toggle view-specific dailogs
+// TODO: consider dialog-keymap-management at home layer
+type DialogKeyMaps struct {
+	ColumnVisibility key.Binding
 }
 
 // ShortHelp implements the KeyMap interface.

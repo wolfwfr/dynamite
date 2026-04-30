@@ -82,9 +82,20 @@ type ItemSelectionPane struct {
 	scanLimit  int
 	queryLimit int
 
-	items           types.Items
-	filteredItems   []int // indices referring to items
-	filtering       bool
+	items types.Items
+
+	// item filtering collects settings related to item filtering
+	itemfiltering struct {
+		items   []int // indices referring to items
+		enabled bool
+	}
+
+	// column visibility collects settings related to column visibillity
+	columnVisibility struct {
+		enabled   bool
+		inVisible map[string]struct{}
+	}
+
 	lastPreviewItem int // index
 	pageKey         map[string]dynamotypes.AttributeValue
 	pageCancel      func()
@@ -128,7 +139,7 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 	{ // contents table
 		t := table.New(
 			table.WithFocused(true),
-			table.WithDynamicColumnWidth(false), // TODO: configurable
+			table.WithDynamicColumnWidth(false),
 		)
 		s := table.DefaultStyles()
 		s.Header = s.Header.
@@ -162,26 +173,26 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 					return table.Rows(p.content.Rows()).ToStrings()
 				},
 				EmptyInput: func() tea.Cmd {
-					p.filtering = false
-					p.filteredItems = make([]int, 0)
+					p.itemfiltering.enabled = false
+					p.itemfiltering.items = make([]int, 0)
 					p.content.ResetVirtualRows()
 					return p.MaybePreviewItem(true)
 				},
 				Results: func(results []search.FilteredItem) tea.Cmd {
-					p.filtering = true
-					p.filteredItems = make([]int, len(results))
+					p.itemfiltering.enabled = true
+					p.itemfiltering.items = make([]int, len(results))
 					rows := p.content.Rows()
 					filtered := make([]table.Row, len(results))
 					for i, match := range results {
 						filtered[i] = rows[match.Index]
-						p.filteredItems[i] = match.Index
+						p.itemfiltering.items[i] = match.Index
 					}
 					p.content.SetVirtualRows(filtered)
 					return nil
 				},
 				Reset: func(searchHeight int) tea.Cmd {
-					p.filtering = false
-					p.filteredItems = make([]int, 0)
+					p.itemfiltering.enabled = false
+					p.itemfiltering.items = make([]int, 0)
 					p.content.ResetVirtualRows()
 					p.content.SetHeight(p.content.Height() + searchHeight)
 					return p.MaybePreviewItem(true)
@@ -225,6 +236,9 @@ func (m *ItemSelectionPane) Init() tea.Cmd {
 	m.content.SetCursor(0)
 	m.initialised = false
 
+	m.resetColumnVisibility()
+	m.resetQueryParameters()
+
 	// cancel any lingering calls
 	m.pageCancel()
 
@@ -236,8 +250,9 @@ func (m *ItemSelectionPane) Update(msg tea.Msg) (cmd tea.Cmd) {
 	_, isSelect := msg.(messages.SelectTable)
 	_, isToggleFmt := msg.(messages.ToggleJSONYAML)
 	_, isTick := msg.(spinner.TickMsg)
+	_, isColVis := msg.(messages.ColumnVisibilityUpdate)
 
-	excludeSearch := isSelect || isToggleFmt || isTick
+	excludeSearch := isSelect || isToggleFmt || isTick || isColVis
 
 	if search.IsSearchBoxMessage(msg) || (!excludeSearch && m.search.IsFocused()) {
 		cmds = append(cmds, m.search.Update(msg))
@@ -274,6 +289,8 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 			return m.enableScanMode()
 		case key.Matches(msg, m.KeyMap.Copy):
 			return m.copy()
+		case key.Matches(msg, m.KeyMap.ColVis):
+			return m.toggleColumnVsibilityDialog(msg)
 		default:
 			if match, call := m.AddKeyMap.Matches(msg); match {
 				return call
@@ -283,6 +300,8 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 		return m.selectTable(msg.TableName, msg.TableDetails)
 	case messages.ToggleJSONYAML:
 		return m.ToggleJSONYAMLFormat()
+	case messages.ColumnVisibilityUpdate:
+		return m.UpdateColumnVisibility(msg)
 	case messages.ScanPageReady:
 		return m.ProcessScanPage(msg)
 	case spinner.TickMsg:
@@ -295,7 +314,7 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 	}
 	cmds = append(cmds, m.content.Update(msg))
 	// paginate when not filtering and at end of content
-	if !m.filtering && m.content.ViewAtEnd() {
+	if !m.itemfiltering.enabled && m.content.ViewAtEnd() {
 		cmds = append(cmds, m.PageNext(false))
 	}
 	return tea.Batch(cmds...)
@@ -350,7 +369,7 @@ func (m *ItemSelectionPane) ToggleJSONYAMLFormat() tea.Cmd {
 // force is used on new pane initialization because lastPreviewItem could be 0
 func (m *ItemSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
 	// render empty preview when no items or no filter results
-	if m.initialised && len(m.items.Raw) == 0 || m.filtering && len(m.filteredItems) == 0 {
+	if m.initialised && len(m.items.Raw) == 0 || m.itemfiltering.enabled && len(m.itemfiltering.items) == 0 {
 		return func() tea.Msg {
 			return messages.PreviewItem{
 				Item: "",
@@ -359,8 +378,8 @@ func (m *ItemSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
 
 	}
 	idx := m.content.Cursor()
-	if len(m.filteredItems) > 0 { // cursor refers to filtered items
-		idx = m.filteredItems[idx]
+	if len(m.itemfiltering.items) > 0 { // cursor refers to filtered items
+		idx = m.itemfiltering.items[idx]
 	}
 	// if preview was already instructed to preview this item, skip
 	if idx == m.lastPreviewItem && !force {
@@ -512,13 +531,19 @@ func (m *ItemSelectionPane) resetQueryParameters() {
 	m.queryMode = messages.ScanMode
 	m.pageKey = nil
 	m.items = types.Items{}
-	m.filteredItems = []int{}
+	m.itemfiltering.items = []int{}
 	m.lastPreviewItem = 0
+}
+
+func (m *ItemSelectionPane) resetColumnVisibility() {
+	m.columnVisibility.enabled = false
+	m.columnVisibility.inVisible = make(map[string]struct{}, 0)
 }
 
 func (m *ItemSelectionPane) escape() tea.Cmd {
 	m.pageCancel()
 	m.resetQueryParameters()
+	m.resetColumnVisibility()
 	m.content.SetContent([]table.Column{}, []table.Row{})
 	switchView := func() tea.Msg {
 		return messages.SwitchView{
@@ -535,10 +560,74 @@ func (m *ItemSelectionPane) escape() tea.Cmd {
 	return tea.Batch(resetPreview, switchView)
 }
 
+func (m *ItemSelectionPane) UpdateColumnVisibility(msg messages.ColumnVisibilityUpdate) tea.Cmd {
+	if msg.TableARN != *m.selectedTable.TableArn { // expired
+		return nil
+	}
+	cols := m.content.Columns()
+	if len(cols) != len(msg.AllColumns) {
+		// TODO: better handling of new columns appearing in view
+		m.resetColumnVisibility()
+		return nil
+	}
+	m.columnVisibility.enabled = true
+	for i, c := range msg.AllColumns {
+		if !msg.Visible[i] {
+			m.columnVisibility.inVisible[c] = struct{}{}
+		} else {
+			delete(m.columnVisibility.inVisible, c)
+		}
+	}
+	for i, c := range cols {
+		_, isInvisible := m.columnVisibility.inVisible[c.Title]
+		cols[i].InVisible = isInvisible
+	}
+	m.content.SetColumns(cols)
+
+	if len(m.columnVisibility.inVisible) == 0 {
+		m.columnVisibility.enabled = false
+		return nil
+	}
+
+	return nil
+}
+
+// toggle column dialog & provide current state (in case dialog opens)
+func (m *ItemSelectionPane) toggleColumnVsibilityDialog(msg tea.Msg) tea.Cmd {
+	cols := m.content.Columns()
+	vis := m.columnVisibility.inVisible
+
+	colsS := make([]string, 0, len(cols))
+	visB := make([]bool, 0, len(cols))
+	for _, c := range cols {
+		colsS = append(colsS, c.Title)
+		_, isInVisible := vis[c.Title]
+		visB = append(visB, !isInVisible)
+
+	}
+	arn := ternarySafe(m.selectedTable.TableArn, "", m.selectedTable.TableArn != nil)
+	toggle := func() tea.Msg {
+		return messages.ToggleColumns{}
+	}
+	state := func() tea.Msg {
+		msg := messages.InitColumnVisibility{}
+		msg.TableARN = arn
+		msg.AllColumns = colsS
+		msg.Visible = visB
+		return msg
+	}
+	return tea.Batch(toggle, state)
+}
+
 func (m *ItemSelectionPane) copy() tea.Cmd {
 	return func() tea.Msg {
 		return messages.CopyItem{}
 	}
+}
+
+type dialog interface {
+	View() string
+	Width() int
 }
 
 func (m *ItemSelectionPane) View() string {
@@ -654,4 +743,12 @@ func parseRows(cols []string, tableKeys [][]types.KeyValue) []table.Row {
 		rows[i] = row
 	}
 	return rows
+}
+
+// with appropriate condition, it escapes nil-pointers
+func ternarySafe[T any](first *T, second T, cond bool) T {
+	if cond {
+		return *first
+	}
+	return second
 }

@@ -27,9 +27,12 @@ type Dialog int
 const (
 	table_selection View = iota
 	item_selection
+)
 
-	help_dialog    Dialog = iota
-	regions_dialog Dialog = iota
+const (
+	help_dialog Dialog = iota
+	regions_dialog
+	columns_dialog
 )
 
 var (
@@ -65,10 +68,11 @@ type Model struct {
 
 	// dialogs
 	dialogs struct {
-		open   bool
-		help   *dialogs.Help
-		region *dialogs.Regions
-		active Dialog
+		open    bool
+		help    *dialogs.Help
+		region  *dialogs.Regions
+		columns *dialogs.Columns
+		active  Dialog
 	}
 
 	// top-level context
@@ -121,6 +125,9 @@ func NewModel(ctx context.Context, cfg appconfig.Config) Model {
 	m.dialogs.help = dialogs.NewHelp(m.tableSelection, m.itemselection, DialogCloseKeymapFrom(km.Help))
 	m.dialogs.region = dialogs.NewRegionsDialog(m.config.AvailableRegions, m.config.StarredRegions, m.config.Region, DialogCloseKeymapFrom(km.Regions))
 
+	itemViewDialogKeys := m.itemselection.DialogKeyMaps()
+	m.dialogs.columns = dialogs.NewColumnVisibilityDialog(DialogCloseKeymapFrom(itemViewDialogKeys.ColumnVisibility))
+
 	return m
 
 }
@@ -147,6 +154,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.ToggleHelpDialog()
 	case messages.ToggleRegions:
 		return m.ToggleRegionsDialog()
+	case messages.ToggleColumns:
+		return m.ToggleColumnsDialog()
 	case messages.SwitchRegion:
 		return m.switchRegion(msg.OldRegion, msg.NewRegion)
 	case messages.SwitchQueryMode:
@@ -187,10 +196,13 @@ func (m Model) forward(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, m.itemselection.Update(msg))
 		cmds = append(cmds, m.dialogs.help.Update(msg))
 		cmds = append(cmds, m.dialogs.region.Update(msg))
+		cmds = append(cmds, m.dialogs.columns.Update(msg))
 		return m, tea.Batch(cmds...)
 
-	case messages.SelectTable, messages.PreviewItem:
+	case messages.SelectTable, messages.PreviewItem, messages.ToggleColumns:
 		return m, m.itemselection.Update(msg)
+	case messages.InitColumnVisibility:
+		return m, m.dialogs.columns.Update(msg)
 	case tea.KeyPressMsg:
 		// exclusively forward keypresses to dialogs if open
 		if m.dialogs.open {
@@ -199,6 +211,8 @@ func (m Model) forward(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, m.dialogs.help.Update(msg)
 			case regions_dialog:
 				return m, m.dialogs.region.Update(msg)
+			case columns_dialog:
+				return m, m.dialogs.columns.Update(msg)
 			}
 		}
 	}
@@ -255,6 +269,17 @@ func (m Model) ToggleRegionsDialog() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m Model) ToggleColumnsDialog() (tea.Model, tea.Cmd) {
+	if m.dialogs.open && m.dialogs.active != columns_dialog {
+		return m, nil
+	}
+	m.dialogs.open = !m.dialogs.open
+	if m.dialogs.open {
+		m.dialogs.active = columns_dialog
+	}
+	return m, nil
+}
+
 type dialog interface {
 	View() string
 	Width() int
@@ -291,6 +316,8 @@ func (m Model) View() tea.View {
 			dialog = m.dialogs.help
 		case regions_dialog:
 			dialog = m.dialogs.region
+		case columns_dialog:
+			dialog = m.dialogs.columns
 		}
 		renderedDialog := dialog.View()
 		dialogLayer := lipgloss.NewLayer(renderedDialog).

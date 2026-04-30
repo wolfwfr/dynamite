@@ -121,12 +121,19 @@ func (m *ItemSelection) handleZoom(msg tea.Msg) tea.Cmd {
 	return nil
 }
 
+func (m *ItemSelection) DialogKeyMaps() DialogKeyMaps {
+	return DialogKeyMaps{
+		ColumnVisibility: m.itemsPane.KeyMap.ColVis,
+	}
+}
+
 func (m *ItemSelection) forward(msg tea.Msg) tea.Cmd {
 	_, isPreview := msg.(messages.PreviewItem)
 	_, isToggleFormat := msg.(messages.ToggleJSONYAML)
 	_, isScanResult := msg.(messages.ScanPageReady)
 	_, isCopy := msg.(messages.CopyItem)
-	if m.focused == itemsPaneID && !isPreview && !isCopy || isToggleFormat || isScanResult {
+	_, isColVis := msg.(messages.ToggleColumns)
+	if m.focused == itemsPaneID && !isPreview && !isCopy || isToggleFormat || isScanResult || isColVis {
 		return m.itemsPane.Update(msg)
 	}
 	return m.detailsPane.Update(msg)
