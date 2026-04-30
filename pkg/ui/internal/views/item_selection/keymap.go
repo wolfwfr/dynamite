@@ -54,6 +54,7 @@ type ItemPaneKeyMap struct {
 	Query     key.Binding
 	Copy      key.Binding
 	ColVis    key.Binding
+	ColSort   key.Binding
 }
 
 // ShortHelp implements the KeyMap interface.
@@ -64,7 +65,7 @@ func (km *ItemPaneKeyMap) ShortHelp() []key.Binding {
 // FullHelp implements the KeyMap interface.
 func (km *ItemPaneKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{km.Search, km.Zoom, km.Esc, km.ChCols, km.ToggleFmt, km.Scan, km.Query, km.Copy, km.ColVis},
+		{km.Search, km.Zoom, km.Esc, km.ChCols, km.ToggleFmt, km.Scan, km.Query, km.Copy, km.ColVis, km.ColSort},
 	}
 }
 
@@ -107,6 +108,10 @@ func DefaultItemPaneKeyMap() *ItemPaneKeyMap {
 			key.WithKeys("V"),
 			key.WithHelp("shift+v", "configure column visibility"),
 		),
+		ColSort: key.NewBinding(
+			key.WithKeys("O"),
+			key.WithHelp("shift+o", "configure column order (excl search)"),
+		),
 	}
 }
 
@@ -122,6 +127,7 @@ type ItemViewKeyMap struct {
 // TODO: consider dialog-keymap-management at home layer
 type DialogKeyMaps struct {
 	ColumnVisibility key.Binding
+	ColumnSorting    key.Binding
 }
 
 // ShortHelp implements the KeyMap interface.

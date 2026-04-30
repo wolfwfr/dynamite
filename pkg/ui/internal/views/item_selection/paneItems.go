@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -96,6 +97,13 @@ type ItemSelectionPane struct {
 		inVisible map[string]struct{}
 	}
 
+	// column sorting collects settings related to column sorting
+	columnSorting struct {
+		SortingOn string
+		Ascending bool // if false, descending
+		Enabled   bool
+	}
+
 	lastPreviewItem int // index
 	pageKey         map[string]dynamotypes.AttributeValue
 	pageCancel      func()
@@ -176,6 +184,7 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 					p.itemfiltering.enabled = false
 					p.itemfiltering.items = make([]int, 0)
 					p.content.ResetVirtualRows()
+					p.KeyMap.ColSort.SetEnabled(true)
 					return p.MaybePreviewItem(true)
 				},
 				Results: func(results []search.FilteredItem) tea.Cmd {
@@ -195,10 +204,12 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 					p.itemfiltering.items = make([]int, 0)
 					p.content.ResetVirtualRows()
 					p.content.SetHeight(p.content.Height() + searchHeight)
+					p.KeyMap.ColSort.SetEnabled(true)
 					return p.MaybePreviewItem(true)
 				},
 				SearchBoxOpens: func(searchHeight int) tea.Cmd {
 					p.content.SetHeight(p.content.Height() - searchHeight)
+					p.KeyMap.ColSort.SetEnabled(false)
 					return nil
 				},
 			},
@@ -237,6 +248,7 @@ func (m *ItemSelectionPane) Init() tea.Cmd {
 	m.initialised = false
 
 	m.resetColumnVisibility()
+	m.resetColumnSorting()
 	m.resetQueryParameters()
 
 	// cancel any lingering calls
@@ -251,8 +263,10 @@ func (m *ItemSelectionPane) Update(msg tea.Msg) (cmd tea.Cmd) {
 	_, isToggleFmt := msg.(messages.ToggleJSONYAML)
 	_, isTick := msg.(spinner.TickMsg)
 	_, isColVis := msg.(messages.ColumnVisibilityUpdate)
+	_, isColSort := msg.(messages.ColumnSortingUpdate)
+	_, isColSortRes := msg.(messages.ColumnSortingReset)
 
-	excludeSearch := isSelect || isToggleFmt || isTick || isColVis
+	excludeSearch := isSelect || isToggleFmt || isTick || isColVis || isColSort || isColSortRes
 
 	if search.IsSearchBoxMessage(msg) || (!excludeSearch && m.search.IsFocused()) {
 		cmds = append(cmds, m.search.Update(msg))
@@ -291,6 +305,8 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 			return m.copy()
 		case key.Matches(msg, m.KeyMap.ColVis):
 			return m.toggleColumnVsibilityDialog(msg)
+		case key.Matches(msg, m.KeyMap.ColSort):
+			return m.toggleColumnSortingDialog(msg)
 		default:
 			if match, call := m.AddKeyMap.Matches(msg); match {
 				return call
@@ -302,8 +318,13 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 		return m.ToggleJSONYAMLFormat()
 	case messages.ColumnVisibilityUpdate:
 		return m.UpdateColumnVisibility(msg)
+	case messages.ColumnSortingUpdate:
+		return m.UpdateColumnSorting(msg)
 	case messages.ScanPageReady:
 		return m.ProcessScanPage(msg)
+	case messages.ColumnSortingReset:
+		m.resetColumnSorting()
+		return nil
 	case spinner.TickMsg:
 		if !m.spinner.active {
 			return nil
@@ -429,25 +450,86 @@ func (m *ItemSelectionPane) ProcessScanPage(msg messages.ScanPageReady) tea.Cmd 
 		completeKeys := compileCompleteKeys(scan.Items.TableKeys, m.keysComplete, rang != nil)
 		defer func() { m.keysComplete = completeKeys }()
 
-		if slices.Equal(m.keysComplete, completeKeys) {
-			// prep new rows & append
-			rows := parseRows(completeKeys, scan.Items.TableKeys)
-			m.content.AppendRows(rows)
-		} else {
-			// prep cols, prep ALL rows, set content
-			cols := make([]table.Column, len(completeKeys))
-			for i, k := range completeKeys {
-				_, ok := m.columnVisibility.inVisible[k]
-				v := m.columnVisibility.enabled && ok // retain visibility
-				cols[i] = table.Column{Title: k, Width: clamp(len(k), 16, 32), InVisible: v}
-			}
+		noColumnUpdate := slices.Equal(m.keysComplete, completeKeys)
+		columnUpdate := !noColumnUpdate
+		appendOnly := noColumnUpdate && !m.columnSorting.Enabled
+
+		switch {
+		case columnUpdate: // update columns & ALL rows
+			cols := m.assembleColumns(completeKeys)
 			rows := parseRows(completeKeys, m.items.TableKeys)
-			m.content.SetContent(cols, rows)
+			m.content.SetContent(cols, m.sortRows(rows))
+		case appendOnly: // update with  new rows (append)
+			rows := parseRows(completeKeys, scan.Items.TableKeys)
+			m.content.AppendRows(m.sortRows(rows))
+		default: // update ALL rows but no columns
+			rows := parseRows(completeKeys, m.items.TableKeys)
+			m.content.SetRows(m.sortRows(rows))
 		}
 	}
 	m.paging = false
 	m.initialised = true
 	return m.MaybePreviewItem(true)
+}
+
+func (m *ItemSelectionPane) sortRows(rows []table.Row) []table.Row {
+	if !m.columnSorting.Enabled || m.columnSorting.SortingOn == "" || len(rows) == 0 {
+		return rows
+	}
+	cols := m.content.Columns()
+	colsS := make([]string, len(cols))
+	for i, c := range cols {
+		colsS[i] = c.Title
+	}
+	idx := find(colsS, m.columnSorting.SortingOn)
+	if idx < 0 {
+		return rows
+	}
+
+	// determine field-type
+	var field string
+	for _, r := range rows {
+		if r[idx] != "" {
+			field = r[idx]
+			break
+		}
+	}
+	_, errInt := strconv.ParseInt(field, 10, 64)
+	_, errFloat := strconv.ParseFloat(field, 64)
+
+	// choose the appropriate sorting function
+	var sortFunc func(a, b table.Row) int
+	switch {
+	// NOTE: assumes that float fields always contain decimal point
+	case errFloat == nil:
+		sortFunc = func(a, b table.Row) int {
+			aI, _ := strconv.ParseFloat(a[idx], 64)
+			bI, _ := strconv.ParseFloat(b[idx], 64)
+			check := ternary(aI < bI, aI > bI, m.columnSorting.Ascending)
+			return ternary(-1, 1, check)
+		}
+	case errInt == nil:
+		sortFunc = func(a, b table.Row) int {
+			aI, _ := strconv.ParseInt(a[idx], 10, 64)
+			bI, _ := strconv.ParseInt(b[idx], 10, 64)
+			check := ternary(aI < bI, aI > bI, m.columnSorting.Ascending)
+			return ternary(-1, 1, check)
+		}
+	default:
+		sortFunc = func(a, b table.Row) int {
+			s := []string{a[idx], b[idx]}
+			slices.Sort(s)
+			check := ternary(s[0] == a[idx], s[1] == a[idx], m.columnSorting.Ascending)
+			return ternary(-1, 1, check)
+		}
+	}
+
+	// apply sorting function on slice backed by new array
+	sorted := make([]table.Row, len(rows))
+	copy(sorted, rows)
+	slices.SortFunc(sorted, sortFunc)
+
+	return sorted
 }
 
 // selectTable processes the select-table message, which indicates that the
@@ -542,10 +624,33 @@ func (m *ItemSelectionPane) resetColumnVisibility() {
 	m.columnVisibility.inVisible = make(map[string]struct{}, 0)
 }
 
+func (m *ItemSelectionPane) handleResetColumnSortingMessage(msg messages.ColumnSortingReset) {
+	if msg.TableARN != ternarySafe(m.selectedTable.TableArn, "", m.selectedTable.TableArn != nil) { // expired
+		return
+	}
+	m.resetColumnSorting()
+}
+
+func (m *ItemSelectionPane) resetColumnSorting() {
+	m.columnSorting.Ascending = true
+	m.columnSorting.SortingOn = ""
+	m.columnSorting.Enabled = false
+
+	// reassemble cols
+	cols := m.assembleColumns(m.keysComplete)
+
+	// reassemble rows
+	rows := parseRows(m.keysComplete, m.items.TableKeys)
+
+	// set content
+	m.content.SetContent(cols, rows)
+}
+
 func (m *ItemSelectionPane) escape() tea.Cmd {
 	m.pageCancel()
 	m.resetQueryParameters()
 	m.resetColumnVisibility()
+	m.resetColumnSorting()
 	m.content.SetContent([]table.Column{}, []table.Row{})
 	switchView := func() tea.Msg {
 		return messages.SwitchView{
@@ -563,7 +668,7 @@ func (m *ItemSelectionPane) escape() tea.Cmd {
 }
 
 func (m *ItemSelectionPane) UpdateColumnVisibility(msg messages.ColumnVisibilityUpdate) tea.Cmd {
-	if msg.TableARN != *m.selectedTable.TableArn { // expired
+	if msg.TableARN != ternarySafe(m.selectedTable.TableArn, "", m.selectedTable.TableArn != nil) { // expired
 		return nil
 	}
 	cols := m.content.Columns()
@@ -594,7 +699,7 @@ func (m *ItemSelectionPane) UpdateColumnVisibility(msg messages.ColumnVisibility
 	return nil
 }
 
-// toggle column dialog & provide current state (in case dialog opens)
+// toggle column visibility dialog & provide current state (in case dialog opens)
 func (m *ItemSelectionPane) toggleColumnVsibilityDialog(msg tea.Msg) tea.Cmd {
 	cols := m.content.Columns()
 	vis := m.columnVisibility.inVisible
@@ -605,17 +710,74 @@ func (m *ItemSelectionPane) toggleColumnVsibilityDialog(msg tea.Msg) tea.Cmd {
 		colsS = append(colsS, c.Title)
 		_, isInVisible := vis[c.Title]
 		visB = append(visB, !isInVisible)
-
 	}
 	arn := ternarySafe(m.selectedTable.TableArn, "", m.selectedTable.TableArn != nil)
 	toggle := func() tea.Msg {
-		return messages.ToggleColumns{}
+		return messages.ToggleColumnVisibility{}
 	}
 	state := func() tea.Msg {
 		msg := messages.InitColumnVisibility{}
 		msg.TableARN = arn
 		msg.AllColumns = colsS
 		msg.Visible = visB
+		return msg
+	}
+	return tea.Batch(toggle, state)
+}
+
+func (m *ItemSelectionPane) UpdateColumnSorting(msg messages.ColumnSortingUpdate) tea.Cmd {
+	if msg.TableARN != ternarySafe(m.selectedTable.TableArn, "", m.selectedTable.TableArn != nil) { // expired
+		return nil
+	}
+	cols := m.content.Columns()
+	if len(cols) != len(msg.AllColumns) {
+		// TODO: better handling of new columns appearing in view
+		m.resetColumnSorting()
+		return nil
+	}
+
+	// update panel state
+	m.columnSorting.Enabled = true
+	m.columnSorting.Ascending = msg.Ascending
+	m.columnSorting.SortingOn = msg.SortingOn
+
+	// prepare table column update
+	for i, c := range cols {
+		c.Suffix = m.getColumnSuffix(c.Title)
+		cols[i] = c
+	}
+
+	// update table columns
+	m.content.SetColumns(cols)
+
+	// sort table rows
+	rows := m.sortRows(m.content.Rows())
+
+	// update table rows
+	m.content.SetRows(rows)
+
+	return nil
+}
+
+// toggle column sorting dialog & provide current state (in case dialog opens)
+func (m *ItemSelectionPane) toggleColumnSortingDialog(msg tea.Msg) tea.Cmd {
+	cols := m.content.Columns()
+	colsS := make([]string, 0, len(cols))
+	for _, c := range cols {
+		colsS = append(colsS, c.Title)
+	}
+	sorting := m.columnSorting.SortingOn
+	ascending := m.columnSorting.Ascending
+	arn := ternarySafe(m.selectedTable.TableArn, "", m.selectedTable.TableArn != nil)
+	toggle := func() tea.Msg {
+		return messages.ToggleColumnSorting{}
+	}
+	state := func() tea.Msg {
+		msg := messages.InitColumnSorting{}
+		msg.TableARN = arn
+		msg.AllColumns = colsS
+		msg.SortingOn = sorting
+		msg.Ascending = ascending
 		return msg
 	}
 	return tea.Batch(toggle, state)
@@ -729,6 +891,35 @@ func keysFromIndex(idx *string, details types.DescribeTableResponse) []dynamotyp
 	return details.KeySchema
 }
 
+// assembleColumns returns a set of table columns that incorporates modulations
+// based on the item-selection-pane state, such as the state of column
+// visibility and sorting.
+func (m *ItemSelectionPane) assembleColumns(allColumnTitles []string) []table.Column {
+	cols := make([]table.Column, len(allColumnTitles))
+
+	for i, title := range allColumnTitles {
+		col := table.Column{Title: title, Width: clamp(len(title), 16, 32)}
+
+		// visibility
+		_, isInvisible := m.columnVisibility.inVisible[title]
+		col.InVisible = m.columnVisibility.enabled && isInvisible
+
+		// suffix
+		col.Suffix = m.getColumnSuffix(title)
+
+		// insert
+		cols[i] = col
+	}
+	return cols
+}
+
+func (m *ItemSelectionPane) getColumnSuffix(colTitle string) string {
+	if m.columnSorting.Enabled && m.columnSorting.SortingOn == colTitle {
+		return fmt.Sprintf(" (%s)", ternary("↑", "↓", m.columnSorting.Ascending))
+	}
+	return ""
+}
+
 func parseRows(cols []string, tableKeys [][]types.KeyValue) []table.Row {
 	rows := make([]table.Row, len(tableKeys))
 	for i, k := range tableKeys {
@@ -753,4 +944,13 @@ func ternarySafe[T any](first *T, second T, cond bool) T {
 		return *first
 	}
 	return second
+}
+
+func find[S []E, E comparable](slice S, target E) int {
+	for i, e := range slice {
+		if e == target {
+			return i
+		}
+	}
+	return -1
 }

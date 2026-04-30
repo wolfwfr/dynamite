@@ -10,7 +10,8 @@ type ItemsQueryMode int
 const (
 	Table_selection View = iota
 	Item_selection
-
+)
+const (
 	ScanMode ItemsQueryMode = iota
 	QueryMode
 )
@@ -57,7 +58,8 @@ type TablePageReady struct {
 type ToggleHelp struct{}
 type ToggleRegions struct{}
 
-type ToggleColumns struct{}
+type ToggleColumnVisibility struct{}
+type ToggleColumnSorting struct{}
 
 type InitColumnVisibility struct {
 	TableARN   string
@@ -65,10 +67,28 @@ type InitColumnVisibility struct {
 	Visible    []bool   // matching by index
 }
 
+type InitColumnSorting struct {
+	TableARN   string
+	AllColumns []string // matching by index
+	SortingOn  string
+	Ascending  bool // if false, descending
+}
+
 type ColumnVisibilityUpdate struct {
 	TableARN   string
 	AllColumns []string // matching by index
 	Visible    []bool   // matching by index
+}
+
+type ColumnSortingUpdate struct {
+	TableARN   string
+	AllColumns []string // matching by index
+	SortingOn  string
+	Ascending  bool // if false, descending
+}
+
+type ColumnSortingReset struct {
+	TableARN string
 }
 
 type SwitchRegion struct {

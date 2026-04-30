@@ -124,6 +124,7 @@ func (m *ItemSelection) handleZoom(msg tea.Msg) tea.Cmd {
 func (m *ItemSelection) DialogKeyMaps() DialogKeyMaps {
 	return DialogKeyMaps{
 		ColumnVisibility: m.itemsPane.KeyMap.ColVis,
+		ColumnSorting:    m.itemsPane.KeyMap.ColSort,
 	}
 }
 
@@ -132,7 +133,7 @@ func (m *ItemSelection) forward(msg tea.Msg) tea.Cmd {
 	_, isToggleFormat := msg.(messages.ToggleJSONYAML)
 	_, isScanResult := msg.(messages.ScanPageReady)
 	_, isCopy := msg.(messages.CopyItem)
-	_, isColVis := msg.(messages.ToggleColumns)
+	_, isColVis := msg.(messages.ToggleColumnVisibility)
 	if m.focused == itemsPaneID && !isPreview && !isCopy || isToggleFormat || isScanResult || isColVis {
 		return m.itemsPane.Update(msg)
 	}

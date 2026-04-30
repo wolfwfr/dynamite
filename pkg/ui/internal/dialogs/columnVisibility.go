@@ -37,7 +37,7 @@ type columnsListStyles struct {
 
 func newColumnStyles(darkBG bool) columnsListStyles {
 	var s columnsListStyles
-	s.title = lipgloss.NewStyle()
+	s.title = lipgloss.NewStyle().Padding(1, 0, 2, 0)
 	s.content = lipgloss.NewStyle().PaddingTop(1).PaddingBottom(2)
 	s.item = lipgloss.NewStyle().PaddingLeft(4)
 	s.selectedItem = lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("170"))
@@ -87,8 +87,8 @@ func NewColumnVisibilityDialog(close key.Binding) *Columns {
 		keyMap: columnsKeyMap{
 			close: close,
 			enter: key.NewBinding(
-				key.WithKeys("space"),
-				key.WithHelp("space", "select"),
+				key.WithKeys("space", "enter"),
+				key.WithHelp("space/enter", "select"),
 			),
 			enableAll: key.NewBinding(
 				key.WithKeys("E"),
@@ -114,6 +114,7 @@ func NewColumnVisibilityDialog(close key.Binding) *Columns {
 		l.SetShowStatusBar(false)
 		l.SetFilteringEnabled(false)
 		l.SetShowHelp(false)
+		l.SetShowTitle(false)
 
 		// replace '?' with 'm'
 		l.KeyMap.ShowFullHelp.SetKeys("m")
@@ -270,7 +271,7 @@ func (m *Columns) UpdateMessage() tea.Cmd {
 
 func (m *Columns) toggleDialog() tea.Cmd {
 	return func() tea.Msg {
-		return messages.ToggleColumns{}
+		return messages.ToggleColumnVisibility{}
 	}
 }
 
@@ -304,6 +305,7 @@ func (m *Columns) updateSize() {
 func (m *Columns) View() string {
 	return columnsDialogStyle.Render(
 		lipgloss.JoinVertical(lipgloss.Center,
+			m.styles.title.Render(m.content.Title),
 			m.styles.content.Render(m.content.View()),
 			m.styles.help.Render(m.JoinedHelp()),
 		),

@@ -33,6 +33,7 @@ const (
 	help_dialog Dialog = iota
 	regions_dialog
 	columns_dialog
+	column_sorting_dialog
 )
 
 var (
@@ -68,11 +69,12 @@ type Model struct {
 
 	// dialogs
 	dialogs struct {
-		open    bool
-		help    *dialogs.Help
-		region  *dialogs.Regions
-		columns *dialogs.Columns
-		active  Dialog
+		open             bool
+		help             *dialogs.Help
+		region           *dialogs.Regions
+		columnVisibility *dialogs.Columns
+		columnSorting    *dialogs.ColumnSorting
+		active           Dialog
 	}
 
 	// top-level context
@@ -126,7 +128,8 @@ func NewModel(ctx context.Context, cfg appconfig.Config) Model {
 	m.dialogs.region = dialogs.NewRegionsDialog(m.config.AvailableRegions, m.config.StarredRegions, m.config.Region, DialogCloseKeymapFrom(km.Regions))
 
 	itemViewDialogKeys := m.itemselection.DialogKeyMaps()
-	m.dialogs.columns = dialogs.NewColumnVisibilityDialog(DialogCloseKeymapFrom(itemViewDialogKeys.ColumnVisibility))
+	m.dialogs.columnVisibility = dialogs.NewColumnVisibilityDialog(DialogCloseKeymapFrom(itemViewDialogKeys.ColumnVisibility))
+	m.dialogs.columnSorting = dialogs.NewColumnSortingDialog(DialogCloseKeymapFrom(itemViewDialogKeys.ColumnSorting))
 
 	return m
 
@@ -154,8 +157,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.ToggleHelpDialog()
 	case messages.ToggleRegions:
 		return m.ToggleRegionsDialog()
-	case messages.ToggleColumns:
+	case messages.ToggleColumnVisibility:
 		return m.ToggleColumnsDialog()
+	case messages.ToggleColumnSorting:
+		return m.ToggleColumnSortingDialog()
 	case messages.SwitchRegion:
 		return m.switchRegion(msg.OldRegion, msg.NewRegion)
 	case messages.SwitchQueryMode:
@@ -196,13 +201,16 @@ func (m Model) forward(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, m.itemselection.Update(msg))
 		cmds = append(cmds, m.dialogs.help.Update(msg))
 		cmds = append(cmds, m.dialogs.region.Update(msg))
-		cmds = append(cmds, m.dialogs.columns.Update(msg))
+		cmds = append(cmds, m.dialogs.columnVisibility.Update(msg))
+		cmds = append(cmds, m.dialogs.columnSorting.Update(msg))
 		return m, tea.Batch(cmds...)
 
-	case messages.SelectTable, messages.PreviewItem, messages.ToggleColumns:
+	case messages.SelectTable, messages.PreviewItem, messages.ToggleColumnVisibility:
 		return m, m.itemselection.Update(msg)
 	case messages.InitColumnVisibility:
-		return m, m.dialogs.columns.Update(msg)
+		return m, m.dialogs.columnVisibility.Update(msg)
+	case messages.InitColumnSorting:
+		return m, m.dialogs.columnSorting.Update(msg)
 	case tea.KeyPressMsg:
 		// exclusively forward keypresses to dialogs if open
 		if m.dialogs.open {
@@ -212,7 +220,9 @@ func (m Model) forward(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case regions_dialog:
 				return m, m.dialogs.region.Update(msg)
 			case columns_dialog:
-				return m, m.dialogs.columns.Update(msg)
+				return m, m.dialogs.columnVisibility.Update(msg)
+			case column_sorting_dialog:
+				return m, m.dialogs.columnSorting.Update(msg)
 			}
 		}
 	}
@@ -280,6 +290,17 @@ func (m Model) ToggleColumnsDialog() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m Model) ToggleColumnSortingDialog() (tea.Model, tea.Cmd) {
+	if m.dialogs.open && m.dialogs.active != column_sorting_dialog {
+		return m, nil
+	}
+	m.dialogs.open = !m.dialogs.open
+	if m.dialogs.open {
+		m.dialogs.active = column_sorting_dialog
+	}
+	return m, nil
+}
+
 type dialog interface {
 	View() string
 	Width() int
@@ -317,7 +338,9 @@ func (m Model) View() tea.View {
 		case regions_dialog:
 			dialog = m.dialogs.region
 		case columns_dialog:
-			dialog = m.dialogs.columns
+			dialog = m.dialogs.columnVisibility
+		case column_sorting_dialog:
+			dialog = m.dialogs.columnSorting
 		}
 		renderedDialog := dialog.View()
 		dialogLayer := lipgloss.NewLayer(renderedDialog).
