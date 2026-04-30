@@ -65,7 +65,7 @@ type regionListStyles struct {
 
 func newStyles(darkBG bool) regionListStyles {
 	var s regionListStyles
-	s.title = lipgloss.NewStyle()
+	s.title = lipgloss.NewStyle().Padding(1, 0, 2, 0)
 	s.content = lipgloss.NewStyle().PaddingTop(1).PaddingBottom(2)
 	s.item = lipgloss.NewStyle().PaddingLeft(4)
 	s.selectedItem = lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("170"))
@@ -167,6 +167,7 @@ func NewRegionsDialog(available, starred []string, current string, close key.Bin
 	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(false)
 	l.SetShowHelp(false)
+	l.SetShowTitle(false)
 
 	// replace '?' with 'm'
 	l.KeyMap.ShowFullHelp.SetKeys("m")
@@ -311,13 +312,14 @@ func (m *Regions) updateSize() {
 }
 
 func (m *Regions) View() string {
+	title := m.styles.title.Render(m.content.Title)
 	content := m.styles.content.Render(m.content.View())
-	// render help separately to ensure everything is nicely centered
 	help := m.styles.help.Render(
 		m.styles.helpLine.Render(m.content.Help.View(m.content)),
 	)
 	return regionsDialogStyle.Render(
 		lipgloss.JoinVertical(lipgloss.Center,
+			title,
 			content,
 			help,
 		),
