@@ -1,4 +1,4 @@
-// package util defines various utility functions
+// package util defines various generic go utility functions
 package util
 
 func Ternary[T any](first, second T, cond bool) T {

@@ -11,7 +11,7 @@ import (
 
 	appconfig "github.com/wolfwfr/dynamite/pkg"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
-	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/keymaps"
+	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/util/keymaps"
 )
 
 type detailsPane struct {

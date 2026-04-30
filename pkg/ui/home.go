@@ -16,9 +16,9 @@ import (
 	"github.com/wolfwfr/dynamite/pkg/aws/dynamodb"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/dialogs"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
-	itemselection "github.com/wolfwfr/dynamite/pkg/ui/internal/views/item_selection"
-	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/keymaps"
-	tableselection "github.com/wolfwfr/dynamite/pkg/ui/internal/views/table_selection"
+	itemsview "github.com/wolfwfr/dynamite/pkg/ui/internal/views/items"
+	tablesview "github.com/wolfwfr/dynamite/pkg/ui/internal/views/tables"
+	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/util/keymaps"
 	u "github.com/wolfwfr/dynamite/pkg/util"
 )
 
@@ -26,8 +26,8 @@ type View int
 type Dialog int
 
 const (
-	table_selection View = iota
-	item_selection
+	tables_view View = iota
+	items_view
 )
 
 const (
@@ -85,8 +85,8 @@ type Model struct {
 	config *appconfig.Config
 
 	// views
-	tableSelection *tableselection.TableSelection
-	itemselection  *itemselection.ItemSelection
+	tableSelection *tablesview.TableSelection
+	itemselection  *itemsview.ItemSelection
 
 	// help
 	Help help.Model
@@ -97,7 +97,7 @@ func NewModel(ctx context.Context, cfg appconfig.Config) Model {
 		ctx:    ctx,
 		config: &cfg,
 
-		activeView: table_selection,
+		activeView: tables_view,
 		Help:       help.New(),
 	}
 
@@ -114,8 +114,8 @@ func NewModel(ctx context.Context, cfg appconfig.Config) Model {
 	}
 
 	{ // views
-		m.tableSelection = tableselection.NewTableSelectionView(ctx, &cfg, tableselection.WithAdditionalKeys(keymaps.AdditionalKeys(inheritedKeys)))
-		m.itemselection = itemselection.NewItemSelectionView(ctx, &cfg, itemselection.WithAdditionalKeys(keymaps.AdditionalKeys(inheritedKeys)))
+		m.tableSelection = tablesview.NewTableSelectionView(ctx, &cfg, tablesview.WithAdditionalKeys(keymaps.AdditionalKeys(inheritedKeys)))
+		m.itemselection = itemsview.NewItemSelectionView(ctx, &cfg, itemsview.WithAdditionalKeys(keymaps.AdditionalKeys(inheritedKeys)))
 	}
 
 	{ // table view bound dialogs
@@ -217,9 +217,9 @@ func (m Model) routeToActiveOnly(msg tea.Msg) (Model, tea.Cmd) {
 	}
 
 	switch m.activeView {
-	case table_selection:
+	case tables_view:
 		return m, m.tableSelection.Update(msg)
-	case item_selection:
+	case items_view:
 		return m, m.itemselection.Update(msg)
 	default:
 		log.Fatalf("could not identify active view '%d'", int(m.activeView))
@@ -254,9 +254,9 @@ func (m Model) applySize(height, width int) tea.Model {
 func (m Model) handleSwitchView(msg messages.SwitchView) (Model, tea.Cmd) {
 	switch msg.NewView {
 	case messages.Table_selection:
-		m.activeView = table_selection
+		m.activeView = tables_view
 	case messages.Item_selection:
-		m.activeView = item_selection
+		m.activeView = items_view
 	}
 	return m, m.dialogs.help.Update(msg)
 }
@@ -314,10 +314,10 @@ func (m Model) View() tea.View {
 	var page string
 	var help string
 	switch m.activeView {
-	case table_selection:
+	case tables_view:
 		page = m.tableSelection.View()
 		help = m.Help.ShortHelpView(m.tableSelection.ShortHelp())
-	case item_selection:
+	case items_view:
 		page = m.itemselection.View()
 		help = m.Help.ShortHelpView(m.itemselection.ShortHelp())
 	}
@@ -325,7 +325,7 @@ func (m Model) View() tea.View {
 	// assemble gutter
 	region := regionBlock.Render(m.config.Region)
 	queryMode := u.Ternary("QUERY", "SCAN", m.QueryMode == messages.QueryMode)
-	query := u.Ternary(fmt.Sprintf(" %s", queryModeBlock.Render(queryMode)), "", m.activeView == item_selection)
+	query := u.Ternary(fmt.Sprintf(" %s", queryModeBlock.Render(queryMode)), "", m.activeView == items_view)
 	gutter := lipgloss.JoinHorizontal(lipgloss.Left, region, query, " ", help)
 
 	page = lipgloss.JoinVertical(lipgloss.Top, page, gutter)

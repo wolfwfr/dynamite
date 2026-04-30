@@ -18,10 +18,10 @@ import (
 	appconfig "github.com/wolfwfr/dynamite/pkg"
 	"github.com/wolfwfr/dynamite/pkg/aws/dynamodb"
 	"github.com/wolfwfr/dynamite/pkg/aws/dynamodb/types"
+	"github.com/wolfwfr/dynamite/pkg/ui/internal/components/search"
+	"github.com/wolfwfr/dynamite/pkg/ui/internal/components/table"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
-	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/internal/search"
-	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/internal/table"
-	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/keymaps"
+	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/util/keymaps"
 	u "github.com/wolfwfr/dynamite/pkg/util"
 )
 
