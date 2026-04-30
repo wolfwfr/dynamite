@@ -437,7 +437,9 @@ func (m *ItemSelectionPane) ProcessScanPage(msg messages.ScanPageReady) tea.Cmd 
 			// prep cols, prep ALL rows, set content
 			cols := make([]table.Column, len(completeKeys))
 			for i, k := range completeKeys {
-				cols[i] = table.Column{Title: k, Width: clamp(len(k), 16, 32)}
+				_, ok := m.columnVisibility.inVisible[k]
+				v := m.columnVisibility.enabled && ok // retain visibility
+				cols[i] = table.Column{Title: k, Width: clamp(len(k), 16, 32), InVisible: v}
 			}
 			rows := parseRows(completeKeys, m.items.TableKeys)
 			m.content.SetContent(cols, rows)
