@@ -30,8 +30,8 @@ func (km *KeyMap) FullHelp() [][]key.Binding {
 func DefaultKeyMap() *KeyMap {
 	return &KeyMap{
 		Quit: key.NewBinding(
-			key.WithKeys("q", "ctrl+c"),
-			key.WithHelp("q/ctrl+c", "quit"),
+			key.WithKeys("ctrl+c"),
+			key.WithHelp("ctrl+c", "quit"),
 		),
 		Help: key.NewBinding(
 			key.WithKeys("?"),
@@ -49,6 +49,7 @@ func DefaultKeyMap() *KeyMap {
 // ensures that fluid dialog UX.
 func DialogCloseKeymapFrom(keymap key.Binding) key.Binding {
 	k := keymap.Keys()
+	kh := keymap.Help().Key
 	if len(k) == 0 {
 		return key.NewBinding(
 			key.WithKeys("esc", "q"),
@@ -57,6 +58,6 @@ func DialogCloseKeymapFrom(keymap key.Binding) key.Binding {
 	}
 	return key.NewBinding(
 		key.WithKeys(k[0], "esc", "q"),
-		key.WithHelp(fmt.Sprintf("%s/esc/q", k[0]), "close"),
+		key.WithHelp(fmt.Sprintf("%s/esc/q", kh), "close"),
 	)
 }
