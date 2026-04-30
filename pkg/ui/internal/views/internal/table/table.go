@@ -4,6 +4,7 @@ package table
 
 import (
 	"math"
+	"slices"
 	"strings"
 
 	"charm.land/bubbles/v2/help"
@@ -71,6 +72,7 @@ type Column struct {
 	Title        string
 	Width        int
 	DynamicWidth int
+	InVisible    bool
 }
 
 // Styles contains style definitions for this list component. By default, these
@@ -616,6 +618,9 @@ func (m *Model) FromValues(value, separator string) {
 func (m *Model) renderHeader() string {
 	s := make([]string, 0, len(m.cols))
 	for _, col := range m.cols {
+		if col.InVisible {
+			continue
+		}
 		width := ternary(col.DynamicWidth, col.Width, m.dynCols && col.DynamicWidth > 0)
 		if width <= 0 {
 			continue
@@ -624,13 +629,16 @@ func (m *Model) renderHeader() string {
 		renderedCell := style.Render(ansi.Truncate(col.Title, width, "…"))
 		s = append(s, m.styles.Header.Render(renderedCell))
 	}
-	return lipgloss.JoinHorizontal(lipgloss.Top, s...)
+	return lipgloss.JoinHorizontal(lipgloss.Top, slices.Clip(s)...)
 }
 
 // TODO: render filter match chars with underline or background when appliccable
 func (m *Model) renderRow(r int) string {
 	s := make([]string, 0, len(m.cols))
 	for i, value := range m.VisualRows()[r] {
+		if m.cols[i].InVisible {
+			continue
+		}
 		width := ternary(m.cols[i].DynamicWidth, m.cols[i].Width, m.dynCols && m.cols[i].DynamicWidth > 0)
 		if width <= 0 {
 			continue
@@ -640,7 +648,7 @@ func (m *Model) renderRow(r int) string {
 		s = append(s, renderedCell)
 	}
 
-	row := lipgloss.JoinHorizontal(lipgloss.Top, s...)
+	row := lipgloss.JoinHorizontal(lipgloss.Top, slices.Clip(s)...)
 
 	if r == m.cursor {
 		return m.styles.Selected.Render(row)
