@@ -304,7 +304,7 @@ func (m *Regions) updateSize() {
 	m.content.SetWidth(width)
 
 	// set height & width of dialog itself
-	columnsDialogStyle = columnsDialogStyle.
+	regionsDialogStyle = regionsDialogStyle.
 		Height(m.content.Height() + 2).
 		Width(width + 2)
 
