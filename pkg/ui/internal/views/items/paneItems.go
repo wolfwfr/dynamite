@@ -245,18 +245,23 @@ func (m *ItemSelectionPane) deactivateSpinner() {
 }
 
 func (m *ItemSelectionPane) Init() tea.Cmd {
+	m.softReset()
+	return nil
+}
+
+// softReset initalises stateful parameters except for sessions
+func (m *ItemSelectionPane) softReset() {
+	// cancel any lingering calls
+	m.pageCancel()
+
+	// clean up content
 	m.content.ResetVirtualRows()
 	m.content.SetCursor(0)
 	m.initialised = false
 
+	m.resetQueryParameters() // must come first to reinitialise items in state (which may be used for updating content in other functions)
 	m.resetColumnVisibility()
 	m.resetColumnSorting()
-	m.resetQueryParameters()
-
-	// cancel any lingering calls
-	m.pageCancel()
-
-	return nil
 }
 
 func (m *ItemSelectionPane) Update(msg tea.Msg) (cmd tea.Cmd) {
@@ -630,6 +635,7 @@ func (m *ItemSelectionPane) resetQueryParameters() {
 	m.items = types.Items{}
 	m.itemfiltering.items = []int{}
 	m.lastPreviewItem = 0
+	m.lastPreviewMsg = nil
 }
 
 func (m *ItemSelectionPane) resetColumnVisibility() {
@@ -644,6 +650,8 @@ func (m *ItemSelectionPane) handleResetColumnSortingMessage(msg messages.ColumnS
 	m.resetColumnSorting()
 }
 
+// resetColumnSorting re-initialises column-sorting associated state parameters
+// and restores the columns and rows based on the items stored in state.
 func (m *ItemSelectionPane) resetColumnSorting() {
 	m.columnSorting.Ascending = true
 	m.columnSorting.SortingOn = ""
@@ -671,13 +679,8 @@ func (m *ItemSelectionPane) escape() tea.Cmd {
 		}
 	}
 
-	// reset parameters
-	m.resetQueryParameters()
-	m.resetColumnVisibility()
-	m.resetColumnSorting()
-
-	// clean up content
-	m.content.SetContent([]table.Column{}, []table.Row{})
+	// clean up state
+	m.softReset()
 
 	// switch to previous view
 	switchView := func() tea.Msg {
