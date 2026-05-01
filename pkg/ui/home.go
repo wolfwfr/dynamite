@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"strings"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -326,7 +325,6 @@ func (m Model) ToggleScanParametersDialog() (Model, tea.Cmd) {
 
 type dialog interface {
 	View() string
-	Width() int
 }
 
 func (m Model) View() tea.View {
@@ -369,18 +367,14 @@ func (m Model) View() tea.View {
 		}
 		renderedDialog := dialog.View()
 		dialogLayer := lipgloss.NewLayer(renderedDialog).
-			X(m.window.width/2 - dialog.Width()/2).
-			Y(m.window.height/2 - heightFromView(renderedDialog)/2)
+			X(m.window.width/2 - lipgloss.Width(renderedDialog)/2).
+			Y(m.window.height/2 - lipgloss.Height(renderedDialog)/2)
 		c.AddLayers(dialogLayer)
 	}
 
 	v := tea.NewView(c.Render())
 	v.AltScreen = true // fullscreen
 	return v
-}
-
-func heightFromView(v string) int {
-	return strings.Count(v, "\n")
 }
 
 func (m Model) SignalOpenHelpDialog() tea.Cmd {

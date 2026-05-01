@@ -67,14 +67,6 @@ func (m *Help) Init() tea.Cmd {
 	return nil
 }
 
-func (m *Help) Width() int {
-	return m.width
-}
-
-func (m *Help) Height() int {
-	return m.height
-}
-
 func (m *Help) Update(msg tea.Msg) tea.Cmd {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:

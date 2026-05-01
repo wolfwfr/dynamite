@@ -181,10 +181,6 @@ func (m *ColumnSorting) Init() tea.Cmd {
 	return nil
 }
 
-func (m *ColumnSorting) Width() int {
-	return m.dialog.width
-}
-
 func (m *ColumnSorting) Update(msg tea.Msg) tea.Cmd {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:

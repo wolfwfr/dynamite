@@ -213,10 +213,6 @@ func (m *ScanDialog) Init() tea.Cmd {
 	return nil
 }
 
-func (m *ScanDialog) Width() int {
-	return m.dialog.width
-}
-
 func (m *ScanDialog) Update(msg tea.Msg) tea.Cmd {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:

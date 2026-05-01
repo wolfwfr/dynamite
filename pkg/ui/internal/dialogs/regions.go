@@ -234,10 +234,6 @@ func (m *Regions) Init() tea.Cmd {
 	return nil
 }
 
-func (m *Regions) Width() int {
-	return m.dialog.width
-}
-
 func (m *Regions) Update(msg tea.Msg) tea.Cmd {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
