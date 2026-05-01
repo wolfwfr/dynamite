@@ -235,17 +235,33 @@ func (m *ScanDialog) Update(msg tea.Msg) tea.Cmd {
 	return nil
 }
 
+func (m *ScanDialog) ResetState() {
+	m.state.TableARN = ""
+	m.state.TableIndex = messages.TableIndex{}
+	m.state.GSI = nil
+	m.state.LSI = nil
+	m.selected = ""
+	m.content.SetItems([]list.Item{})
+	m.content.Select(0)
+}
+
 func (m *ScanDialog) SetState(msg messages.InitScanParameters) tea.Cmd {
+	m.ResetState()
+
 	m.state.TableARN = msg.TableARN
 	m.state.TableIndex = msg.TableIndex
 	m.state.GSI = msg.GSI
 	m.state.LSI = msg.LSI
+	if msg.CurrentIndex != nil {
+		m.selected = *msg.CurrentIndex
+	}
 
 	m.updateStyles(true) // to set delegate
 	return m.updateContent()
 }
 
 func (m *ScanDialog) updateContent() tea.Cmd {
+	var idx int
 	items := make([]list.Item, 0, 1+len(m.state.GSI)+len(m.state.LSI))
 	items = append(items, indexItem{
 		name:      tableIndexName,
@@ -257,6 +273,9 @@ func (m *ScanDialog) updateContent() tea.Cmd {
 			indexType:  gsi,
 			sliceIndex: i,
 		})
+		if g.Name == m.selected {
+			idx = len(items) - 1
+		}
 	}
 	for i, l := range m.state.LSI {
 		items = append(items, indexItem{
@@ -264,8 +283,12 @@ func (m *ScanDialog) updateContent() tea.Cmd {
 			indexType:  lsi,
 			sliceIndex: i,
 		})
+		if l.Name == m.selected {
+			idx = len(items) - 1
+		}
 	}
 	cmd := m.content.SetItems(items)
+	m.content.Select(idx)
 	m.updateSize()
 	return cmd
 }

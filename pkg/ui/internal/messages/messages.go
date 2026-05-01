@@ -104,10 +104,11 @@ type InitColumnSorting struct {
 }
 
 type InitScanParameters struct {
-	TableARN   string
-	TableIndex TableIndex
-	GSI        []GlobalSecondaryIndex
-	LSI        []LocalSecondaryIndex
+	TableARN     string
+	TableIndex   TableIndex
+	GSI          []GlobalSecondaryIndex
+	LSI          []LocalSecondaryIndex
+	CurrentIndex *string
 }
 
 type ColumnVisibilityUpdate struct {

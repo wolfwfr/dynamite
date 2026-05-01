@@ -74,8 +74,9 @@ func (m *ItemSelectionPane) ToggleScanParametersDialog() tea.Cmd {
 				RangeKey:     rang,
 				RangeKeyType: defsM[u.IfNotNil(rang, "")],
 			},
-			GSI: globalIndices,
-			LSI: localIndices,
+			GSI:          globalIndices,
+			LSI:          localIndices,
+			CurrentIndex: m.tableIndex.activeIndex,
 		}
 	}
 	return tea.Batch(tgl, init)

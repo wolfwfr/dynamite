@@ -568,6 +568,11 @@ func (m *ItemSelectionPane) selectTable(tableName string, details types.Describe
 		// restore session parameters
 		m.queryMode = session.queryMode
 		m.tableIndex.activeIndex = session.chosenIndex
+		if session.chosenIndex == nil {
+			m.tableIndex.indexItemCount = *details.ItemCount
+		} else {
+			m.tableIndex.indexItemCount = indexCountFromTable(*session.chosenIndex, details)
+		}
 	} else {
 		// defaults on newly opened table
 		m.queryMode = messages.ScanMode
@@ -833,12 +838,14 @@ func (m *ItemSelectionPane) ChangeScanIndex(msg messages.ScanIndexChanged) tea.C
 	if u.IfNotNil(m.selectedTable.TableArn, "") != msg.TableARN { // expired
 		return nil
 	}
+
+	m.Init()
+
 	m.tableIndex.activeIndex = u.Ternary(&msg.IndexName, nil, msg.IndexName != "")
 	m.tableIndex.indexItemCount = u.IfNotNil(m.selectedTable.ItemCount, 0)
 	if m.tableIndex.activeIndex != nil {
 		m.tableIndex.indexItemCount = indexCountFromTable(*m.tableIndex.activeIndex, m.selectedTable)
 	}
-	m.Init()
 	return m.PageNext(true)
 }
 
