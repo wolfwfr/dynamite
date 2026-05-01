@@ -652,17 +652,34 @@ func (m *ItemSelectionPane) resetColumnSorting() {
 }
 
 func (m *ItemSelectionPane) escape() tea.Cmd {
+	// cancel pending calls
 	m.pageCancel()
+
+	// store session data
+	if arn := m.selectedTable.TableArn; arn != nil {
+		m.sessions[*arn] = SessionData{
+			queryMode:   m.queryMode,
+			chosenIndex: m.chosenIndex,
+		}
+	}
+
+	// reset parameters
 	m.resetQueryParameters()
 	m.resetColumnVisibility()
 	m.resetColumnSorting()
+
+	// clean up content
 	m.content.SetContent([]table.Column{}, []table.Row{})
+
+	// switch to previous view
 	switchView := func() tea.Msg {
 		return messages.SwitchView{
 			OldView: messages.Item_selection,
 			NewView: messages.Table_selection,
 		}
 	}
+
+	// clean up preview window
 	resetPreview := func() tea.Msg {
 		return messages.PreviewItem{
 			Item: "",
