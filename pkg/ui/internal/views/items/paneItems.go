@@ -105,7 +105,8 @@ type ItemSelectionPane struct {
 		Enabled   bool
 	}
 
-	lastPreviewItem int // index
+	lastPreviewItem int                   // index
+	lastPreviewMsg  *messages.PreviewItem // prevents preview message looping
 	pageKey         map[string]dynamotypes.AttributeValue
 	pageCancel      func()
 	paging          bool
@@ -266,8 +267,9 @@ func (m *ItemSelectionPane) Update(msg tea.Msg) (cmd tea.Cmd) {
 	_, isColVis := msg.(messages.ColumnVisibilityUpdate)
 	_, isColSort := msg.(messages.ColumnSortingUpdate)
 	_, isColSortRes := msg.(messages.ColumnSortingReset)
+	_, isPreview := msg.(messages.PreviewItem)
 
-	excludeSearch := isSelect || isToggleFmt || isTick || isColVis || isColSort || isColSortRes
+	excludeSearch := isSelect || isToggleFmt || isTick || isColVis || isColSort || isColSortRes || isPreview
 
 	if search.IsSearchBoxMessage(msg) || (!excludeSearch && m.search.IsFocused()) {
 		cmds = append(cmds, m.search.Update(msg))
@@ -315,6 +317,9 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 				return call
 			}
 		}
+	case messages.PreviewItem:
+		m.lastPreviewMsg = &msg
+		return nil
 	case messages.SelectTable:
 		return m.selectTable(msg.TableName, msg.TableDetails)
 	case messages.ToggleJSONYAML:
@@ -396,6 +401,9 @@ func (m *ItemSelectionPane) ToggleJSONYAMLFormat() tea.Cmd {
 func (m *ItemSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
 	// render empty preview when no items or no filter results
 	if m.initialised && len(m.items.Raw) == 0 || m.itemfiltering.enabled && len(m.itemfiltering.items) == 0 {
+		if m.lastPreviewMsg != nil && m.lastPreviewMsg.Item == "" { // prevent looping
+			return nil
+		}
 		return func() tea.Msg {
 			return messages.PreviewItem{
 				Item: "",
