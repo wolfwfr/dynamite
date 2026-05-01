@@ -16,7 +16,6 @@ func (m *ItemSelectionPane) enableScanMode() tea.Cmd {
 	m.KeyMap.Query.SetEnabled(true)
 	m.KeyMap.Scan.SetEnabled(false)
 	m.KeyMap.ScanParameters.SetEnabled(true)
-	// TODO: impl
 	return func() tea.Msg {
 		return messages.SwitchQueryMode{
 			OldMode: m.queryMode,
@@ -65,6 +64,7 @@ func (m *ItemSelectionPane) ToggleScanParametersDialog() tea.Cmd {
 	tgl := func() tea.Msg {
 		return messages.ToggleScanParameters{}
 	}
+	index := m.tableIndex.activeIndex
 	init := func() tea.Msg {
 		return messages.InitScanParameters{
 			TableARN: arn,
@@ -76,7 +76,7 @@ func (m *ItemSelectionPane) ToggleScanParametersDialog() tea.Cmd {
 			},
 			GSI:          globalIndices,
 			LSI:          localIndices,
-			CurrentIndex: m.tableIndex.activeIndex,
+			CurrentIndex: index,
 		}
 	}
 	return tea.Batch(tgl, init)
