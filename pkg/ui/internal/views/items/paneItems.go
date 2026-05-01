@@ -14,6 +14,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	dynamotypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/charmbracelet/x/ansi"
 
 	appconfig "github.com/wolfwfr/dynamite/pkg"
 	"github.com/wolfwfr/dynamite/pkg/aws/dynamodb"
@@ -24,6 +25,11 @@ import (
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/util/keymaps"
 	u "github.com/wolfwfr/dynamite/pkg/util"
 )
+
+var tableInfoBox = lipgloss.NewStyle().
+	Height(2).
+	Padding(0, 1, 1, 1).
+	Foreground(lipgloss.Color("#878787"))
 
 type previewFormat int
 type queryMode int
@@ -78,8 +84,12 @@ type ItemSelectionPane struct {
 	sessions map[string]SessionData
 
 	// query & scan parameters
-	queryMode   messages.ItemsQueryMode
-	chosenIndex *string
+	queryMode messages.ItemsQueryMode
+
+	tableIndex struct {
+		activeIndex    *string
+		indexItemCount int64
+	}
 
 	scanLimit  int
 	queryLimit int
@@ -205,13 +215,13 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 					p.itemfiltering.enabled = false
 					p.itemfiltering.items = make([]int, 0)
 					p.content.ResetVirtualRows()
-					p.content.SetHeight(p.content.Height() + searchHeight)
+					p.updateSize()
 					p.KeyMap.ColSort.SetEnabled(true)
 					return p.MaybePreviewItem(true)
 				},
 				SearchBoxOpens: func(searchHeight int) tea.Cmd {
-					p.content.SetHeight(p.content.Height() - searchHeight)
 					p.KeyMap.ColSort.SetEnabled(false)
+					p.updateSize()
 					return nil
 				},
 			},
@@ -366,7 +376,7 @@ func (m *ItemSelectionPane) PageNext(init bool) tea.Cmd {
 	mode := m.queryMode
 	table := m.selectedTable
 	key := m.pageKey
-	idx := m.chosenIndex
+	idx := m.tableIndex.activeIndex
 	ctx, cc := context.WithTimeout(m.ctx, m.stdTO)
 	m.pageCancel = cc
 	pageCmd := func() tea.Msg {
@@ -455,7 +465,7 @@ func (m *ItemSelectionPane) ProcessScanPage(msg messages.ScanPageReady) tea.Cmd 
 	scan := msg.Response
 	details := m.selectedTable
 
-	if m.selectedTable.TableArn != msg.Table.TableArn || m.chosenIndex != msg.Index { // expired
+	if m.selectedTable.TableArn != msg.Table.TableArn || m.tableIndex.activeIndex != msg.Index { // expired
 		return nil
 	}
 
@@ -464,7 +474,7 @@ func (m *ItemSelectionPane) ProcessScanPage(msg messages.ScanPageReady) tea.Cmd 
 
 	if len(scan.Items.TableKeys) > 0 {
 		// set columns
-		_, rang := primaryKeysFromSchema(keysFromIndex(m.chosenIndex, details))
+		_, rang := primaryKeysFromSchema(keysFromIndex(m.tableIndex.activeIndex, details))
 		completeKeys := compileCompleteKeys(scan.Items.TableKeys, m.keysComplete, rang != nil)
 		defer func() { m.keysComplete = completeKeys }()
 
@@ -557,11 +567,11 @@ func (m *ItemSelectionPane) selectTable(tableName string, details types.Describe
 	if session, remembered := m.sessions[*details.TableArn]; remembered {
 		// restore session parameters
 		m.queryMode = session.queryMode
-		m.chosenIndex = session.chosenIndex
+		m.tableIndex.activeIndex = session.chosenIndex
 	} else {
 		// defaults on newly opened table
 		m.queryMode = messages.ScanMode
-		m.chosenIndex = nil
+		m.tableIndex.activeIndex = nil
 	}
 	// resetting state
 	m.cleanSlate()
@@ -616,9 +626,10 @@ func (m *ItemSelectionPane) updateSize() {
 	h, w := m.window.height, m.window.width
 
 	searchBoxH := ternary(m.search.GetHeight(), 0, m.search.IsEnabled())
+	tableInfoH := tableInfoBox.GetHeight()
 	m.window.height = h
 	m.window.width = w
-	m.content.SetHeight(h - searchBoxH - ternary(1, 0, m.spinner.active))
+	m.content.SetHeight(h - searchBoxH - tableInfoH - ternary(1, 0, m.spinner.active))
 	m.content.SetWidth(w)
 	m.search.SetWidth(w)
 	m.queryLimit = h
@@ -636,6 +647,8 @@ func (m *ItemSelectionPane) resetQueryParameters() {
 	m.itemfiltering.items = []int{}
 	m.lastPreviewItem = 0
 	m.lastPreviewMsg = nil
+	m.tableIndex.activeIndex = nil
+	m.tableIndex.indexItemCount = -1
 }
 
 func (m *ItemSelectionPane) resetColumnVisibility() {
@@ -675,7 +688,7 @@ func (m *ItemSelectionPane) escape() tea.Cmd {
 	if arn := m.selectedTable.TableArn; arn != nil {
 		m.sessions[*arn] = SessionData{
 			queryMode:   m.queryMode,
-			chosenIndex: m.chosenIndex,
+			chosenIndex: m.tableIndex.activeIndex,
 		}
 	}
 
@@ -820,7 +833,11 @@ func (m *ItemSelectionPane) ChangeScanIndex(msg messages.ScanIndexChanged) tea.C
 	if u.IfNotNil(m.selectedTable.TableArn, "") != msg.TableARN { // expired
 		return nil
 	}
-	m.chosenIndex = u.Ternary(&msg.IndexName, nil, msg.IndexName != "")
+	m.tableIndex.activeIndex = u.Ternary(&msg.IndexName, nil, msg.IndexName != "")
+	m.tableIndex.indexItemCount = u.IfNotNil(m.selectedTable.ItemCount, 0)
+	if m.tableIndex.activeIndex != nil {
+		m.tableIndex.indexItemCount = indexCountFromTable(*m.tableIndex.activeIndex, m.selectedTable)
+	}
 	m.Init()
 	return m.PageNext(true)
 }
@@ -840,17 +857,14 @@ func (m *ItemSelectionPane) View() string {
 	if m.err != nil {
 		return m.err.Error()
 	}
+	info := m.renderTableInfo()
 	content := m.content.View()
 	content = ternary(content, m.noContentMessage(), !emptyContent(content))
-	rendering := []string{content, m.search.View()}
+	rendering := []string{info, content, m.search.View()}
 	if m.spinner.active {
-		rendering = slices.Insert(rendering, 1, fmt.Sprintf("%s %s", m.spinner.model.View(), m.spinner.text))
+		rendering = slices.Insert(rendering, 2, fmt.Sprintf("%s %s", m.spinner.model.View(), m.spinner.text))
 	}
 	return lipgloss.JoinVertical(lipgloss.Left, rendering...)
-	// return lipgloss.JoinVertical(lipgloss.Left,
-	// 	ternary(content, m.noContentMessage(), !emptyContent(content)),
-	// 	m.search.View(),
-	// )
 }
 
 func emptyContent(content string) bool {
@@ -869,6 +883,30 @@ func (m *ItemSelectionPane) noContentMessage() string {
 	fmt.Fprintf(&s, "                    NO CONTENT                    \n")
 	fmt.Fprintf(&s, "==================================================\n")
 	return s.String()
+}
+
+func (m *ItemSelectionPane) renderTableInfo() string {
+	width := m.window.width / 2
+	leftAligned := lipgloss.NewStyle().Width(width).Align(lipgloss.Left)
+	rightAligned := lipgloss.NewStyle().Width(width).Align(lipgloss.Right)
+
+	// table name
+	name := u.IfNotNil(m.selectedTable.TableName, "")
+
+	// determine item count & index name
+	count := m.tableIndex.indexItemCount
+	indexName := u.IfNotNil(m.tableIndex.activeIndex, "")
+
+	right := fmt.Sprintf("Count: %d/%d", len(m.content.VisualRows()), count)
+	right = ansi.Truncate(right, width, "…")
+
+	left := fmt.Sprintf("Table: %s%s", name, u.Ternary(" / Index: "+indexName, "", indexName != ""))
+	left = ansi.Truncate(left, u.Ternary(width-2, width, strings.HasPrefix(right, "…")), "…")
+
+	return tableInfoBox.Render(lipgloss.JoinHorizontal(lipgloss.Top,
+		leftAligned.Render(left),
+		rightAligned.Render(right),
+	))
 }
 
 func (m *ItemSelectionPane) appendItems(newItems types.Items) {
@@ -978,4 +1016,19 @@ func parseRows(cols []string, tableKeys [][]types.KeyValue) []table.Row {
 		rows[i] = row
 	}
 	return rows
+}
+
+func indexCountFromTable(indexName string, tableDetails types.DescribeTableResponse) int64 {
+	for _, g := range tableDetails.GlobalSecondaryIndexes {
+		if *g.IndexName == indexName {
+			return *g.ItemCount
+		}
+	}
+
+	for _, l := range tableDetails.LocalSecondaryIndexes {
+		if *l.IndexName == indexName {
+			return *l.ItemCount
+		}
+	}
+	return -1
 }
