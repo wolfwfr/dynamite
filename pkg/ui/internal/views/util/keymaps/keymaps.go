@@ -45,6 +45,9 @@ func UniqueKeyMaps(keymaps ...[]key.Binding) bool {
 	seen := map[string]struct{}{}
 	for _, m := range keymaps {
 		for _, b := range m {
+			if !b.Enabled() {
+				continue
+			}
 			for _, k := range b.Keys() {
 				if _, ok := seen[k]; ok {
 					return false

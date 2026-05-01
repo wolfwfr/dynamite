@@ -45,27 +45,28 @@ func DefaultDetailsKeyMap() *DetailsPaneKeyMap {
 // ItemPaneKeyMap defines keybindings. It satisfies to the help.KeyMap interface, which
 // is used to render the help menu.
 type ItemPaneKeyMap struct {
-	Search    key.Binding
-	Zoom      key.Binding
-	Esc       key.Binding
-	ChCols    key.Binding
-	ToggleFmt key.Binding
-	Scan      key.Binding
-	Query     key.Binding
-	Copy      key.Binding
-	ColVis    key.Binding
-	ColSort   key.Binding
+	Search         key.Binding
+	Zoom           key.Binding
+	Esc            key.Binding
+	ChCols         key.Binding
+	ToggleFmt      key.Binding
+	Scan           key.Binding
+	ScanParameters key.Binding
+	Query          key.Binding
+	Copy           key.Binding
+	ColVis         key.Binding
+	ColSort        key.Binding
 }
 
 // ShortHelp implements the KeyMap interface.
 func (km *ItemPaneKeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{km.Search, km.Zoom, km.Esc, km.ChCols, km.ToggleFmt, km.Scan, km.Query}
+	return []key.Binding{km.Search, km.Zoom, km.Esc, km.ToggleFmt, km.Scan, km.ScanParameters, km.Query}
 }
 
 // FullHelp implements the KeyMap interface.
 func (km *ItemPaneKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{km.Search, km.Zoom, km.Esc, km.ChCols, km.ToggleFmt, km.Scan, km.Query, km.Copy, km.ColVis, km.ColSort},
+		{km.Search, km.Zoom, km.Esc, km.ChCols, km.ToggleFmt, km.Scan, km.ScanParameters, km.Query, km.Copy, km.ColVis, km.ColSort},
 	}
 }
 
@@ -95,6 +96,11 @@ func DefaultItemPaneKeyMap() *ItemPaneKeyMap {
 		Scan: key.NewBinding(
 			key.WithKeys("S"),
 			key.WithHelp("shift+s", "scan"),
+			key.WithDisabled(), // default to scan mode
+		),
+		ScanParameters: key.NewBinding(
+			key.WithKeys("S"),
+			key.WithHelp("shift+s", "scan params"),
 		),
 		Query: key.NewBinding(
 			key.WithKeys("Q"),
@@ -127,12 +133,14 @@ type ItemViewKeyMap struct {
 type DialogKeyMaps struct {
 	ColumnVisibility key.Binding
 	ColumnSorting    key.Binding
+	ScanParams       key.Binding
 }
 
 func (m *ItemSelection) DialogKeyMaps() DialogKeyMaps {
 	return DialogKeyMaps{
 		ColumnVisibility: m.itemsPane.KeyMap.ColVis,
 		ColumnSorting:    m.itemsPane.KeyMap.ColSort,
+		ScanParams:       m.itemsPane.KeyMap.ScanParameters,
 	}
 }
 

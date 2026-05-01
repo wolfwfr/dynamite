@@ -16,6 +16,34 @@ const (
 	QueryMode
 )
 
+type TableIndex struct {
+	HashKey     string
+	HashKeyType string
+
+	RangeKey     *string
+	RangeKeyType string
+}
+
+type GlobalSecondaryIndex struct {
+	Name string
+
+	HashKey     string
+	HashKeyType string
+
+	RangeKey     *string
+	RangeKeyType string
+}
+
+type LocalSecondaryIndex struct {
+	Name string
+
+	HashKey     string
+	HashKeyType string
+
+	RangeKey     string
+	RangeKeyType string
+}
+
 type SwitchView struct {
 	OldView View
 	NewView View
@@ -60,6 +88,7 @@ type ToggleRegions struct{}
 
 type ToggleColumnVisibility struct{}
 type ToggleColumnSorting struct{}
+type ToggleScanParameters struct{}
 
 type InitColumnVisibility struct {
 	TableARN   string
@@ -74,6 +103,13 @@ type InitColumnSorting struct {
 	Ascending  bool // if false, descending
 }
 
+type InitScanParameters struct {
+	TableARN   string
+	TableIndex TableIndex
+	GSI        []GlobalSecondaryIndex
+	LSI        []LocalSecondaryIndex
+}
+
 type ColumnVisibilityUpdate struct {
 	TableARN   string
 	AllColumns []string // matching by index
@@ -85,6 +121,11 @@ type ColumnSortingUpdate struct {
 	AllColumns []string // matching by index
 	SortingOn  string
 	Ascending  bool // if false, descending
+}
+
+type ScanIndexChanged struct {
+	TableARN  string
+	IndexName string // empty == table index
 }
 
 type ColumnSortingReset struct {

@@ -302,6 +302,8 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 			return m.enableQueryMode()
 		case key.Matches(msg, m.KeyMap.Scan):
 			return m.enableScanMode()
+		case key.Matches(msg, m.KeyMap.ScanParameters):
+			return m.ToggleScanParametersDialog()
 		case key.Matches(msg, m.KeyMap.Copy):
 			return m.copy()
 		case key.Matches(msg, m.KeyMap.ColVis):
@@ -321,6 +323,8 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 		return m.UpdateColumnVisibility(msg)
 	case messages.ColumnSortingUpdate:
 		return m.UpdateColumnSorting(msg)
+	case messages.ScanIndexChanged:
+		return m.ChangeScanIndex(msg)
 	case messages.ScanPageReady:
 		return m.ProcessScanPage(msg)
 	case messages.ColumnSortingReset:
@@ -782,6 +786,15 @@ func (m *ItemSelectionPane) toggleColumnSortingDialog(msg tea.Msg) tea.Cmd {
 		return msg
 	}
 	return tea.Batch(toggle, state)
+}
+
+func (m *ItemSelectionPane) ChangeScanIndex(msg messages.ScanIndexChanged) tea.Cmd {
+	if u.IfNotNil(m.selectedTable.TableArn, "") != msg.TableARN { // expired
+		return nil
+	}
+	m.chosenIndex = u.Ternary(&msg.IndexName, nil, msg.IndexName != "")
+	m.Init()
+	return m.PageNext(true)
 }
 
 func (m *ItemSelectionPane) copy() tea.Cmd {

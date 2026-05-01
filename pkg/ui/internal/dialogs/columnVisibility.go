@@ -229,8 +229,6 @@ func (m *Columns) DisableAll() tea.Cmd {
 	return tea.Batch(m.updateContent(), m.UpdateMessage())
 }
 
-// TODO: list returns tea.Msg, be more flexible with message forwarding to
-// ensure messages aren't lost
 func (m *Columns) updateContent() tea.Cmd {
 	items := make([]list.Item, 0, len(m.state.AllColumns))
 	for i := range m.state.AllColumns {

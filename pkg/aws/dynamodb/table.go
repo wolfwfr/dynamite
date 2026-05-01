@@ -74,14 +74,18 @@ func DescribeTable(client dynamodbClient, ctx context.Context, tableName string)
 
 func ScanTable(client dynamodbClient, ctx context.Context, table string, params apitypes.ScanParameters) (*apitypes.ScanResponse, error) {
 	hkey, rkey := parsePrimaryKeys(params.KeySchema) // TODO: prevent waste
+	var index *string
+	if params.IndexName != nil && *params.IndexName != "" {
+		index = params.IndexName
+	}
 	p := dynamodb.ScanInput{
 		TableName:         &table,
 		Limit:             toPtr(int32(params.Limit)),
 		ExclusiveStartKey: params.LastEvaluatedKey,
+		IndexName:         index,
 
 		// Limit:                     new(int32),
 		// ScanFilter:                map[string]types.Condition{},
-		// IndexName:                 new(string),
 
 		// AttributesToGet:           []string{},
 		// ConditionalOperator:       "",
