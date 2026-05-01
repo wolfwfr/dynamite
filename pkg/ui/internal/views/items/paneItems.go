@@ -577,6 +577,7 @@ func (m *ItemSelectionPane) selectTable(tableName string, details types.Describe
 		// defaults on newly opened table
 		m.queryMode = messages.ScanMode
 		m.tableIndex.activeIndex = nil
+		m.tableIndex.indexItemCount = *details.ItemCount
 	}
 	// resetting state
 	m.cleanSlate()
