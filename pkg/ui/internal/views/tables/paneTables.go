@@ -412,11 +412,12 @@ func (m *tableSelectionPane) selectTable() tea.Cmd {
 		}
 		m.details = details
 	}
+	details := m.details
 
 	selectTable := func() tea.Msg {
 		return messages.SelectTable{
 			TableName:    r[0],
-			TableDetails: *m.details,
+			TableDetails: *details,
 		}
 	}
 	return tea.Batch(switchView, selectTable)
