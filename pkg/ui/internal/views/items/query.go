@@ -74,6 +74,7 @@ func (m *ItemSelectionPane) ToggleQueryParametersDialog() tea.Cmd {
 	}
 	index := m.tableIndex.activeIndex
 	hashKeyV := m.queryParameters.hashKeyValue
+	op := m.queryParameters.rangeKeyOperator
 	rangeKeyV1 := m.queryParameters.rangeKeyValue1
 	rangeKeyV2 := m.queryParameters.rangeKeyValue2
 	tgl := func() tea.Msg {
@@ -90,12 +91,13 @@ func (m *ItemSelectionPane) ToggleQueryParametersDialog() tea.Cmd {
 				RangeKey:     rang,
 				RangeKeyType: rangType,
 			},
-			GSI:            globalIndices,
-			LSI:            localIndices,
-			CurrentIndex:   index,
-			HashKeyValue:   hashKeyV,
-			RangeKeyValue1: rangeKeyV1,
-			RangeKeyValue2: rangeKeyV2,
+			GSI:              globalIndices,
+			LSI:              localIndices,
+			CurrentIndex:     index,
+			HashKeyValue:     hashKeyV,
+			RangeKeyValue1:   rangeKeyV1,
+			RangeKeyValue2:   rangeKeyV2,
+			RangeKeyOperator: op,
 		}
 	}
 	return tea.Batch(tgl, init)

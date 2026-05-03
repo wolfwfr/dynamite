@@ -375,9 +375,6 @@ func (m *Queryialog) handleNavigation(msg tea.Msg) tea.Cmd {
 	switch m.focus {
 	case queryIndexSelection:
 		m.content.indexSelection, cmd = m.content.indexSelection.Update(msg)
-		// keep content up to date, depending on index selection
-		// m.resolveIndexInfo()
-		// cmd = tea.Batch(cmd, m.InitContent())
 	case queryHashKeyInput:
 		m.content.hashKeyInput, cmd = m.content.hashKeyInput.Update(msg)
 	case queryOperatorField:
@@ -491,13 +488,6 @@ func (m *Queryialog) SetState(msg messages.InitQueryParameters) tea.Cmd {
 		m.state.resolved.selectedIndex = *msg.CurrentIndex
 	}
 
-	// init the initial state
-	m.state.init.selectedIndex = m.state.resolved.selectedIndex
-	m.state.init.hashKeyValue = m.state.resolved.hashKeyValue
-	m.state.init.rangeKeyValue = m.state.resolved.rangeKeyValue
-	m.state.init.rangeKeyValue2 = m.state.resolved.rangeKeyValue2
-	m.state.init.rangeKeyOperator = m.state.resolved.rangeKeyOperator
-
 	// init resolved state for updating contents later
 	m.state.resolved.hashKeyValue = msg.HashKeyValue
 	m.state.resolved.rangeKeyValue = msg.RangeKeyValue1
@@ -506,6 +496,13 @@ func (m *Queryialog) SetState(msg messages.InitQueryParameters) tea.Cmd {
 
 	// resolve the remaining state (index-dependent)
 	m.resolveIndexInfo()
+
+	// init the initial state
+	m.state.init.selectedIndex = m.state.resolved.selectedIndex
+	m.state.init.hashKeyValue = m.state.resolved.hashKeyValue
+	m.state.init.rangeKeyValue = m.state.resolved.rangeKeyValue
+	m.state.init.rangeKeyValue2 = m.state.resolved.rangeKeyValue2
+	m.state.init.rangeKeyOperator = m.state.resolved.rangeKeyOperator
 
 	// update list item delegates
 	m.updateStyles(true)
@@ -565,10 +562,15 @@ func (m *Queryialog) InitContent() tea.Cmd {
 		if m.state.resolved.RangeKeyType != "N" {
 			operators = append(operators, operatorItem(messages.BeginsWith))
 		}
-		cmds = append(cmds, m.content.operatorSelection.SetItems(operators))
-		if m.content.operatorSelection.Index() > len(m.content.operatorSelection.Items())-1 {
-			m.content.operatorSelection.Select(0)
+		var idx int
+		for i, item := range operators {
+			if messages.QueryOperator(item.(operatorItem)) == m.state.resolved.rangeKeyOperator {
+				idx = i
+				break
+			}
 		}
+		m.content.operatorSelection.Select(idx)
+		cmds = append(cmds, m.content.operatorSelection.SetItems(operators))
 	}
 
 	{ // set input fields
