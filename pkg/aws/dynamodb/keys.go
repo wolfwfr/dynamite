@@ -93,7 +93,7 @@ func formatQueryKeys(params apitypes.QueryParameters) (hashkey string, rangekey 
 	if rangAttrVal1 != nil {
 		ExpressionAttributeValues[":sortkeyval"] = rangAttrVal1
 	}
-	if rangAttrVal2 != nil {
+	if rangAttrVal2 != nil && params.RangeKeyOperator == apitypes.RangeBetween {
 		ExpressionAttributeValues[":sortkeyval2"] = rangAttrVal2
 	}
 	return
