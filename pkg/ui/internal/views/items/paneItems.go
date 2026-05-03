@@ -41,6 +41,12 @@ const (
 
 type SessionData struct {
 	queryMode   messages.ItemsQueryMode
+	queryParams struct {
+		hashKeyValue     string
+		rangeKeyValue1   *string
+		rangeKeyValue2   *string
+		rangeKeyOperator messages.QueryOperator
+	}
 	chosenIndex *string
 }
 
@@ -93,6 +99,13 @@ type ItemSelectionPane struct {
 
 	scanLimit  int
 	queryLimit int
+	// TODO: name collision with reset function
+	queryParameters struct {
+		hashKeyValue     string
+		rangeKeyValue1   *string
+		rangeKeyValue2   *string
+		rangeKeyOperator messages.QueryOperator
+	}
 
 	items types.Items
 
@@ -255,23 +268,21 @@ func (m *ItemSelectionPane) deactivateSpinner() {
 }
 
 func (m *ItemSelectionPane) Init() tea.Cmd {
-	m.softReset()
-	return nil
+	return m.softReset()
 }
 
-// softReset initalises stateful parameters except for sessions
-func (m *ItemSelectionPane) softReset() {
+// softReset initalises stateful parameters except for sessions and the selected
+// table
+func (m *ItemSelectionPane) softReset() tea.Cmd {
 	// cancel any lingering calls
 	m.pageCancel()
 
-	// clean up content
-	m.content.ResetVirtualRows()
-	m.content.SetCursor(0)
-	m.initialised = false
-
-	m.resetQueryParameters() // must come first to reinitialise items in state (which may be used for updating content in other functions)
+	m.resetContents()
+	cmd := m.resetQueryParameters() // must come first to reinitialise items in state (which may be used for updating content in other functions)
+	m.resetKeyMap()
 	m.resetColumnVisibility()
 	m.resetColumnSorting()
+	return cmd
 }
 
 func (m *ItemSelectionPane) Update(msg tea.Msg) (cmd tea.Cmd) {
@@ -321,6 +332,8 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 			return m.enableScanMode()
 		case key.Matches(msg, m.KeyMap.ScanParameters):
 			return m.ToggleScanParametersDialog()
+		case key.Matches(msg, m.KeyMap.QueryParameters):
+			return m.ToggleQueryParametersDialog()
 		case key.Matches(msg, m.KeyMap.Copy):
 			return m.copy()
 		case key.Matches(msg, m.KeyMap.ColVis):
@@ -345,8 +358,10 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 		return m.UpdateColumnSorting(msg)
 	case messages.ScanIndexChanged:
 		return m.ChangeScanIndex(msg)
-	case messages.ScanPageReady:
-		return m.ProcessScanPage(msg)
+	case messages.QueryParametersChanged:
+		return m.ChangeQueryParameters(msg)
+	case messages.PageReady:
+		return m.ProcessPage(msg)
 	case messages.ColumnSortingReset:
 		m.resetColumnSorting()
 		return nil
@@ -379,23 +394,54 @@ func (m *ItemSelectionPane) PageNext(init bool) tea.Cmd {
 	idx := m.tableIndex.activeIndex
 	ctx, cc := context.WithTimeout(m.ctx, m.stdTO)
 	m.pageCancel = cc
+	client := m.config.Client
+	scanLimit := m.scanLimit
+	queryLimit := m.queryLimit
+	hash := m.queryParameters.hashKeyValue
+	rang1 := m.queryParameters.rangeKeyValue1
+	rang2 := m.queryParameters.rangeKeyValue2
+	rangOp := m.queryParameters.rangeKeyOperator
 	pageCmd := func() tea.Msg {
 		defer cc()
 		switch mode {
 		case messages.QueryMode:
-			panic("not supported yet")
-		case messages.ScanMode:
-			scan, err := dynamodb.ScanTable(m.config.Client, ctx, *table.TableName, types.ScanParameters{
-				KeyDetails:       m.selectedTable.AttributeDefinitions,
+			if hash == "" { // prevent impossible query
+				return messages.PageReady{
+					Table:    table,
+					Index:    idx,
+					Response: nil,
+					Err:      nil,
+				}
+			}
+			result, err := dynamodb.QueryTable(client, ctx, *table.TableName, types.QueryParameters{
+				KeyDetails:       table.AttributeDefinitions,
 				IndexName:        idx,
 				KeySchema:        keysFromIndex(idx, table),
-				Limit:            m.scanLimit,
+				HashKeyValue:     hash,
+				RangeKeyValue1:   rang1,
+				RangeKeyValue2:   rang2,
+				RangeKeyOperator: parseRangeKeyOperator(rangOp),
+				Limit:            queryLimit,
 				LastEvaluatedKey: key,
 			})
-			return messages.ScanPageReady{
+			return messages.PageReady{
 				Table:    table,
 				Index:    idx,
-				Response: scan,
+				Response: queryPageToPage(result),
+				Err:      err,
+			}
+		case messages.ScanMode:
+			result, err := dynamodb.ScanTable(client, ctx, *table.TableName, types.ScanParameters{
+				KeyDetails:       table.AttributeDefinitions,
+				IndexName:        idx,
+				KeySchema:        keysFromIndex(idx, table),
+				Limit:            scanLimit,
+				LastEvaluatedKey: key,
+			})
+			return messages.PageReady{
+				Table:    table,
+				Index:    idx,
+				Response: scanPageToPage(result),
 				Err:      err,
 			}
 		}
@@ -458,27 +504,31 @@ func (m *ItemSelectionPane) Zoom() tea.Cmd {
 	}
 }
 
-func (m *ItemSelectionPane) ProcessScanPage(msg messages.ScanPageReady) tea.Cmd {
+func (m *ItemSelectionPane) ProcessPage(msg messages.PageReady) tea.Cmd {
 	defer func() { m.deactivateSpinner() }()
 
 	if msg.Err != nil {
 		m.err = msg.Err // TODO: allow user to exit error message state
 	}
 
-	scan := msg.Response
+	page := msg.Response
 	details := m.selectedTable
 
 	if m.selectedTable.TableArn != msg.Table.TableArn || m.tableIndex.activeIndex != msg.Index { // expired
 		return nil
 	}
 
-	m.appendItems(scan.Items)
-	m.pageKey = scan.LastEvaluatedKey
+	if page == nil {
+		return nil
+	}
 
-	if len(scan.Items.TableKeys) > 0 {
+	m.appendItems(page.Items)
+	m.pageKey = page.LastEvaluatedKey
+
+	if len(page.Items.TableKeys) > 0 {
 		// set columns
 		_, rang := primaryKeysFromSchema(keysFromIndex(m.tableIndex.activeIndex, details))
-		completeKeys := compileCompleteKeys(scan.Items.TableKeys, m.keysComplete, rang != nil)
+		completeKeys := compileCompleteKeys(page.Items.TableKeys, m.keysComplete, rang != nil)
 		defer func() { m.keysComplete = completeKeys }()
 
 		noColumnUpdate := slices.Equal(m.keysComplete, completeKeys)
@@ -491,7 +541,7 @@ func (m *ItemSelectionPane) ProcessScanPage(msg messages.ScanPageReady) tea.Cmd 
 			rows := parseRows(completeKeys, m.items.TableKeys)
 			m.content.SetContent(cols, m.sortRows(rows))
 		case appendOnly: // update with  new rows (append)
-			rows := parseRows(completeKeys, scan.Items.TableKeys)
+			rows := parseRows(completeKeys, page.Items.TableKeys)
 			m.content.AppendRows(m.sortRows(rows))
 		default: // update ALL rows but no columns
 			rows := parseRows(completeKeys, m.items.TableKeys)
@@ -567,14 +617,24 @@ func (m *ItemSelectionPane) sortRows(rows []table.Row) []table.Row {
 // item-selection-view is opened because a table has been selected. It will
 // default to scanning the first page of items.
 func (m *ItemSelectionPane) selectTable(tableName string, details types.DescribeTableResponse) tea.Cmd {
+	var cmd tea.Cmd
 	if session, remembered := m.sessions[*details.TableArn]; remembered {
 		// restore session parameters
-		m.queryMode = session.queryMode
 		m.tableIndex.activeIndex = session.chosenIndex
+		m.queryParameters.hashKeyValue = session.queryParams.hashKeyValue
+		m.queryParameters.rangeKeyValue1 = session.queryParams.rangeKeyValue1
+		m.queryParameters.rangeKeyValue2 = session.queryParams.rangeKeyValue2
+		m.queryParameters.rangeKeyOperator = session.queryParams.rangeKeyOperator
 		if session.chosenIndex == nil {
 			m.tableIndex.indexItemCount = *details.ItemCount
 		} else {
 			m.tableIndex.indexItemCount = indexCountFromTable(*session.chosenIndex, details)
+		}
+		switch session.queryMode {
+		case messages.ScanMode:
+			cmd = m.enableScanMode()
+		case messages.QueryMode:
+			cmd = m.enableQueryMode()
 		}
 	} else {
 		// defaults on newly opened table
@@ -587,7 +647,7 @@ func (m *ItemSelectionPane) selectTable(tableName string, details types.Describe
 	m.content.ResetVirtualRows()
 	m.selectedTable = details
 
-	return m.PageNext(true)
+	return tea.Batch(m.PageNext(true), cmd)
 }
 
 // compileCompleteKeys takes a table of key-value pairs, observes all keys and
@@ -645,19 +705,51 @@ func (m *ItemSelectionPane) updateSize() {
 	m.scanLimit = h
 }
 
-// TODO: merge Init, reset, & cleanslate
-func (m *ItemSelectionPane) resetQueryParameters() {
+func (m *ItemSelectionPane) resetKeyMap() {
+	m.KeyMap.QueryParameters.SetEnabled(false)
+	m.KeyMap.Query.SetEnabled(true)
+	m.KeyMap.ScanParameters.SetEnabled(true)
+	m.KeyMap.Scan.SetEnabled(false)
+}
+
+// reset contents resets any table modifications and resets the table contents
+// to empty. It also cancels and resets paging and resets preview tracking.
+func (m *ItemSelectionPane) resetContents() {
+	m.pageCancel()
 	m.initialised = false
 	m.paging = false
-	m.keysComplete = []string{}
-	m.queryMode = messages.ScanMode
 	m.pageKey = nil
 	m.items = types.Items{}
+	m.keysComplete = []string{}
 	m.itemfiltering.items = []int{}
 	m.lastPreviewItem = 0
 	m.lastPreviewMsg = nil
+
+	m.content.ResetVirtualRows()
+	m.content.SetContent([]table.Column{}, []table.Row{})
+	m.content.SetCursor(0)
+}
+
+// resetQueryParameters resets any parameters required for sanning or querying a
+// dynamodb table
+func (m *ItemSelectionPane) resetQueryParameters() tea.Cmd {
+	var cmd tea.Cmd
+	if m.queryMode != messages.ScanMode {
+		cmd = func() tea.Msg {
+			return messages.SwitchQueryMode{
+				OldMode: m.queryMode,
+				NewMode: messages.ScanMode,
+			}
+		}
+	}
+	m.queryMode = messages.ScanMode
 	m.tableIndex.activeIndex = nil
 	m.tableIndex.indexItemCount = -1
+	m.queryParameters.hashKeyValue = ""
+	m.queryParameters.rangeKeyOperator = messages.Noop
+	m.queryParameters.rangeKeyValue1 = nil
+	m.queryParameters.rangeKeyValue2 = nil
+	return cmd
 }
 
 func (m *ItemSelectionPane) resetColumnVisibility() {
@@ -695,14 +787,19 @@ func (m *ItemSelectionPane) escape() tea.Cmd {
 
 	// store session data
 	if arn := m.selectedTable.TableArn; arn != nil {
-		m.sessions[*arn] = SessionData{
+		d := SessionData{
 			queryMode:   m.queryMode,
 			chosenIndex: m.tableIndex.activeIndex,
 		}
+		d.queryParams.hashKeyValue = m.queryParameters.hashKeyValue
+		d.queryParams.rangeKeyValue1 = m.queryParameters.rangeKeyValue1
+		d.queryParams.rangeKeyValue2 = m.queryParameters.rangeKeyValue2
+		d.queryParams.rangeKeyOperator = m.queryParameters.rangeKeyOperator
+		m.sessions[*arn] = d
 	}
 
 	// clean up state
-	m.softReset()
+	reset := m.softReset()
 
 	// switch to previous view
 	switchView := func() tea.Msg {
@@ -719,7 +816,7 @@ func (m *ItemSelectionPane) escape() tea.Cmd {
 		}
 	}
 
-	return tea.Batch(resetPreview, switchView)
+	return tea.Batch(reset, resetPreview, switchView)
 }
 
 func (m *ItemSelectionPane) UpdateColumnVisibility(msg messages.ColumnVisibilityUpdate) tea.Cmd {
@@ -839,17 +936,42 @@ func (m *ItemSelectionPane) toggleColumnSortingDialog(msg tea.Msg) tea.Cmd {
 }
 
 func (m *ItemSelectionPane) ChangeScanIndex(msg messages.ScanIndexChanged) tea.Cmd {
-	if u.IfNotNil(m.selectedTable.TableArn, "") != msg.TableARN { // expired
+	if u.IfNotNil(m.selectedTable.TableArn, "") != msg.TableARN || m.queryMode != messages.ScanMode { // expired
 		return nil
 	}
 
-	m.Init()
+	m.resetContents()
+	m.enableScanMode()
+
+	m.queryMode = messages.ScanMode
 
 	m.tableIndex.activeIndex = u.Ternary(&msg.IndexName, nil, msg.IndexName != "")
 	m.tableIndex.indexItemCount = u.IfNotNil(m.selectedTable.ItemCount, 0)
 	if m.tableIndex.activeIndex != nil {
 		m.tableIndex.indexItemCount = indexCountFromTable(*m.tableIndex.activeIndex, m.selectedTable)
 	}
+	return m.PageNext(true)
+}
+
+func (m *ItemSelectionPane) ChangeQueryParameters(msg messages.QueryParametersChanged) tea.Cmd {
+	if u.IfNotNil(m.selectedTable.TableArn, "") != msg.TableARN || m.queryMode != messages.QueryMode { // expired
+		return nil
+	}
+
+	// cancel paging, and refresh table contents
+	m.resetContents()
+	m.enableQueryMode()
+
+	m.tableIndex.activeIndex = u.Ternary(&msg.IndexName, nil, msg.IndexName != "")
+	m.tableIndex.indexItemCount = u.IfNotNil(m.selectedTable.ItemCount, 0)
+	if m.tableIndex.activeIndex != nil {
+		m.tableIndex.indexItemCount = indexCountFromTable(*m.tableIndex.activeIndex, m.selectedTable)
+	}
+	m.queryParameters.hashKeyValue = msg.HashKeyValue
+	m.queryParameters.rangeKeyValue1 = msg.RangeKeyValue1
+	m.queryParameters.rangeKeyValue2 = msg.RangeKeyValue2
+	m.queryParameters.rangeKeyOperator = msg.RangeKeyOperator
+
 	return m.PageNext(true)
 }
 

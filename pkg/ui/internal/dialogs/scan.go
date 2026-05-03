@@ -69,15 +69,19 @@ type ScanDialog struct {
 	content list.Model
 }
 
-type scanListStyles struct {
-	title        lipgloss.Style
-	content      lipgloss.Style
+type indexItemStyles struct {
 	item         lipgloss.Style
 	selectedItem lipgloss.Style
 	header       lipgloss.Style
-	help         lipgloss.Style
-	helpLine     lipgloss.Style
-	keyInfo      lipgloss.Style
+}
+
+type scanListStyles struct {
+	indexItemStyles
+	title    lipgloss.Style
+	content  lipgloss.Style
+	help     lipgloss.Style
+	helpLine lipgloss.Style
+	keyInfo  lipgloss.Style
 }
 
 func newscanStyles(darkBG bool) scanListStyles {
@@ -85,7 +89,7 @@ func newscanStyles(darkBG bool) scanListStyles {
 	s.title = lipgloss.NewStyle().Padding(1, 0, 2, 0)
 	s.content = lipgloss.NewStyle().PaddingTop(1).PaddingBottom(2)
 	s.item = lipgloss.NewStyle().PaddingLeft(4)
-	s.selectedItem = lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("170"))
+	s.selectedItem = lipgloss.NewStyle().PaddingLeft(2).Foreground(commonstyles.DialogFocusColour)
 	s.header = lipgloss.NewStyle().Foreground(lipgloss.Color("#B0B0B0"))
 	s.help = list.DefaultStyles(darkBG).HelpStyle.Padding(1, 2, 0, 2)
 	s.helpLine = lipgloss.NewStyle().PaddingBottom(1)
@@ -101,16 +105,17 @@ type indexItem struct {
 
 func (i indexItem) FilterValue() string { return "" }
 
-type scanItemDelegate struct {
-	styles   *scanListStyles
+type indexItemDelegate struct {
+	styles   *indexItemStyles
 	firstGSI *string
 	firstLSI *string
+	focus    bool
 }
 
-func (d scanItemDelegate) Height() int                             { return 1 }
-func (d scanItemDelegate) Spacing() int                            { return 0 }
-func (d scanItemDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
-func (d scanItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
+func (d indexItemDelegate) Height() int                             { return 1 }
+func (d indexItemDelegate) Spacing() int                            { return 0 }
+func (d indexItemDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
+func (d indexItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
 	i, ok := listItem.(indexItem)
 	if !ok {
 		return
@@ -133,9 +138,13 @@ func (d scanItemDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 	}
 
 	fn := d.styles.item.Render
-	if index == m.Index() {
+	if index == m.Index() && d.focus {
 		fn = func(s ...string) string {
 			return d.styles.selectedItem.Render("> " + strings.Join(s, " "))
+		}
+	} else if index == m.Index() {
+		fn = func(s ...string) string {
+			return d.styles.item.PaddingLeft(2).Render("> " + strings.Join(s, " "))
 		}
 	}
 
@@ -161,7 +170,7 @@ func NewScanDialog(close key.Binding) *ScanDialog {
 	r.window.width = 150
 	r.window.height = 100
 
-	l := list.New([]list.Item{}, scanItemDelegate{}, r.dialog.width, r.dialog.height)
+	l := list.New([]list.Item{}, indexItemDelegate{}, r.dialog.width, r.dialog.height)
 	l.Title = "Scan Parameters"
 	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(false)
@@ -183,7 +192,7 @@ func NewScanDialog(close key.Binding) *ScanDialog {
 	return r
 }
 
-func (m *ScanDialog) newDelegate(s *scanListStyles) scanItemDelegate {
+func (m *ScanDialog) newDelegate(s *scanListStyles) indexItemDelegate {
 	var firstGSI *string
 	var firstLSI *string
 	if len(m.state.GSI) > 0 {
@@ -192,10 +201,11 @@ func (m *ScanDialog) newDelegate(s *scanListStyles) scanItemDelegate {
 	if len(m.state.LSI) > 0 {
 		firstLSI = &m.state.LSI[0].Name
 	}
-	return scanItemDelegate{
-		styles:   s,
+	return indexItemDelegate{
+		styles:   &s.indexItemStyles,
 		firstGSI: firstGSI,
 		firstLSI: firstLSI,
+		focus:    true, // always focused in the scan dialog
 	}
 }
 

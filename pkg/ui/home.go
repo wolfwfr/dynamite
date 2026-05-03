@@ -35,6 +35,7 @@ const (
 	columns_dialog
 	column_sorting_dialog
 	scan_param_dialog
+	query_param_dialog
 )
 
 var (
@@ -76,6 +77,7 @@ type Model struct {
 		columnVisibility *dialogs.Columns
 		columnSorting    *dialogs.ColumnSorting
 		scanParams       *dialogs.ScanDialog
+		queryParams      *dialogs.Queryialog
 		active           Dialog
 	}
 
@@ -130,6 +132,7 @@ func NewModel(ctx context.Context, cfg appconfig.Config) Model {
 		m.dialogs.columnVisibility = dialogs.NewColumnVisibilityDialog(DialogCloseKeymapFrom(itemViewDialogKeys.ColumnVisibility))
 		m.dialogs.columnSorting = dialogs.NewColumnSortingDialog(DialogCloseKeymapFrom(itemViewDialogKeys.ColumnSorting))
 		m.dialogs.scanParams = dialogs.NewScanDialog(DialogCloseKeymapFrom(itemViewDialogKeys.ScanParams))
+		m.dialogs.queryParams = dialogs.NewQueryDialog(DialogCloseKeymapFrom(itemViewDialogKeys.QueryParams))
 	}
 
 	return m
@@ -166,6 +169,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m, cmd = m.ToggleColumnSortingDialog()
 	case messages.ToggleScanParameters:
 		m, cmd = m.ToggleScanParametersDialog()
+	case messages.ToggleQueryParameters:
+		m, cmd = m.ToggleQueryParametersDialog()
 	case messages.SwitchRegion:
 		m, cmd = m.switchRegion(msg.OldRegion, msg.NewRegion)
 	case messages.SwitchQueryMode:
@@ -200,6 +205,7 @@ func (m Model) broadcast(msg tea.Msg) (Model, tea.Cmd) {
 	cmds = append(cmds, m.dialogs.columnVisibility.Update(msg))
 	cmds = append(cmds, m.dialogs.columnSorting.Update(msg))
 	cmds = append(cmds, m.dialogs.scanParams.Update(msg))
+	cmds = append(cmds, m.dialogs.queryParams.Update(msg))
 
 	return m, tea.Batch(cmds...)
 }
@@ -220,6 +226,8 @@ func (m Model) routeToActiveOnly(msg tea.Msg) (Model, tea.Cmd) {
 			return m, m.dialogs.columnSorting.Update(msg)
 		case scan_param_dialog:
 			return m, m.dialogs.scanParams.Update(msg)
+		case query_param_dialog:
+			return m, m.dialogs.queryParams.Update(msg)
 		}
 	}
 
@@ -323,6 +331,17 @@ func (m Model) ToggleScanParametersDialog() (Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m Model) ToggleQueryParametersDialog() (Model, tea.Cmd) {
+	if m.dialogs.open && m.dialogs.active != query_param_dialog {
+		return m, nil
+	}
+	m.dialogs.open = !m.dialogs.open
+	if m.dialogs.open {
+		m.dialogs.active = query_param_dialog
+	}
+	return m, nil
+}
+
 type dialog interface {
 	View() string
 }
@@ -364,6 +383,8 @@ func (m Model) View() tea.View {
 			dialog = m.dialogs.columnSorting
 		case scan_param_dialog:
 			dialog = m.dialogs.scanParams
+		case query_param_dialog:
+			dialog = m.dialogs.queryParams
 		}
 		renderedDialog := dialog.View()
 		dialogLayer := lipgloss.NewLayer(renderedDialog).

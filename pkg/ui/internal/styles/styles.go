@@ -3,6 +3,8 @@ package styles
 import "charm.land/lipgloss/v2"
 
 var (
+	DialogFocusColour = lipgloss.Color("#F58427")
+
 	BorderStyle = lipgloss.NewStyle().
 			Align(lipgloss.Left, lipgloss.Top).
 			BorderStyle(lipgloss.RoundedBorder()).

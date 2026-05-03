@@ -130,21 +130,28 @@ func ScanTable(client dynamodbClient, ctx context.Context, table string, params 
 
 // TODO: add options for rangekey comparisons (e.g. 'eq', 'gt', 'between', etc.)
 func QueryTable(client dynamodbClient, ctx context.Context, table string, params apitypes.QueryParameters) (*apitypes.QueryResponse, error) {
-	hkey, rkey, keys, values := formatQueryKeys(params)
+	hkey, rkey, keys, values, err := formatQueryKeys(params)
+	if err != nil {
+		return nil, err
+	}
+	var index *string
+	if params.IndexName != nil && *params.IndexName != "" {
+		index = params.IndexName
+	}
 	p := dynamodb.QueryInput{
 		TableName:                 &table,
+		Limit:                     toPtr(int32(params.Limit)),
 		KeyConditionExpression:    &keys,
 		ExpressionAttributeValues: values,
 		Select:                    "ALL_ATTRIBUTES",
+		IndexName:                 index,
+		ExclusiveStartKey:         params.LastEvaluatedKey,
 
 		// AttributesToGet:           []string{},
 		// ConsistentRead:            new(bool),
-		// ExclusiveStartKey:         map[string]types.AttributeValue{},
 		// ExpressionAttributeNames:  map[string]string{},
 		// ExpressionAttributeValues: map[string]types.AttributeValue{},
 		// FilterExpression:          new(string),
-		// IndexName:                 new(string),
-		// Limit:                     new(int32),
 		// ProjectionExpression:      new(string),
 		// QueryFilter:               map[string]types.Condition{},
 		// ReturnConsumedCapacity:    "",
@@ -165,6 +172,7 @@ func QueryTable(client dynamodbClient, ctx context.Context, table string, params
 			Raw:       out.Items,
 			TableKeys: make([][]apitypes.KeyValue, 0, len(out.Items)),
 		},
+		LastEvaluatedKey: out.LastEvaluatedKey,
 	}
 
 	// TODO: reconsider parsing to both JSON & YAML all the time

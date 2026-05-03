@@ -6,6 +6,18 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
+type RangeKeyOperator string
+
+const (
+	RangeEquals       RangeKeyOperator = "equals"
+	RangeGreater      RangeKeyOperator = "greater than"
+	RangeGreaterEqual RangeKeyOperator = "greater than or equals"
+	RangeLess         RangeKeyOperator = "less than"
+	RangeLessEqual    RangeKeyOperator = "less than or equals"
+	RangeBetween      RangeKeyOperator = "between"
+	RangeBeginsWith   RangeKeyOperator = "begins with"
+)
+
 type KeyValue struct {
 	Key   string
 	Value string
@@ -73,15 +85,16 @@ type ( // QUERY
 		IndexName  *string                     // optional index-name, queries table if nil
 		KeySchema  []types.KeySchemaElement    // keyschema associated with `IndexName` or table
 
-		HashKeyValue  string // required
-		RangeKeyValue string // optional
+		HashKeyValue     string  // required
+		RangeKeyValue1   *string // optional
+		RangeKeyValue2   *string // used for BETWEEN operator
+		RangeKeyOperator RangeKeyOperator
 
-		// Limit int
-		// LastEvaluatedKey map[string]types.AttributeValue
+		Limit            int
+		LastEvaluatedKey map[string]types.AttributeValue
 	}
 	QueryResponse struct {
-		Items Items
-
-		// LastEvaluatedKey map[string]types.AttributeValue
+		Items            Items
+		LastEvaluatedKey map[string]types.AttributeValue
 	}
 )

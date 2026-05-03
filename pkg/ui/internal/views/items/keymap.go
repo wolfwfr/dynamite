@@ -45,28 +45,29 @@ func DefaultDetailsKeyMap() *DetailsPaneKeyMap {
 // ItemPaneKeyMap defines keybindings. It satisfies to the help.KeyMap interface, which
 // is used to render the help menu.
 type ItemPaneKeyMap struct {
-	Search         key.Binding
-	Zoom           key.Binding
-	Esc            key.Binding
-	ChCols         key.Binding
-	ToggleFmt      key.Binding
-	Scan           key.Binding
-	ScanParameters key.Binding
-	Query          key.Binding
-	Copy           key.Binding
-	ColVis         key.Binding
-	ColSort        key.Binding
+	Search          key.Binding
+	Zoom            key.Binding
+	Esc             key.Binding
+	ChCols          key.Binding
+	ToggleFmt       key.Binding
+	Scan            key.Binding
+	ScanParameters  key.Binding
+	Query           key.Binding
+	QueryParameters key.Binding
+	Copy            key.Binding
+	ColVis          key.Binding
+	ColSort         key.Binding
 }
 
 // ShortHelp implements the KeyMap interface.
 func (km *ItemPaneKeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{km.Search, km.Zoom, km.Esc, km.ToggleFmt, km.Scan, km.ScanParameters, km.Query}
+	return []key.Binding{km.Search, km.Zoom, km.Esc, km.ToggleFmt, km.Scan, km.ScanParameters, km.Query, km.QueryParameters}
 }
 
 // FullHelp implements the KeyMap interface.
 func (km *ItemPaneKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{km.Search, km.Zoom, km.Esc, km.ChCols, km.ToggleFmt, km.Scan, km.ScanParameters, km.Query, km.Copy, km.ColVis, km.ColSort},
+		{km.Search, km.Zoom, km.Esc, km.ChCols, km.ToggleFmt, km.Scan, km.ScanParameters, km.Query, km.QueryParameters, km.Copy, km.ColVis, km.ColSort},
 	}
 }
 
@@ -106,6 +107,11 @@ func DefaultItemPaneKeyMap() *ItemPaneKeyMap {
 			key.WithKeys("Q"),
 			key.WithHelp("shift+q", "query"),
 		),
+		QueryParameters: key.NewBinding(
+			key.WithKeys("Q"),
+			key.WithHelp("shift+q", "query params"),
+			key.WithDisabled(), // defautl to scan mode
+		),
 		Copy: key.NewBinding(
 			key.WithKeys("Y"),
 			key.WithHelp("shift+y", "copy"),
@@ -134,6 +140,7 @@ type DialogKeyMaps struct {
 	ColumnVisibility key.Binding
 	ColumnSorting    key.Binding
 	ScanParams       key.Binding
+	QueryParams      key.Binding
 }
 
 func (m *ItemSelection) DialogKeyMaps() DialogKeyMaps {
@@ -141,6 +148,7 @@ func (m *ItemSelection) DialogKeyMaps() DialogKeyMaps {
 		ColumnVisibility: m.itemsPane.KeyMap.ColVis,
 		ColumnSorting:    m.itemsPane.KeyMap.ColSort,
 		ScanParams:       m.itemsPane.KeyMap.ScanParameters,
+		QueryParams:      m.itemsPane.KeyMap.QueryParameters,
 	}
 }
 

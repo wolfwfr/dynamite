@@ -1,6 +1,8 @@
 package messages
 
 import (
+	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+
 	apitypes "github.com/wolfwfr/dynamite/pkg/aws/dynamodb/types"
 )
 
@@ -14,6 +16,19 @@ const (
 const (
 	ScanMode ItemsQueryMode = iota
 	QueryMode
+)
+
+type QueryOperator string
+
+const (
+	Noop         QueryOperator = ""
+	Equals       QueryOperator = "equals"
+	GreaterEqual QueryOperator = "greater than or equal"
+	Greater      QueryOperator = "greater than"
+	LessEqual    QueryOperator = "less than or equal"
+	Less         QueryOperator = "less than"
+	Between      QueryOperator = "between"
+	BeginsWith   QueryOperator = "begins with"
 )
 
 type TableIndex struct {
@@ -69,10 +84,15 @@ type TableDetails struct {
 
 type ToggleJSONYAML struct{}
 
-type ScanPageReady struct {
+type Page struct {
+	Items            apitypes.Items
+	LastEvaluatedKey map[string]dynamodbtypes.AttributeValue
+}
+
+type PageReady struct {
 	Table    apitypes.DescribeTableResponse
 	Index    *string
-	Response *apitypes.ScanResponse
+	Response *Page
 	Err      error
 }
 
@@ -89,6 +109,7 @@ type ToggleRegions struct{}
 type ToggleColumnVisibility struct{}
 type ToggleColumnSorting struct{}
 type ToggleScanParameters struct{}
+type ToggleQueryParameters struct{}
 
 type InitColumnVisibility struct {
 	TableARN   string
@@ -111,6 +132,18 @@ type InitScanParameters struct {
 	CurrentIndex *string
 }
 
+type InitQueryParameters struct {
+	TableARN         string
+	TableIndex       TableIndex
+	GSI              []GlobalSecondaryIndex
+	LSI              []LocalSecondaryIndex
+	CurrentIndex     *string
+	HashKeyValue     string
+	RangeKeyValue1   *string
+	RangeKeyValue2   *string // used for BETWEEN operator
+	RangeKeyOperator QueryOperator
+}
+
 type ColumnVisibilityUpdate struct {
 	TableARN   string
 	AllColumns []string // matching by index
@@ -127,6 +160,15 @@ type ColumnSortingUpdate struct {
 type ScanIndexChanged struct {
 	TableARN  string
 	IndexName string // empty == table index
+}
+
+type QueryParametersChanged struct {
+	TableARN         string
+	IndexName        string // empty == table index
+	HashKeyValue     string
+	RangeKeyValue1   *string
+	RangeKeyValue2   *string // used for BETWEEN operator
+	RangeKeyOperator QueryOperator
 }
 
 type ColumnSortingReset struct {

@@ -3,6 +3,7 @@ package itemselection
 import (
 	tea "charm.land/bubbletea/v2"
 
+	apitypes "github.com/wolfwfr/dynamite/pkg/aws/dynamodb/types"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	"github.com/wolfwfr/dynamite/pkg/util"
 	u "github.com/wolfwfr/dynamite/pkg/util"
@@ -12,16 +13,22 @@ func (m *ItemSelectionPane) enableScanMode() tea.Cmd {
 	if m.queryMode == messages.ScanMode {
 		return nil
 	}
+
+	m.resetContents()
+
 	m.queryMode = messages.ScanMode
 	m.KeyMap.Query.SetEnabled(true)
+	m.KeyMap.QueryParameters.SetEnabled(false)
 	m.KeyMap.Scan.SetEnabled(false)
 	m.KeyMap.ScanParameters.SetEnabled(true)
-	return func() tea.Msg {
+
+	switchM := func() tea.Msg {
 		return messages.SwitchQueryMode{
 			OldMode: m.queryMode,
 			NewMode: messages.ScanMode,
 		}
 	}
+	return tea.Batch(switchM, m.PageNext(true))
 }
 
 func (m *ItemSelectionPane) ToggleScanParametersDialog() tea.Cmd {
@@ -80,4 +87,14 @@ func (m *ItemSelectionPane) ToggleScanParametersDialog() tea.Cmd {
 		}
 	}
 	return tea.Batch(tgl, init)
+}
+
+func scanPageToPage(page *apitypes.ScanResponse) *messages.Page {
+	if page == nil {
+		return nil
+	}
+	return &messages.Page{
+		Items:            page.Items,
+		LastEvaluatedKey: page.LastEvaluatedKey,
+	}
 }
