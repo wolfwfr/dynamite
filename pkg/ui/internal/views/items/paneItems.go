@@ -414,6 +414,9 @@ func (m *ItemSelectionPane) ToggleJSONYAMLFormat() tea.Cmd {
 
 // force is used on new pane initialization because lastPreviewItem could be 0
 func (m *ItemSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
+	if !m.initialised {
+		return nil
+	}
 	// render empty preview when no items or no filter results
 	if m.initialised && len(m.items.Raw) == 0 || m.itemfiltering.enabled && len(m.itemfiltering.items) == 0 {
 		if m.lastPreviewMsg != nil && m.lastPreviewMsg.Item == "" { // prevent looping
@@ -424,8 +427,8 @@ func (m *ItemSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
 				Item: "",
 			}
 		}
-
 	}
+
 	idx := m.content.Cursor()
 	if len(m.itemfiltering.items) > 0 { // cursor refers to filtered items
 		idx = m.itemfiltering.items[idx]
