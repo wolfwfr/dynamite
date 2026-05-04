@@ -57,11 +57,11 @@ func DefaultKeyMap() *KeyMap {
 		),
 		ShiftRight: key.NewBinding(
 			key.WithKeys("L"),
-			key.WithHelp("shift+l", "½ width right"),
+			key.WithHelp("shift+l", "¼ width right"),
 		),
 		ShiftLeft: key.NewBinding(
 			key.WithKeys("H"),
-			key.WithHelp("shift+h", "½ width left"),
+			key.WithHelp("shift+h", "¼ width left"),
 		),
 		PageUp: key.NewBinding(
 			key.WithKeys("b", "pgup"),

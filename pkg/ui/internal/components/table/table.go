@@ -215,9 +215,9 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 		case key.Matches(msg, m.KeyMap.ScrollLeft):
 			m.ScrollLeft(1)
 		case key.Matches(msg, m.KeyMap.ShiftRight):
-			m.ScrollRight(m.content.Width() / 2)
+			m.ScrollRight(m.content.Width() / 4)
 		case key.Matches(msg, m.KeyMap.ShiftLeft):
-			m.ScrollLeft(m.content.Width() / 2)
+			m.ScrollLeft(m.content.Width() / 4)
 		case key.Matches(msg, m.KeyMap.PageUp):
 			m.MoveUp(m.content.Height())
 		case key.Matches(msg, m.KeyMap.PageDown):
