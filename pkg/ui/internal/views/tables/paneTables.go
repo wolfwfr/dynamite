@@ -180,6 +180,7 @@ func (m *tableSelectionPane) cleanSlate() {
 }
 
 func (m *tableSelectionPane) Init() tea.Cmd {
+	m.search.Reset()
 	m.content.ResetVirtualRows()
 	m.content.SetCursor(0)
 	m.cleanSlate()
