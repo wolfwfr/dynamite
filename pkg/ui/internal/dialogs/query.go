@@ -72,10 +72,6 @@ type Queryialog struct {
 			rangeKeyValue    *string
 			rangeKeyValue2   *string
 			rangeKeyOperator messages.QueryOperator
-
-			HashKey string
-
-			RangeKey *string
 		}
 		// table state is set excusively on initialisation
 		table struct {
@@ -84,16 +80,8 @@ type Queryialog struct {
 			GSI        []messages.GlobalSecondaryIndex
 			LSI        []messages.LocalSecondaryIndex
 		}
-		// resolved state is state that is resolved based on user manipulation
-		// of the dialog contents
+		// resolved state is state that is resolved from the user input
 		resolved struct {
-			// user inputs
-			selectedIndex    string
-			hashKeyValue     string
-			rangeKeyValue    *string
-			rangeKeyValue2   *string
-			rangeKeyOperator messages.QueryOperator
-
 			// resolved from selected index
 			HashKey     string
 			HashKeyType string
@@ -273,17 +261,14 @@ func NewQueryDialog(close key.Binding) *Queryialog {
 
 	{ // hash key input
 		hashKeyInput := textinput.New()
-		hashKeyInput.CharLimit = 64
 		d.content.hashKeyInput = hashKeyInput
 	}
 	{ // range key input
 		rangeKeyInput := textinput.New()
-		rangeKeyInput.CharLimit = 64
 		d.content.rangeKeyInput = rangeKeyInput
 	}
 	{ // range key input 2
 		rangeKeyInput := textinput.New()
-		rangeKeyInput.CharLimit = 64
 		d.content.rangeKeyInput2 = rangeKeyInput
 	}
 
@@ -379,7 +364,6 @@ func (m *Queryialog) handleNavigation(msg tea.Msg) tea.Cmd {
 		m.content.hashKeyInput, cmd = m.content.hashKeyInput.Update(msg)
 	case queryOperatorField:
 		m.content.operatorSelection, cmd = m.content.operatorSelection.Update(msg)
-		m.state.resolved.rangeKeyOperator = messages.QueryOperator(m.content.operatorSelection.SelectedItem().(operatorItem))
 	case queryRangeKeyInput:
 		m.content.rangeKeyInput, cmd = m.content.rangeKeyInput.Update(msg)
 	case queryRangeKeyInput2:
@@ -390,9 +374,8 @@ func (m *Queryialog) handleNavigation(msg tea.Msg) tea.Cmd {
 		}
 	}
 
-	m.resolveStateFromContent()
+	m.resolveIndexInfo()
 	cmd = tea.Batch(cmd, m.updateContent())
-	m.resolveConflicts()
 
 	return cmd
 }
@@ -448,23 +431,16 @@ func (m *Queryialog) ResetState() {
 	m.state.init.rangeKeyOperator = messages.Equals
 	m.state.init.rangeKeyValue = nil
 	m.state.init.rangeKeyValue2 = nil
-	m.state.init.HashKey = ""
-	m.state.init.RangeKey = nil
 	m.state.init.selectedIndex = ""
 
 	m.state.table.TableARN = ""
 	m.state.table.TableIndex = messages.TableIndex{}
 	m.state.table.GSI = nil
 	m.state.table.LSI = nil
-	m.state.resolved.hashKeyValue = ""
-	m.state.resolved.rangeKeyOperator = messages.Equals
-	m.state.resolved.rangeKeyValue = nil
-	m.state.resolved.rangeKeyValue2 = nil
 	m.state.resolved.HashKey = ""
 	m.state.resolved.HashKeyType = ""
 	m.state.resolved.RangeKey = nil
 	m.state.resolved.RangeKeyType = ""
-	m.state.resolved.selectedIndex = ""
 	m.focus = queryIndexSelection
 
 	m.content.indexSelection.SetItems([]list.Item{})
@@ -484,34 +460,22 @@ func (m *Queryialog) SetState(msg messages.InitQueryParameters) tea.Cmd {
 	m.state.table.TableIndex = msg.TableIndex
 	m.state.table.GSI = msg.GSI
 	m.state.table.LSI = msg.LSI
-	if msg.CurrentIndex != nil {
-		m.state.resolved.selectedIndex = *msg.CurrentIndex
-	}
 
 	// init resolved state for updating contents later
-	m.state.resolved.hashKeyValue = msg.HashKeyValue
-	m.state.resolved.rangeKeyValue = msg.RangeKeyValue1
-	m.state.resolved.rangeKeyValue2 = msg.RangeKeyValue2
-	m.state.resolved.rangeKeyOperator = u.Ternary(msg.RangeKeyOperator, messages.Equals, msg.RangeKeyOperator != messages.Noop)
-
-	// resolve the remaining state (index-dependent)
 	m.resolveIndexInfo()
 
 	// init the initial state
-	m.state.init.selectedIndex = m.state.resolved.selectedIndex
-	m.state.init.hashKeyValue = m.state.resolved.hashKeyValue
-	m.state.init.rangeKeyValue = m.state.resolved.rangeKeyValue
-	m.state.init.rangeKeyValue2 = m.state.resolved.rangeKeyValue2
-	m.state.init.rangeKeyOperator = m.state.resolved.rangeKeyOperator
+	m.state.init.selectedIndex = u.IfNotNil(msg.CurrentIndex, tableIndexName)
+	m.state.init.hashKeyValue = msg.HashKeyValue
+	m.state.init.rangeKeyValue = msg.RangeKeyValue1
+	m.state.init.rangeKeyValue2 = msg.RangeKeyValue2
+	m.state.init.rangeKeyOperator = msg.RangeKeyOperator
 
 	// update list item delegates
 	m.updateStyles(true)
 
 	// initialise the contents
 	cmd := m.InitContent()
-
-	// resolve any conflicts between content & resolved states
-	m.resolveConflicts()
 
 	return cmd
 }
@@ -533,7 +497,7 @@ func (m *Queryialog) InitContent() tea.Cmd {
 				indexType:  gsi,
 				sliceIndex: i,
 			})
-			if g.Name == m.state.resolved.selectedIndex {
+			if g.Name == m.state.init.selectedIndex {
 				idx = len(items) - 1
 			}
 		}
@@ -543,7 +507,7 @@ func (m *Queryialog) InitContent() tea.Cmd {
 				indexType:  lsi,
 				sliceIndex: i,
 			})
-			if l.Name == m.state.resolved.selectedIndex {
+			if l.Name == m.state.init.selectedIndex {
 				idx = len(items) - 1
 			}
 		}
@@ -564,7 +528,7 @@ func (m *Queryialog) InitContent() tea.Cmd {
 		}
 		var idx int
 		for i, item := range operators {
-			if messages.QueryOperator(item.(operatorItem)) == m.state.resolved.rangeKeyOperator {
+			if messages.QueryOperator(item.(operatorItem)) == m.state.init.rangeKeyOperator {
 				idx = i
 				break
 			}
@@ -574,9 +538,9 @@ func (m *Queryialog) InitContent() tea.Cmd {
 	}
 
 	{ // set input fields
-		m.content.hashKeyInput.SetValue(m.state.resolved.hashKeyValue)
-		m.content.rangeKeyInput.SetValue(u.IfNotNil(m.state.resolved.rangeKeyValue, ""))
-		m.content.rangeKeyInput2.SetValue(u.IfNotNil(m.state.resolved.rangeKeyValue2, ""))
+		m.content.hashKeyInput.SetValue(m.state.init.hashKeyValue)
+		m.content.rangeKeyInput.SetValue(u.IfNotNil(m.state.init.rangeKeyValue, ""))
+		m.content.rangeKeyInput2.SetValue(u.IfNotNil(m.state.init.rangeKeyValue2, ""))
 	}
 
 	m.updateSize()
@@ -600,14 +564,6 @@ func (m *Queryialog) updateContent() tea.Cmd {
 		m.content.operatorSelection.Select(0)
 	}
 	return m.content.operatorSelection.SetItems(operators)
-}
-
-// resolveConflicts removes any disallowed input combinations. It assumes all
-// relevent state has been resolved from user inputs
-func (m *Queryialog) resolveConflicts() {
-	if m.state.resolved.rangeKeyOperator == messages.BeginsWith && m.state.resolved.RangeKeyType == "N" {
-		m.state.resolved.rangeKeyOperator = messages.Equals
-	}
 }
 
 func (m *Queryialog) applyParameters() tea.Cmd {
@@ -642,11 +598,11 @@ func (m *Queryialog) queryParametersUpdate() tea.Cmd {
 	return func() tea.Msg {
 		return messages.QueryParametersChanged{
 			TableARN:         m.state.table.TableARN,
-			IndexName:        u.Ternary(m.state.resolved.selectedIndex, "", m.state.resolved.selectedIndex != tableIndexName),
-			HashKeyValue:     m.state.resolved.hashKeyValue,
-			RangeKeyValue1:   m.state.resolved.rangeKeyValue,
-			RangeKeyValue2:   m.state.resolved.rangeKeyValue2,
-			RangeKeyOperator: m.state.resolved.rangeKeyOperator,
+			IndexName:        u.Ternary(m.state.init.selectedIndex, "", m.state.init.selectedIndex != tableIndexName),
+			HashKeyValue:     m.state.init.hashKeyValue,
+			RangeKeyValue1:   m.state.init.rangeKeyValue,
+			RangeKeyValue2:   m.state.init.rangeKeyValue2,
+			RangeKeyOperator: m.state.init.rangeKeyOperator,
 		}
 	}
 }
@@ -744,7 +700,8 @@ func (m *Queryialog) renderOperatorSelection() string {
 }
 
 func (m *Queryialog) renderOperatorField() string {
-	return fmt.Sprintf("Range Key Operator: %s", m.state.resolved.rangeKeyOperator)
+	op := m.content.operatorSelection.SelectedItem().(operatorItem)
+	return fmt.Sprintf("Range Key Operator: %s", op)
 }
 func (m *Queryialog) renderHashKey() string {
 	hashKeyInputStyle := u.Ternary(m.styles.hashKeyInputFocused, m.styles.hashKeyInput, m.focus == queryHashKeyInput)
@@ -758,11 +715,12 @@ func (m *Queryialog) renderHashKey() string {
 
 func (m *Queryialog) renderRangeKeyOperator() string {
 	rangeKeyOperatorStyle := u.Ternary(m.styles.operatorFocused, m.styles.operatorLine, m.focus == queryOperatorField)
+	op := m.content.operatorSelection.SelectedItem().(operatorItem)
 
 	return lipgloss.JoinVertical(
 		lipgloss.Left,
 		m.styles.operatorLineTitle.Render(lipgloss.NewStyle().Width(m.dialog.width-10).Render(" Range Key Operator: ")),
-		rangeKeyOperatorStyle.Render(" "+string(m.state.resolved.rangeKeyOperator)+" "),
+		rangeKeyOperatorStyle.Render(" "+string(op)+" "),
 	)
 }
 
@@ -780,10 +738,11 @@ func (m *Queryialog) renderJoinedRangeKeyFields() string {
 	rangeKeyOperatorStyle := u.Ternary(m.styles.operatorFocused, m.styles.operatorLine, m.focus == queryOperatorField)
 	rangeKeyInputStyle1 := u.Ternary(m.styles.rangeKeyInputFocused, m.styles.rangeKeyInput, m.focus == queryRangeKeyInput)
 	rangeKeyInputStyle2 := u.Ternary(m.styles.rangeKeyInputFocused, m.styles.rangeKeyInput, m.focus == queryRangeKeyInput2)
+	op := m.content.operatorSelection.SelectedItem().(operatorItem)
 
 	rendering := []string{
 		m.styles.rangeKeyInputTitle.Render(fmt.Sprintf("Range Key (%s): %s", m.state.resolved.RangeKeyType, *m.state.resolved.RangeKey)),
-		rangeKeyOperatorStyle.Render(" " + string(m.state.resolved.rangeKeyOperator) + " "),
+		rangeKeyOperatorStyle.Render(" " + string(op) + " "),
 		rangeKeyInputStyle1.Render(m.content.rangeKeyInput.View()),
 	}
 	if messages.QueryOperator(m.content.operatorSelection.SelectedItem().(operatorItem)) == messages.Between {
@@ -798,24 +757,11 @@ func (m *Queryialog) renderApplyButton() string {
 	return applyButtonStyle.Render("Query!")
 }
 
-func (m *Queryialog) resolveStateFromContent() {
-	m.state.resolved.hashKeyValue = m.content.hashKeyInput.Value()
-	rangeKeyV1 := m.content.rangeKeyInput.Value()
-	rangeKeyV2 := m.content.rangeKeyInput2.Value()
-	m.state.resolved.rangeKeyValue = u.Ternary(&rangeKeyV1, nil, rangeKeyV1 != "")
-	m.state.resolved.rangeKeyValue2 = u.Ternary(&rangeKeyV2, nil, rangeKeyV2 != "")
-	if op, ok := m.content.operatorSelection.SelectedItem().(operatorItem); ok {
-		m.state.resolved.rangeKeyOperator = messages.QueryOperator(op)
-	}
-	m.resolveIndexInfo()
-}
-
 func (m *Queryialog) resolveIndexInfo() {
 	sel, ok := m.content.indexSelection.SelectedItem().(indexItem)
 	if !ok { // on empty list
 		return
 	}
-	m.state.resolved.selectedIndex = sel.name
 
 	switch sel.indexType {
 	case table:
