@@ -389,6 +389,10 @@ func (m *Model) DynamicColumnWidth() bool {
 func (m *Model) SetRows(r []Row) {
 	m.rows = r
 
+	// in case of row count reduction, ensure m.end & cursor are in sync with new set
+	m.end = min(m.end, len(m.VisualRows()))
+	m.start = max(0, m.end-m.Height())
+
 	if m.cursor > len(m.VisualRows())-1 {
 		m.SetCursor(len(m.VisualRows()) - 1)
 	}
