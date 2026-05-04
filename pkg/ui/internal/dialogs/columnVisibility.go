@@ -93,7 +93,7 @@ func NewColumnVisibilityDialog(close key.Binding) *Columns {
 			),
 			enableAll: key.NewBinding(
 				key.WithKeys("E"),
-				key.WithHelp("shift+r", "enable all"),
+				key.WithHelp("shift+e", "enable all"),
 			),
 			disableAll: key.NewBinding(
 				key.WithKeys("D"),
