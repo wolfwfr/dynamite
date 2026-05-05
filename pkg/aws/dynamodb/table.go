@@ -11,7 +11,6 @@ import (
 )
 
 // TODO: add filters everywhere
-// TODO: add pagination everywhere (incl. pagesize, pagekey)
 
 type dynamodbClient interface {
 	ListTables(context.Context, *dynamodb.ListTablesInput, ...func(*dynamodb.Options)) (*dynamodb.ListTablesOutput, error)
@@ -126,7 +125,6 @@ func ScanTable(client dynamodbClient, ctx context.Context, table string, params 
 	return res, nil
 }
 
-// TODO: add options for rangekey comparisons (e.g. 'eq', 'gt', 'between', etc.)
 func QueryTable(client dynamodbClient, ctx context.Context, table string, params apitypes.QueryParameters) (*apitypes.QueryResponse, error) {
 	hkey, rkey, keys, values, names, err := formatQueryKeys(params)
 	if err != nil {

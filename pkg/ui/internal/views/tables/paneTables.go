@@ -92,7 +92,6 @@ func newTableSelectionPane(ctx context.Context, config *appconfig.Config, opts .
 		config:        config,
 		stdTO:         30 * time.Second,
 		KeyMap:        DefaultTablePaneKeyMap(),
-		// TODO: add table feature to hide header
 	}
 
 	{ // contents table
