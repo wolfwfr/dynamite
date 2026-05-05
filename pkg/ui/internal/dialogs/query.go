@@ -18,7 +18,6 @@ import (
 )
 
 var queryDialogStyle = commonstyles.DialogStyle
-
 var queryOperatorDialogStyle = commonstyles.DialogStyle.Border(lipgloss.RoundedBorder()).Padding(3, 3, 0, 0)
 
 type queryKeyMap struct {
@@ -425,6 +424,19 @@ func (m *Queryialog) MoveFocus(i int) tea.Cmd {
 		m.focus = 0
 	} else if m.focus < 0 {
 		m.focus = queryApplyButton
+	}
+
+	rangeFields := []queryDialogFocus{
+		queryOperatorField,
+		queryRangeKeyInput1,
+		queryRangeKeyInput2,
+		queryOrderSelection,
+	}
+
+	// prevent selection of range-key fields if no range key applies for the
+	// selected index
+	if m.state.resolved.RangeKey == nil && slices.Contains(rangeFields, m.focus) {
+		m.MoveFocus(i)
 	}
 
 	// range-input-2 only applies when 'between' operator is selected
