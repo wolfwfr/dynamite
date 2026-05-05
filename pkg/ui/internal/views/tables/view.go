@@ -148,10 +148,12 @@ func (m *TableSelection) handleZoom(msg tea.Msg) tea.Cmd {
 		m.zoomEnabled = !m.zoomEnabled
 		m.zoomtarget = tablePaneID
 		m.focused = tablePaneID
+		m.KeyMap.MoveFocus.SetEnabled(!m.KeyMap.MoveFocus.Enabled())
 	case messages.ZoomToggleTableDetailsPane:
 		m.zoomEnabled = !m.zoomEnabled
 		m.zoomtarget = detailsPaneID
 		m.focused = detailsPaneID
+		m.KeyMap.MoveFocus.SetEnabled(!m.KeyMap.MoveFocus.Enabled())
 	}
 	m.applySize()
 	return nil
