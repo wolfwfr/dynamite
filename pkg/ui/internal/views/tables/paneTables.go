@@ -90,7 +90,7 @@ func newTableSelectionPane(ctx context.Context, config *appconfig.Config, opts .
 		cancelTables:  func() {}, // noop on init
 		debounceDur:   50 * time.Millisecond,
 		config:        config,
-		stdTO:         5 * time.Second,
+		stdTO:         30 * time.Second,
 		KeyMap:        DefaultTablePaneKeyMap(),
 		// TODO: add table feature to hide header
 	}

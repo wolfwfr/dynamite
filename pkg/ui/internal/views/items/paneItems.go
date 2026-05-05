@@ -146,7 +146,7 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 	p := &ItemSelectionPane{
 		ctx:           ctx,
 		config:        config,
-		stdTO:         5 * time.Second,
+		stdTO:         30 * time.Second,
 		KeyMap:        DefaultItemPaneKeyMap(),
 		sessions:      map[string]SessionData{},
 		queryMode:     messages.ScanMode,
