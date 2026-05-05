@@ -11,7 +11,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
-	headed "github.com/wolfwfr/dynamite/pkg/ui/internal/components/headedlist"
+	headed "github.com/wolfwfr/dynamite/pkg/ui/internal/components/headed_list"
 	regular "github.com/wolfwfr/dynamite/pkg/ui/internal/components/regular_list"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	commonstyles "github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
