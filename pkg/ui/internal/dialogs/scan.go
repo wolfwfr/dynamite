@@ -2,14 +2,13 @@ package dialogs
 
 import (
 	"fmt"
-	"io"
-	"strings"
 
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/list"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
+	headed "github.com/wolfwfr/dynamite/pkg/ui/internal/components/headedlist"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	commonstyles "github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
 	u "github.com/wolfwfr/dynamite/pkg/util"
@@ -27,6 +26,7 @@ const (
 
 const (
 	tableIndexName string = "table"
+	metaKey        string = "meta"
 )
 
 type scanKeyMap struct {
@@ -69,14 +69,8 @@ type ScanDialog struct {
 	content list.Model
 }
 
-type indexItemStyles struct {
-	item         lipgloss.Style
-	selectedItem lipgloss.Style
-	header       lipgloss.Style
-}
-
 type scanListStyles struct {
-	indexItemStyles
+	headed.Styles
 	title    lipgloss.Style
 	content  lipgloss.Style
 	help     lipgloss.Style
@@ -86,69 +80,22 @@ type scanListStyles struct {
 
 func newscanStyles(darkBG bool) scanListStyles {
 	var s scanListStyles
+
+	s.Item = lipgloss.NewStyle().PaddingLeft(4)
+	s.SelectedItem = lipgloss.NewStyle().PaddingLeft(2).Foreground(commonstyles.DialogFocusColour)
+	s.Header = lipgloss.NewStyle().Foreground(lipgloss.Color("#B0B0B0"))
+
 	s.title = lipgloss.NewStyle().Padding(1, 0, 2, 0)
 	s.content = lipgloss.NewStyle().PaddingTop(1).PaddingBottom(2)
-	s.item = lipgloss.NewStyle().PaddingLeft(4)
-	s.selectedItem = lipgloss.NewStyle().PaddingLeft(2).Foreground(commonstyles.DialogFocusColour)
-	s.header = lipgloss.NewStyle().Foreground(lipgloss.Color("#B0B0B0"))
 	s.help = list.DefaultStyles(darkBG).HelpStyle.Padding(1, 2, 0, 2)
 	s.helpLine = lipgloss.NewStyle().PaddingBottom(1)
 	s.keyInfo = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(lipgloss.Color("#636363")).Padding(1, 2, 1, 2)
 	return s
 }
 
-type indexItem struct {
-	name       string
+type indexItemMeta struct {
 	indexType  indexType
 	sliceIndex int
-}
-
-func (i indexItem) FilterValue() string { return "" }
-
-type indexItemDelegate struct {
-	styles   *indexItemStyles
-	firstGSI *string
-	firstLSI *string
-	focus    bool
-}
-
-func (d indexItemDelegate) Height() int                             { return 1 }
-func (d indexItemDelegate) Spacing() int                            { return 0 }
-func (d indexItemDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
-func (d indexItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
-	i, ok := listItem.(indexItem)
-	if !ok {
-		return
-	}
-
-	str := i.name
-
-	// NOTE: not pretty but good enough for now
-	headerFmt := func(s string) string {
-		return d.styles.header.Render(fmt.Sprintf("\n\n%s\n%s", headerPadding(s, 30), "______________________________\n")) + "\n"
-	}
-
-	var header string
-	if index == 0 { // is table index
-		header = headerFmt("Table Index")
-	} else if d.firstGSI != nil && i.name == *d.firstGSI {
-		header = headerFmt("Global Secondary Indices")
-	} else if d.firstLSI != nil && i.name == *d.firstLSI {
-		header = headerFmt("Local Secondary Indices")
-	}
-
-	fn := d.styles.item.Render
-	if index == m.Index() && d.focus {
-		fn = func(s ...string) string {
-			return d.styles.selectedItem.Render("> " + strings.Join(s, " "))
-		}
-	} else if index == m.Index() {
-		fn = func(s ...string) string {
-			return d.styles.item.PaddingLeft(2).Render("> " + strings.Join(s, " "))
-		}
-	}
-
-	fmt.Fprint(w, fmt.Sprintf("%s%s", header, fn(str)))
 }
 
 func NewScanDialog(close key.Binding) *ScanDialog {
@@ -170,7 +117,7 @@ func NewScanDialog(close key.Binding) *ScanDialog {
 	r.window.width = 150
 	r.window.height = 100
 
-	l := list.New([]list.Item{}, indexItemDelegate{}, r.dialog.width, r.dialog.height)
+	l := list.New([]list.Item{}, headed.ItemDelegate{}, r.dialog.width, r.dialog.height)
 	l.Title = "Scan Parameters"
 	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(false)
@@ -192,21 +139,32 @@ func NewScanDialog(close key.Binding) *ScanDialog {
 	return r
 }
 
-func (m *ScanDialog) newDelegate(s *scanListStyles) indexItemDelegate {
-	var firstGSI *string
-	var firstLSI *string
+func (m *ScanDialog) newDelegate(s *scanListStyles) headed.ItemDelegate {
+	headerFmt := func(s string) string {
+		return fmt.Sprintf("\n\n%s\n%s", headed.HeaderPadding(s, 30), "______________________________\n")
+	}
+
+	d := headed.ItemDelegate{
+		Styles: &s.Styles,
+		HeadedItems: []headed.HeaderDelegate{
+			func(i headed.Item, ix int) string { return u.Ternary(headerFmt("Table Index"), "", ix == 0) },
+		},
+	}
+
 	if len(m.state.GSI) > 0 {
-		firstGSI = &m.state.GSI[0].Name
+		firstGSI := m.state.GSI[0].Name
+		d.HeadedItems = append(d.HeadedItems, func(i headed.Item, _ int) string {
+			return u.Ternary(headerFmt("Global Secondary Indices"), "", i.Name == firstGSI)
+		})
 	}
 	if len(m.state.LSI) > 0 {
-		firstLSI = &m.state.LSI[0].Name
+		firstLSI := m.state.LSI[0].Name
+		d.HeadedItems = append(d.HeadedItems, func(i headed.Item, _ int) string {
+			return u.Ternary(headerFmt("Local Secondary Indices"), "", i.Name == firstLSI)
+		})
 	}
-	return indexItemDelegate{
-		styles:   &s.indexItemStyles,
-		firstGSI: firstGSI,
-		firstLSI: firstLSI,
-		focus:    true, // always focused in the scan dialog
-	}
+
+	return d
 }
 
 func (m *ScanDialog) updateStyles(isDark bool) {
@@ -273,25 +231,19 @@ func (m *ScanDialog) SetState(msg messages.InitScanParameters) tea.Cmd {
 func (m *ScanDialog) updateContent() tea.Cmd {
 	var idx int
 	items := make([]list.Item, 0, 1+len(m.state.GSI)+len(m.state.LSI))
-	items = append(items, indexItem{
-		name:      tableIndexName,
-		indexType: table,
+	items = append(items, headed.Item{
+		Name: tableIndexName,
+		Meta: map[string]any{metaKey: indexItemMeta{
+			indexType: table,
+		}},
 	})
-	for i, g := range m.state.GSI {
-		items = append(items, indexItem{
-			name:       g.Name,
-			indexType:  gsi,
-			sliceIndex: i,
-		})
-		if g.Name == m.selected {
-			idx = len(items) - 1
-		}
-	}
 	for i, l := range m.state.LSI {
-		items = append(items, indexItem{
-			name:       l.Name,
-			indexType:  lsi,
-			sliceIndex: i,
+		items = append(items, headed.Item{
+			Name: l.Name,
+			Meta: map[string]any{metaKey: indexItemMeta{
+				indexType:  lsi,
+				sliceIndex: i,
+			}},
 		})
 		if l.Name == m.selected {
 			idx = len(items) - 1
@@ -305,7 +257,7 @@ func (m *ScanDialog) updateContent() tea.Cmd {
 
 func (m *ScanDialog) selectIndex() tea.Cmd {
 	itm := m.content.SelectedItem()
-	selection := itm.(indexItem).name
+	selection := itm.(headed.Item).Name
 	if selection == m.selected {
 		return m.toggleDialog() // no change
 	}
@@ -313,7 +265,7 @@ func (m *ScanDialog) selectIndex() tea.Cmd {
 }
 
 func (m *ScanDialog) changeIndex() tea.Cmd {
-	m.selected = m.content.SelectedItem().(indexItem).name
+	m.selected = m.content.SelectedItem().(headed.Item).Name
 	return func() tea.Msg {
 		return messages.ScanIndexChanged{
 			TableARN:  m.state.TableARN,
@@ -344,7 +296,7 @@ func (m *ScanDialog) updateSize() {
 	// determine the width of the list within the dialog
 	width := m.defaultDialogWidth
 	for _, itm := range items {
-		width = max(width, len(itm.(indexItem).name))
+		width = max(width, len(itm.(headed.Item).Name))
 	}
 	// set width of the list within the dialog
 	m.content.SetWidth(width)
@@ -383,11 +335,15 @@ func (m *ScanDialog) renderIndexInfo() string {
 	var hash, hashType, rangType string
 	var rang *string
 
-	sel, ok := m.content.SelectedItem().(indexItem)
+	sel, ok := m.content.SelectedItem().(headed.Item)
 	if !ok {
 		return ""
 	}
-	switch sel.indexType {
+	meta, ok := sel.Meta[metaKey].(indexItemMeta)
+	if !ok {
+		return ""
+	}
+	switch meta.indexType {
 	case table:
 		i := m.state.TableIndex
 		hash = i.HashKey
@@ -395,13 +351,13 @@ func (m *ScanDialog) renderIndexInfo() string {
 		rang = i.RangeKey
 		rangType = i.RangeKeyType
 	case gsi:
-		i := m.state.GSI[sel.sliceIndex]
+		i := m.state.GSI[meta.sliceIndex]
 		hash = i.HashKey
 		hashType = i.HashKeyType
 		rang = i.RangeKey
 		rangType = i.RangeKeyType
 	case lsi:
-		i := m.state.LSI[sel.sliceIndex]
+		i := m.state.LSI[meta.sliceIndex]
 		hash = i.HashKey
 		hashType = i.HashKeyType
 		rang = &i.RangeKey

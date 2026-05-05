@@ -2,17 +2,16 @@ package dialogs
 
 import (
 	"fmt"
-	"io"
-	"math"
-	"strings"
 
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/list"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
+	headed "github.com/wolfwfr/dynamite/pkg/ui/internal/components/headedlist"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	commonstyles "github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
+	u "github.com/wolfwfr/dynamite/pkg/util"
 )
 
 var regionsDialogStyle = commonstyles.DialogStyle
@@ -54,86 +53,25 @@ type Regions struct {
 }
 
 type regionListStyles struct {
-	title        lipgloss.Style
-	content      lipgloss.Style
-	item         lipgloss.Style
-	selectedItem lipgloss.Style
-	header       lipgloss.Style
-	help         lipgloss.Style
-	helpLine     lipgloss.Style
+	headed.Styles
+	title    lipgloss.Style
+	content  lipgloss.Style
+	help     lipgloss.Style
+	helpLine lipgloss.Style
 }
 
 func newRegionStyles(darkBG bool) regionListStyles {
 	var s regionListStyles
+
+	s.Item = lipgloss.NewStyle().PaddingLeft(4)
+	s.SelectedItem = lipgloss.NewStyle().PaddingLeft(2).Foreground(commonstyles.DialogFocusColour)
+	s.Header = lipgloss.NewStyle().Foreground(lipgloss.Color("#B0B0B0"))
+
 	s.title = lipgloss.NewStyle().Padding(1, 0, 2, 0)
 	s.content = lipgloss.NewStyle().PaddingTop(1).PaddingBottom(2)
-	s.item = lipgloss.NewStyle().PaddingLeft(4)
-	s.selectedItem = lipgloss.NewStyle().PaddingLeft(2).Foreground(commonstyles.DialogFocusColour)
-	s.header = lipgloss.NewStyle().Foreground(lipgloss.Color("#B0B0B0"))
 	s.help = list.DefaultStyles(darkBG).HelpStyle.Padding(1, 2, 0, 2)
 	s.helpLine = lipgloss.NewStyle().PaddingBottom(1)
 	return s
-}
-
-type item string
-
-func (i item) FilterValue() string { return "" }
-
-type regionsItemDelegate struct {
-	styles       *regionListStyles
-	firstStarred *string
-	firstNormal  string
-}
-
-func (d regionsItemDelegate) Height() int                             { return 1 }
-func (d regionsItemDelegate) Spacing() int                            { return 0 }
-func (d regionsItemDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
-func (d regionsItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
-	i, ok := listItem.(item)
-	if !ok {
-		return
-	}
-
-	str := string(i)
-
-	// NOTE: not pretty but good enough for now
-	headerFmt := func(s string) string {
-		return d.styles.header.Render(fmt.Sprintf("\n%s\n%s", headerPadding(s, 16), "_________________\n")) + "\n"
-	}
-	var header string
-	if d.firstStarred != nil && string(i) == *d.firstStarred {
-		header = headerFmt("* starred *")
-	}
-	if d.firstNormal != "" && string(i) == d.firstNormal && d.firstStarred != nil {
-		header = headerFmt("normal")
-	}
-
-	fn := d.styles.item.Render
-	if index == m.Index() {
-		fn = func(s ...string) string {
-			return d.styles.selectedItem.Render("> " + strings.Join(s, " "))
-		}
-	}
-
-	fmt.Fprint(w, fmt.Sprintf("%s%s", header, fn(str)))
-}
-
-// headerPadding returns a best effort centralised header with padding on each side
-func headerPadding(h string, l int) string {
-	ll := len(h)
-	if ll >= l {
-		return h
-	}
-	pd := int(math.Round(float64(l-ll) / 2))
-	s := strings.Builder{}
-	for range pd {
-		fmt.Fprint(&s, " ")
-	}
-	fmt.Fprint(&s, h)
-	for range l - ll - pd {
-		fmt.Fprint(&s, " ")
-	}
-	return s.String()
 }
 
 func NewRegionsDialog(available, starred []string, current string, close key.Binding) *Regions {
@@ -162,7 +100,7 @@ func NewRegionsDialog(available, starred []string, current string, close key.Bin
 	var sorted []list.Item
 	sorted, r.unstarred = compileSortedList(available, starred)
 
-	l := list.New(sorted, regionsItemDelegate{}, r.dialog.width, r.dialog.height)
+	l := list.New(sorted, headed.ItemDelegate{}, r.dialog.width, r.dialog.height)
 	l.Title = "AWS Regions"
 	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(false)
@@ -190,7 +128,7 @@ func compileSortedList(available, starred []string) (full []list.Item, unstarred
 	unstarred = make([]string, 0, max(0, len(available)-len(starred)))
 
 	for _, s := range starred {
-		items = append(items, item(s))
+		items = append(items, headed.Item{Name: s})
 		seen[s] = struct{}{}
 	}
 
@@ -198,27 +136,37 @@ func compileSortedList(available, starred []string) (full []list.Item, unstarred
 		if _, ok := seen[a]; ok {
 			continue
 		}
-		items = append(items, item(a))
+		items = append(items, headed.Item{Name: a})
 		unstarred = append(unstarred, a)
 	}
 
 	return items, unstarred
 }
 
-func (m *Regions) newDelegate(s *regionListStyles) regionsItemDelegate {
-	var firstStarred *string
-	var firstNormal string
+func (m *Regions) newDelegate(s *regionListStyles) headed.ItemDelegate {
+	d := headed.ItemDelegate{
+		Styles: &s.Styles,
+	}
+
+	headerFmt := func(s string) string {
+		return fmt.Sprintf("\n%s\n%s", headed.HeaderPadding(s, 16), "_________________\n")
+	}
+
 	if len(m.starred) > 0 {
-		firstStarred = &m.starred[0]
+		firstStarred := m.starred[0]
+		d.HeadedItems = append(d.HeadedItems, func(i headed.Item, _ int) string {
+			return u.Ternary(headerFmt(i.Name), "", i.Name == firstStarred)
+		})
 	}
+
 	if len(m.unstarred) > 0 {
-		firstNormal = m.unstarred[0]
+		firstNormal := m.unstarred[0]
+		d.HeadedItems = append(d.HeadedItems, func(i headed.Item, _ int) string {
+			return u.Ternary(headerFmt(i.Name), "", i.Name == firstNormal)
+		})
 	}
-	return regionsItemDelegate{
-		styles:       s,
-		firstStarred: firstStarred,
-		firstNormal:  firstNormal,
-	}
+
+	return d
 }
 
 func (m *Regions) updateStyles(isDark bool) {
@@ -256,7 +204,7 @@ func (m *Regions) Update(msg tea.Msg) tea.Cmd {
 
 func (m *Regions) selectRegion() tea.Cmd {
 	itm := m.content.SelectedItem()
-	selection := string(itm.(item))
+	selection := itm.(headed.Item).Name
 	if selection == m.selected {
 		return m.toggleDialog() // no change
 	}
@@ -295,7 +243,7 @@ func (m *Regions) updateSize() {
 	// determine the width of the list within the dialog
 	width := m.defaultDialogWidth
 	for _, itm := range items {
-		width = max(width, len(itm.(item)))
+		width = max(width, len(itm.(headed.Item).Name))
 	}
 	// set width of the list within the dialog
 	m.content.SetWidth(width)

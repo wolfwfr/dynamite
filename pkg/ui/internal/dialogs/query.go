@@ -2,9 +2,7 @@ package dialogs
 
 import (
 	"fmt"
-	"io"
 	"slices"
-	"strings"
 
 	"charm.land/bubbles/v2/help"
 	"charm.land/bubbles/v2/key"
@@ -13,6 +11,8 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
+	headed "github.com/wolfwfr/dynamite/pkg/ui/internal/components/headedlist"
+	regular "github.com/wolfwfr/dynamite/pkg/ui/internal/components/regular_list"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	commonstyles "github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
 	u "github.com/wolfwfr/dynamite/pkg/util"
@@ -115,43 +115,8 @@ type Queryialog struct {
 	}
 }
 
-// TODO: turn into shared, generic list item for all dialogs
-type queryListItemStyles struct {
-	item         lipgloss.Style
-	selectedItem lipgloss.Style
-}
-
-type queryListItem string
-
-func (i queryListItem) FilterValue() string { return "" }
-
-type queryItemDelegate struct {
-	styles *queryListItemStyles
-}
-
-func (d queryItemDelegate) Height() int                             { return 1 }
-func (d queryItemDelegate) Spacing() int                            { return 0 }
-func (d queryItemDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
-func (d queryItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
-	i, ok := listItem.(queryListItem)
-	if !ok {
-		return
-	}
-
-	str := string(i)
-
-	fn := d.styles.item.Render
-	if index == m.Index() {
-		fn = func(s ...string) string {
-			return d.styles.selectedItem.Render("> " + strings.Join(s, " "))
-		}
-	}
-
-	fmt.Fprint(w, fn(str))
-}
-
 type queryListStyles struct {
-	indexItemStyles
+	headed.Styles
 	title    lipgloss.Style
 	content  lipgloss.Style
 	help     lipgloss.Style
@@ -179,11 +144,13 @@ func newQueryStyles(darkBG bool) queryListStyles {
 	unFocusedColour := lipgloss.Color("#636363")
 	headerColour := lipgloss.Color("#B0B0B0")
 	var s queryListStyles
+
+	s.Item = lipgloss.NewStyle().PaddingLeft(4)
+	s.SelectedItem = lipgloss.NewStyle().PaddingLeft(2).Foreground(commonstyles.DialogFocusColour)
+	s.Header = lipgloss.NewStyle().Foreground(headerColour)
+
 	s.title = lipgloss.NewStyle().Padding(1, 0, 2, 0)
 	s.content = lipgloss.NewStyle().PaddingTop(1).PaddingBottom(2)
-	s.item = lipgloss.NewStyle().PaddingLeft(4)
-	s.selectedItem = lipgloss.NewStyle().PaddingLeft(2).Foreground(commonstyles.DialogFocusColour)
-	s.header = lipgloss.NewStyle().Foreground(headerColour)
 	s.help = list.DefaultStyles(darkBG).HelpStyle.Padding(1, 2, 0, 2)
 	s.helpLine = lipgloss.NewStyle().PaddingBottom(1)
 
@@ -237,7 +204,7 @@ func NewQueryDialog(close key.Binding) *Queryialog {
 	d.window.height = 100
 
 	{ // index selection
-		l := list.New([]list.Item{}, indexItemDelegate{}, d.dialog.width, d.dialog.height)
+		l := list.New([]list.Item{}, headed.ItemDelegate{}, d.dialog.width, d.dialog.height)
 		l.Title = "Query Parameters"
 		l.SetShowStatusBar(false)
 		l.SetFilteringEnabled(false)
@@ -248,7 +215,7 @@ func NewQueryDialog(close key.Binding) *Queryialog {
 	}
 
 	{ // operator selection
-		l := list.New([]list.Item{}, queryItemDelegate{}, d.dialog.width, d.dialog.height)
+		l := list.New([]list.Item{}, regular.ItemDelegate{}, d.dialog.width, d.dialog.height)
 		l.Title = "Range Key Operator"
 		l.SetShowStatusBar(false)
 		l.SetFilteringEnabled(false)
@@ -259,7 +226,7 @@ func NewQueryDialog(close key.Binding) *Queryialog {
 	}
 
 	{ // range order selection
-		l := list.New([]list.Item{}, queryItemDelegate{}, d.dialog.width, d.dialog.height)
+		l := list.New([]list.Item{}, regular.ItemDelegate{}, d.dialog.width, d.dialog.height)
 		l.Title = "List Order Selection"
 		l.SetShowStatusBar(false)
 		l.SetFilteringEnabled(false)
@@ -330,28 +297,41 @@ func (m *Queryialog) ShortHelp() []key.Binding {
 	return bindings
 }
 
-func (m *Queryialog) newIndexDelegate(s *queryListStyles) indexItemDelegate {
-	var firstGSI *string
-	var firstLSI *string
+func (m *Queryialog) newIndexDelegate(s *queryListStyles) headed.ItemDelegate {
+	headerFmt := func(s string) string {
+		return fmt.Sprintf("\n\n%s\n%s", headed.HeaderPadding(s, 30), "______________________________\n")
+	}
+
+	s.Styles.SelectedItem = u.Ternary(s.Styles.SelectedItem, s.Styles.Item.PaddingLeft(2), m.focus == queryIndexSelection)
+
+	d := headed.ItemDelegate{
+		Styles: &s.Styles,
+		HeadedItems: []headed.HeaderDelegate{
+			func(i headed.Item, ix int) string { return u.Ternary(headerFmt("Table Index"), "", ix == 0) },
+		},
+	}
+
 	if len(m.state.table.GSI) > 0 {
-		firstGSI = &m.state.table.GSI[0].Name
+		firstGSI := m.state.table.GSI[0].Name
+		d.HeadedItems = append(d.HeadedItems, func(i headed.Item, _ int) string {
+			return u.Ternary(headerFmt("Global Secondary Indices"), "", i.Name == firstGSI)
+		})
 	}
 	if len(m.state.table.LSI) > 0 {
-		firstLSI = &m.state.table.LSI[0].Name
+		firstLSI := m.state.table.LSI[0].Name
+		d.HeadedItems = append(d.HeadedItems, func(i headed.Item, _ int) string {
+			return u.Ternary(headerFmt("Local Secondary Indices"), "", i.Name == firstLSI)
+		})
 	}
-	return indexItemDelegate{
-		styles:   &s.indexItemStyles,
-		firstGSI: firstGSI,
-		firstLSI: firstLSI,
-		focus:    m.focus == queryIndexSelection,
-	}
+
+	return d
 }
 
-func (m *Queryialog) newQueryItemDelegate(s *queryListStyles) queryItemDelegate {
-	return queryItemDelegate{
-		styles: &queryListItemStyles{
-			item:         m.styles.indexItemStyles.item,         // use same styling
-			selectedItem: m.styles.indexItemStyles.selectedItem, // use same styling
+func (m *Queryialog) newQueryItemDelegate(s *queryListStyles) regular.ItemDelegate {
+	return regular.ItemDelegate{
+		Styles: &regular.Styles{
+			Item:         m.styles.Styles.Item,         // use same styling
+			SelectedItem: m.styles.Styles.SelectedItem, // use same styling
 		},
 	}
 }
@@ -471,7 +451,7 @@ func (m *Queryialog) MoveFocus(i int) tea.Cmd {
 	}
 
 	// range-input-2 only applies when 'between' operator is selected
-	if m.focus == queryRangeKeyInput2 && messages.QueryOperator(m.content.operatorSelection.SelectedItem().(queryListItem)) != messages.Between {
+	if m.focus == queryRangeKeyInput2 && messages.QueryOperator(m.content.operatorSelection.SelectedItem().(regular.ListItem)) != messages.Between {
 		m.focus += queryDialogFocus(i)
 	}
 
@@ -562,25 +542,31 @@ func (m *Queryialog) InitContent() tea.Cmd {
 	{ // set indexes
 		var idx int
 		items := make([]list.Item, 0, 1+len(m.state.table.GSI)+len(m.state.table.LSI))
-		items = append(items, indexItem{
-			name:      tableIndexName,
-			indexType: table,
+		items = append(items, headed.Item{
+			Name: tableIndexName,
+			Meta: map[string]any{metaKey: indexItemMeta{
+				indexType: table,
+			}},
 		})
 		for i, g := range m.state.table.GSI {
-			items = append(items, indexItem{
-				name:       g.Name,
-				indexType:  gsi,
-				sliceIndex: i,
+			items = append(items, headed.Item{
+				Name: g.Name,
+				Meta: map[string]any{metaKey: indexItemMeta{
+					indexType:  gsi,
+					sliceIndex: i,
+				}},
 			})
 			if g.Name == m.state.init.selectedIndex {
 				idx = len(items) - 1
 			}
 		}
 		for i, l := range m.state.table.LSI {
-			items = append(items, indexItem{
-				name:       l.Name,
-				indexType:  lsi,
-				sliceIndex: i,
+			items = append(items, headed.Item{
+				Name: l.Name,
+				Meta: map[string]any{metaKey: indexItemMeta{
+					indexType:  lsi,
+					sliceIndex: i,
+				}},
 			})
 			if l.Name == m.state.init.selectedIndex {
 				idx = len(items) - 1
@@ -592,18 +578,18 @@ func (m *Queryialog) InitContent() tea.Cmd {
 
 	{ // set query operators
 		operators := make([]list.Item, 6, 7)
-		operators[0] = queryListItem(messages.Equals)
-		operators[1] = queryListItem(messages.Greater)
-		operators[2] = queryListItem(messages.GreaterEqual)
-		operators[3] = queryListItem(messages.Less)
-		operators[4] = queryListItem(messages.LessEqual)
-		operators[5] = queryListItem(messages.Between)
+		operators[0] = regular.ListItem(messages.Equals)
+		operators[1] = regular.ListItem(messages.Greater)
+		operators[2] = regular.ListItem(messages.GreaterEqual)
+		operators[3] = regular.ListItem(messages.Less)
+		operators[4] = regular.ListItem(messages.LessEqual)
+		operators[5] = regular.ListItem(messages.Between)
 		if m.state.resolved.RangeKeyType != "N" {
-			operators = append(operators, queryListItem(messages.BeginsWith))
+			operators = append(operators, regular.ListItem(messages.BeginsWith))
 		}
 		var idx int
 		for i, item := range operators {
-			if messages.QueryOperator(item.(queryListItem)) == m.state.init.rangeKeyOperator {
+			if messages.QueryOperator(item.(regular.ListItem)) == m.state.init.rangeKeyOperator {
 				idx = i
 				break
 			}
@@ -614,8 +600,8 @@ func (m *Queryialog) InitContent() tea.Cmd {
 
 	{ // set range order options
 		orderOptions := []list.Item{
-			queryListItem(rangeAscending),
-			queryListItem(rangeDescending),
+			regular.ListItem(rangeAscending),
+			regular.ListItem(rangeDescending),
 		}
 		idx := u.Ternary(1, 0, m.state.init.orderDescending)
 		m.content.rangeOrderSelection.Select(idx)
@@ -635,14 +621,14 @@ func (m *Queryialog) InitContent() tea.Cmd {
 // updateContent updates the content based on the resolved state.
 func (m *Queryialog) updateContent() tea.Cmd {
 	operators := make([]list.Item, 6, 7)
-	operators[0] = queryListItem(messages.Equals)
-	operators[1] = queryListItem(messages.Greater)
-	operators[2] = queryListItem(messages.GreaterEqual)
-	operators[3] = queryListItem(messages.Less)
-	operators[4] = queryListItem(messages.LessEqual)
-	operators[5] = queryListItem(messages.Between)
+	operators[0] = regular.ListItem(messages.Equals)
+	operators[1] = regular.ListItem(messages.Greater)
+	operators[2] = regular.ListItem(messages.GreaterEqual)
+	operators[3] = regular.ListItem(messages.Less)
+	operators[4] = regular.ListItem(messages.LessEqual)
+	operators[5] = regular.ListItem(messages.Between)
 	if m.state.resolved.RangeKeyType != "N" {
-		operators = append(operators, queryListItem(messages.BeginsWith))
+		operators = append(operators, regular.ListItem(messages.BeginsWith))
 	}
 
 	if m.content.operatorSelection.Index() > len(operators)-1 {
@@ -652,12 +638,12 @@ func (m *Queryialog) updateContent() tea.Cmd {
 }
 
 func (m *Queryialog) applyParameters() tea.Cmd {
-	indexSelection := m.content.indexSelection.SelectedItem().(indexItem).name
+	indexSelection := m.content.indexSelection.SelectedItem().(headed.Item).Name
 	hashKeySelection := m.content.hashKeyInput.Value()
 	rangeKeySelection := m.content.rangeKeyInput1.Value()
 	rangeKeySelection2 := m.content.rangeKeyInput2.Value()
-	rangeKeyOpSelection := messages.QueryOperator(m.content.operatorSelection.SelectedItem().(queryListItem))
-	orderDescending := string(m.content.rangeOrderSelection.SelectedItem().(queryListItem)) == string(rangeDescending)
+	rangeKeyOpSelection := messages.QueryOperator(m.content.operatorSelection.SelectedItem().(regular.ListItem))
+	orderDescending := string(m.content.rangeOrderSelection.SelectedItem().(regular.ListItem)) == string(rangeDescending)
 
 	if true &&
 		indexSelection == m.state.init.selectedIndex &&
@@ -674,14 +660,14 @@ func (m *Queryialog) applyParameters() tea.Cmd {
 
 func (m *Queryialog) queryParametersUpdate() tea.Cmd {
 	// update the init state when committing changes
-	m.state.init.selectedIndex = m.content.indexSelection.SelectedItem().(indexItem).name
+	m.state.init.selectedIndex = m.content.indexSelection.SelectedItem().(headed.Item).Name
 	m.state.init.hashKeyValue = m.content.hashKeyInput.Value()
 	rangeKeyV := m.content.rangeKeyInput1.Value()
 	rangeKeyV2 := m.content.rangeKeyInput2.Value()
 	m.state.init.rangeKeyValue = u.Ternary(&rangeKeyV, nil, rangeKeyV != "")
 	m.state.init.rangeKeyValue2 = u.Ternary(&rangeKeyV2, nil, rangeKeyV2 != "")
-	m.state.init.rangeKeyOperator = messages.QueryOperator(m.content.operatorSelection.SelectedItem().(queryListItem))
-	m.state.init.orderDescending = string(m.content.rangeOrderSelection.SelectedItem().(queryListItem)) == string(rangeDescending)
+	m.state.init.rangeKeyOperator = messages.QueryOperator(m.content.operatorSelection.SelectedItem().(regular.ListItem))
+	m.state.init.orderDescending = string(m.content.rangeOrderSelection.SelectedItem().(regular.ListItem)) == string(rangeDescending)
 
 	return func() tea.Msg {
 		return messages.QueryParametersChanged{
@@ -736,7 +722,7 @@ func (m *Queryialog) updateSize() {
 
 	halfwidth := width/2 - 5
 	for _, itm := range items {
-		halfwidth = max(halfwidth, len(itm.(indexItem).name))
+		halfwidth = max(halfwidth, len(itm.(headed.Item).Name))
 	}
 	// set width of the list within the dialog
 	m.content.indexSelection.SetWidth(halfwidth)
@@ -836,8 +822,8 @@ func (m *Queryialog) renderJoinedRangeKeyFields() string {
 	rangeKeyInputStyle1 := u.Ternary(m.styles.wideBoxFocused, m.styles.wideBox, m.focus == queryRangeKeyInput1)
 	rangeKeyInputStyle2 := u.Ternary(m.styles.wideBoxFocused, m.styles.wideBox, m.focus == queryRangeKeyInput2)
 	rangeOrderStyle := u.Ternary(m.styles.narrowBoxFocused, m.styles.narrowBox, m.focus == queryOrderSelection)
-	op := m.content.operatorSelection.SelectedItem().(queryListItem)
-	or := m.content.rangeOrderSelection.SelectedItem().(queryListItem)
+	op := m.content.operatorSelection.SelectedItem().(regular.ListItem)
+	or := m.content.rangeOrderSelection.SelectedItem().(regular.ListItem)
 
 	rendering := []string{
 		m.styles.rangeKeyInputTitle.Render(fmt.Sprintf("Range Key (%s): %s", m.state.resolved.RangeKeyType, *m.state.resolved.RangeKey)),
@@ -846,7 +832,7 @@ func (m *Queryialog) renderJoinedRangeKeyFields() string {
 		m.styles.rangeKeyOrderTitle.Render("Range Order"),
 		rangeOrderStyle.Render(string(or)),
 	}
-	if messages.QueryOperator(m.content.operatorSelection.SelectedItem().(queryListItem)) == messages.Between {
+	if messages.QueryOperator(m.content.operatorSelection.SelectedItem().(regular.ListItem)) == messages.Between {
 		rendering = slices.Insert(rendering, 3, rangeKeyInputStyle2.Render(m.content.rangeKeyInput2.View()))
 	}
 	return lipgloss.JoinVertical(lipgloss.Left, rendering...)
@@ -859,12 +845,16 @@ func (m *Queryialog) renderApplyButton() string {
 }
 
 func (m *Queryialog) resolveIndexInfo() {
-	sel, ok := m.content.indexSelection.SelectedItem().(indexItem)
+	sel, ok := m.content.indexSelection.SelectedItem().(headed.Item)
 	if !ok { // on empty list
 		return
 	}
+	meta, ok := sel.Meta[metaKey].(indexItemMeta)
+	if !ok {
+		return
+	}
 
-	switch sel.indexType {
+	switch meta.indexType {
 	case table:
 		i := m.state.table.TableIndex
 		m.state.resolved.HashKey = i.HashKey
@@ -872,13 +862,13 @@ func (m *Queryialog) resolveIndexInfo() {
 		m.state.resolved.RangeKey = i.RangeKey
 		m.state.resolved.RangeKeyType = i.RangeKeyType
 	case gsi:
-		i := m.state.table.GSI[sel.sliceIndex]
+		i := m.state.table.GSI[meta.sliceIndex]
 		m.state.resolved.HashKey = i.HashKey
 		m.state.resolved.HashKeyType = i.HashKeyType
 		m.state.resolved.RangeKey = i.RangeKey
 		m.state.resolved.RangeKeyType = i.RangeKeyType
 	case lsi:
-		i := m.state.table.LSI[sel.sliceIndex]
+		i := m.state.table.LSI[meta.sliceIndex]
 		m.state.resolved.HashKey = i.HashKey
 		m.state.resolved.HashKeyType = i.HashKeyType
 		m.state.resolved.RangeKey = &i.RangeKey
