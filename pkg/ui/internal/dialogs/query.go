@@ -18,7 +18,8 @@ import (
 )
 
 var queryDialogStyle = commonstyles.DialogStyle
-var queryOperatorDialogStyle = commonstyles.DialogStyle.Border(lipgloss.RoundedBorder(), true, true, true, false).Padding(3, 3, 0, 0)
+
+var queryOperatorDialogStyle = commonstyles.DialogStyle.Border(lipgloss.RoundedBorder()).Padding(3, 3, 0, 0)
 
 type queryKeyMap struct {
 	close key.Binding
@@ -223,7 +224,7 @@ func NewQueryDialog(close key.Binding) *Queryialog {
 		},
 
 		defaultDialogHeight: 46,
-		defaultDialogWidth:  55,
+		defaultDialogWidth:  150,
 	}
 	d.dialog.width = d.defaultDialogWidth
 	d.dialog.height = d.defaultDialogHeight
@@ -330,7 +331,7 @@ func (m *Queryialog) updateStyles(isDark bool) {
 	m.content.indexSelection.Styles.Title = s.title
 	m.content.indexSelection.Styles.HelpStyle = s.help
 
-	subwidth := m.dialog.width - 10
+	subwidth := m.dialog.width/2 - 10
 
 	s.wideBox = s.wideBox.Width(subwidth)
 	s.wideBoxFocused = s.wideBoxFocused.Width(subwidth)
@@ -676,17 +677,17 @@ func (m *Queryialog) updateSize() {
 	padding = 3
 	m.content.rangeOrderSelection.SetHeight(min(len(m.content.rangeOrderSelection.Items())+padding, m.window.height))
 
-	// determine the width of the list within the dialog
-	width := m.defaultDialogWidth
+	// determine the halfwidth of the list within the dialog
+	halfwidth := m.defaultDialogWidth/2 - 5
 	for _, itm := range items {
-		width = max(width, len(itm.(indexItem).name))
+		halfwidth = max(halfwidth, len(itm.(indexItem).name))
 	}
 	// set width of the list within the dialog
-	m.content.indexSelection.SetWidth(width)
+	m.content.indexSelection.SetWidth(halfwidth)
 
 	// set dialog size
 	m.dialog.height = m.content.indexSelection.Height() + 2
-	m.dialog.width = width + 2
+	m.dialog.width = halfwidth*2 + 2
 
 	m.updateStyles(true)
 
@@ -708,21 +709,27 @@ func (m *Queryialog) View() string {
 
 	apply := m.renderApplyButton()
 	rendering := []string{
-		title,
-		indexSelection,
 		hashKeyInput,
-		apply,
-		help,
 	}
 
 	// only render range-key parameters when range-key applies
 	if m.state.resolved.RangeKey != nil {
 		rangeKeyFields := m.renderJoinedRangeKeyFields()
-		rendering = slices.Insert(rendering, 3, rangeKeyFields)
+		rendering = slices.Insert(rendering, 1, rangeKeyFields)
 	}
 	mainDialog := queryDialogStyle.Render(
 		lipgloss.JoinVertical(lipgloss.Center,
-			rendering...,
+			title,
+			lipgloss.JoinHorizontal(lipgloss.Top,
+				lipgloss.NewStyle().PaddingRight(8).Render(indexSelection),
+				lipgloss.NewStyle().Padding(3, 0, 0, 8).Render(
+					lipgloss.JoinVertical(lipgloss.Center,
+						rendering...,
+					),
+				),
+			),
+			apply,
+			help,
 		),
 	)
 
@@ -739,7 +746,7 @@ func (m *Queryialog) View() string {
 	}
 	if subLayerContent != "" {
 		l := lipgloss.NewLayer(subLayerContent).
-			X(mainLayer.GetX() + lipgloss.Width(mainDialog)).
+			X(mainLayer.GetX() + lipgloss.Width(mainDialog) - lipgloss.Width(subLayerContent)).
 			Y(mainLayer.GetY() + lipgloss.Height(mainDialog) - lipgloss.Height(subLayerContent))
 		c.AddLayers(l)
 	}
