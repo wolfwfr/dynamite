@@ -1,17 +1,14 @@
 package dialogs
 
 import (
-	"fmt"
-	"io"
-	"strings"
-
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/list"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+
+	checkbox "github.com/wolfwfr/dynamite/pkg/ui/internal/components/checkbox_list"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	commonstyles "github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
-	u "github.com/wolfwfr/dynamite/pkg/util"
 )
 
 var columnsDialogStyle = commonstyles.DialogStyle
@@ -28,31 +25,25 @@ func (h columnsKeyMap) ShortHelp() []key.Binding {
 }
 
 type columnsListStyles struct {
-	title        lipgloss.Style
-	content      lipgloss.Style
-	item         lipgloss.Style
-	selectedItem lipgloss.Style
-	help         lipgloss.Style
-	helpLine     lipgloss.Style
+	checkbox.Styles
+	title    lipgloss.Style
+	content  lipgloss.Style
+	help     lipgloss.Style
+	helpLine lipgloss.Style
 }
 
 func newColumnStyles(darkBG bool) columnsListStyles {
 	var s columnsListStyles
+
+	s.Item = lipgloss.NewStyle().PaddingLeft(4)
+	s.SelectedItem = lipgloss.NewStyle().PaddingLeft(2).Foreground(commonstyles.DialogFocusColour)
+
 	s.title = lipgloss.NewStyle().Padding(1, 0, 2, 0)
 	s.content = lipgloss.NewStyle().PaddingTop(1).PaddingBottom(2)
-	s.item = lipgloss.NewStyle().PaddingLeft(4)
-	s.selectedItem = lipgloss.NewStyle().PaddingLeft(2).Foreground(commonstyles.DialogFocusColour)
 	s.help = list.DefaultStyles(darkBG).HelpStyle.Padding(1, 2, 0, 2)
 	s.helpLine = lipgloss.NewStyle().PaddingBottom(1)
 	return s
 }
-
-type checkboxItem struct {
-	checked bool
-	name    string
-}
-
-func (i checkboxItem) FilterValue() string { return "" }
 
 // the Columns dialog enables the user to enable and disable visibility of
 // individual columns
@@ -110,7 +101,7 @@ func NewColumnVisibilityDialog(close key.Binding) *Columns {
 	c.window.height = 100
 
 	{ // list
-		l := list.New([]list.Item{}, columnsItemDelegate{}, c.dialog.width, c.dialog.height)
+		l := list.New([]list.Item{}, checkbox.ItemDelegate{}, c.dialog.width, c.dialog.height)
 		l.Title = "Column Visibility"
 		l.SetShowStatusBar(false)
 		l.SetFilteringEnabled(false)
@@ -134,31 +125,6 @@ func NewColumnVisibilityDialog(close key.Binding) *Columns {
 	return c
 }
 
-type columnsItemDelegate struct {
-	styles *columnsListStyles
-}
-
-func (d columnsItemDelegate) Height() int                             { return 1 }
-func (d columnsItemDelegate) Spacing() int                            { return 0 }
-func (d columnsItemDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
-func (d columnsItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
-	i, ok := listItem.(checkboxItem)
-	if !ok {
-		return
-	}
-
-	str := fmt.Sprintf("%s %s", u.Ternary("[x]", "[ ]", i.checked), i.name)
-
-	fn := d.styles.item.Render
-	if index == m.Index() {
-		fn = func(s ...string) string {
-			return d.styles.selectedItem.Render("> " + strings.Join(s, " "))
-		}
-	}
-
-	fmt.Fprint(w, fn(str))
-}
-
 func (m *Columns) updateStyles(isDark bool) {
 	s := newColumnStyles(isDark)
 	m.content.Styles.Title = s.title
@@ -168,9 +134,9 @@ func (m *Columns) updateStyles(isDark bool) {
 	m.content.SetDelegate(m.newDelegate(&s))
 }
 
-func (m *Columns) newDelegate(s *columnsListStyles) columnsItemDelegate {
-	return columnsItemDelegate{
-		styles: s,
+func (m *Columns) newDelegate(s *columnsListStyles) checkbox.ItemDelegate {
+	return checkbox.ItemDelegate{
+		Styles: &s.Styles,
 	}
 }
 
@@ -228,9 +194,9 @@ func (m *Columns) DisableAll() tea.Cmd {
 func (m *Columns) updateContent() tea.Cmd {
 	items := make([]list.Item, 0, len(m.state.AllColumns))
 	for i := range m.state.AllColumns {
-		items = append(items, checkboxItem{
-			checked: m.state.Visible[i],
-			name:    m.state.AllColumns[i],
+		items = append(items, checkbox.Item{
+			Checked: m.state.Visible[i],
+			Name:    m.state.AllColumns[i],
 		})
 	}
 	cmd := m.content.SetItems(items)
@@ -245,8 +211,8 @@ func (m *Columns) selectItem() tea.Cmd {
 		panic("dialog state not up to date")
 	}
 	m.state.Visible[idx] = !m.state.Visible[idx]
-	if typedItem, ok := itm.(checkboxItem); ok {
-		typedItem.checked = m.state.Visible[idx]
+	if typedItem, ok := itm.(checkbox.Item); ok {
+		typedItem.Checked = m.state.Visible[idx]
 		itm = typedItem
 	}
 	listUpdate := m.content.SetItem(idx, itm) // cmd for filtering
@@ -286,7 +252,7 @@ func (m *Columns) updateSize() {
 	// determine the width of the list within the dialog
 	width := m.defaultDialogWidth
 	for _, itm := range items {
-		width = max(width, len(itm.(checkboxItem).name))
+		width = max(width, len(itm.(checkbox.Item).Name))
 	}
 	// set width of the list within the dialog
 	m.content.SetWidth(width)

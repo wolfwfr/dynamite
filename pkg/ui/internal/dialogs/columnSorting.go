@@ -138,7 +138,7 @@ func NewColumnSortingDialog(close key.Binding) *ColumnSorting {
 	c.window.height = 100
 
 	{ // list
-		l := list.New([]list.Item{}, columnsItemDelegate{}, c.dialog.width, c.dialog.height)
+		l := list.New([]list.Item{}, sortingItemDelegate{}, c.dialog.width, c.dialog.height)
 		l.Title = "Column Order"
 		l.SetShowStatusBar(false)
 		l.SetFilteringEnabled(false)
