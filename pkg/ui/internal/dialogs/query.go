@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 
+	"charm.land/bubbles/v2/help"
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/list"
 	"charm.land/bubbles/v2/textinput"
@@ -21,10 +22,10 @@ var queryDialogStyle = commonstyles.DialogStyle
 var queryOperatorDialogStyle = commonstyles.DialogStyle.Border(lipgloss.RoundedBorder()).Padding(3, 3, 0, 0)
 
 type queryKeyMap struct {
-	close key.Binding
-	enter key.Binding
 	tab   key.Binding
 	shtab key.Binding
+	enter key.Binding
+	close key.Binding
 }
 
 func (h queryKeyMap) ShortHelp() []key.Binding {
@@ -101,6 +102,8 @@ type Queryialog struct {
 	}
 
 	styles queryListStyles
+
+	help help.Model
 
 	content struct {
 		indexSelection      list.Model
@@ -214,16 +217,18 @@ func NewQueryDialog(close key.Binding) *Queryialog {
 			),
 			tab: key.NewBinding(
 				key.WithKeys("tab"),
-				key.WithHelp("tab", "move focus forward"),
+				key.WithHelp("tab", "next"),
 			),
 			shtab: key.NewBinding(
 				key.WithKeys("shift+tab"),
-				key.WithHelp("shift+tab", "move focus backward"),
+				key.WithHelp("shift+tab", "previous"),
 			),
 		},
 
 		defaultDialogHeight: 46,
 		defaultDialogWidth:  150,
+
+		help: help.New(),
 	}
 	d.dialog.width = d.defaultDialogWidth
 	d.dialog.height = d.defaultDialogHeight
@@ -239,14 +244,6 @@ func NewQueryDialog(close key.Binding) *Queryialog {
 		l.SetShowHelp(false)
 		l.SetShowTitle(false)
 
-		// replace '?' with 'm'
-		l.KeyMap.ShowFullHelp.SetKeys("m")
-		l.KeyMap.ShowFullHelp.SetHelp("m", "more")
-		l.KeyMap.CloseFullHelp.SetKeys("m")
-		l.KeyMap.CloseFullHelp.SetHelp("m", "close help")
-		l.KeyMap.Quit.SetKeys(d.keyMap.close.Keys()...)
-		l.KeyMap.Quit.SetHelp(d.keyMap.close.Help().Key, d.keyMap.close.Help().Desc)
-
 		d.content.indexSelection = l
 	}
 
@@ -257,14 +254,6 @@ func NewQueryDialog(close key.Binding) *Queryialog {
 		l.SetFilteringEnabled(false)
 		l.SetShowHelp(false)
 		l.SetShowTitle(false)
-
-		// replace '?' with 'm'
-		l.KeyMap.ShowFullHelp.SetKeys("m")
-		l.KeyMap.ShowFullHelp.SetHelp("m", "more")
-		l.KeyMap.CloseFullHelp.SetKeys("m")
-		l.KeyMap.CloseFullHelp.SetHelp("m", "close help")
-		l.KeyMap.Quit.SetKeys(d.keyMap.close.Keys()...)
-		l.KeyMap.Quit.SetHelp(d.keyMap.close.Help().Key, d.keyMap.close.Help().Desc)
 
 		d.content.operatorSelection = l
 	}
@@ -297,6 +286,48 @@ func NewQueryDialog(close key.Binding) *Queryialog {
 	d.updateSize()
 
 	return d
+}
+
+func (m *Queryialog) ShortHelp() []key.Binding {
+	bindings := []key.Binding{
+		m.keyMap.tab,
+		m.keyMap.shtab,
+		m.keyMap.enter,
+	}
+	listHelp := func(l list.Model) []key.Binding {
+		return append(bindings, []key.Binding{
+			l.KeyMap.CursorUp,
+			l.KeyMap.CursorDown,
+			l.KeyMap.NextPage,
+			l.KeyMap.PrevPage,
+			l.KeyMap.GoToStart,
+			l.KeyMap.GoToEnd,
+			m.keyMap.close,
+		}...)
+	}
+	inputHelp := func(i textinput.Model) []key.Binding {
+		return append(bindings, []key.Binding{
+			m.keyMap.close,
+		}...)
+	}
+
+	switch m.focus {
+	case queryIndexSelection:
+		return listHelp(m.content.indexSelection)
+	case queryHashKeyInput:
+		return inputHelp(m.content.hashKeyInput)
+	case queryOperatorField:
+		return listHelp(m.content.operatorSelection)
+	case queryRangeKeyInput1:
+		return inputHelp(m.content.rangeKeyInput1)
+	case queryRangeKeyInput2:
+		return inputHelp(m.content.rangeKeyInput2)
+	case queryOrderSelection:
+		return listHelp(m.content.rangeOrderSelection)
+	case queryApplyButton:
+		return bindings
+	}
+	return bindings
 }
 
 func (m *Queryialog) newIndexDelegate(s *queryListStyles) indexItemDelegate {
@@ -444,6 +475,9 @@ func (m *Queryialog) MoveFocus(i int) tea.Cmd {
 		m.focus += queryDialogFocus(i)
 	}
 
+	// default to false
+	m.keyMap.enter.SetEnabled(false)
+
 	switch m.focus {
 	case queryIndexSelection:
 	// nothing to do
@@ -458,6 +492,7 @@ func (m *Queryialog) MoveFocus(i int) tea.Cmd {
 	case queryOrderSelection:
 		// nothing to do
 	case queryApplyButton:
+		m.keyMap.enter.SetEnabled(true)
 		// nothing to do
 	}
 	m.updateStyles(true)
@@ -690,16 +725,21 @@ func (m *Queryialog) updateSize() {
 	m.content.rangeOrderSelection.SetHeight(min(len(m.content.rangeOrderSelection.Items())+padding, m.window.height))
 
 	// determine the halfwidth of the list within the dialog
-	halfwidth := m.defaultDialogWidth/2 - 5
+	width := m.defaultDialogWidth
+
+	// set dialog size
+	m.dialog.height = m.content.indexSelection.Height() + 2
+	m.dialog.width = width + 2
+
+	// set help size
+	m.help.SetWidth(width)
+
+	halfwidth := width/2 - 5
 	for _, itm := range items {
 		halfwidth = max(halfwidth, len(itm.(indexItem).name))
 	}
 	// set width of the list within the dialog
 	m.content.indexSelection.SetWidth(halfwidth)
-
-	// set dialog size
-	m.dialog.height = m.content.indexSelection.Height() + 2
-	m.dialog.width = halfwidth*2 + 2
 
 	m.updateStyles(true)
 
@@ -715,9 +755,7 @@ func (m *Queryialog) View() string {
 
 	hashKeyInput := m.renderHashKey()
 
-	help := m.styles.help.Render(
-		m.styles.helpLine.Render(m.content.indexSelection.Help.View(m.content.indexSelection)),
-	)
+	help := m.renderHelp()
 
 	apply := m.renderApplyButton()
 	rendering := []string{
@@ -758,12 +796,21 @@ func (m *Queryialog) View() string {
 	}
 	if subLayerContent != "" {
 		l := lipgloss.NewLayer(subLayerContent).
-			X(mainLayer.GetX() + lipgloss.Width(mainDialog) - lipgloss.Width(subLayerContent)).
-			Y(mainLayer.GetY() + lipgloss.Height(mainDialog) - lipgloss.Height(subLayerContent))
+			X(mainLayer.GetX() + lipgloss.Width(mainDialog) - lipgloss.Width(subLayerContent) - 4).
+			Y(mainLayer.GetY() + lipgloss.Height(mainDialog) - lipgloss.Height(subLayerContent) - 4)
 		c.AddLayers(l)
 	}
 
 	return c.Render()
+}
+
+// noop, unused required to satisfy help.Keymap interface
+func (m *Queryialog) FullHelp() [][]key.Binding {
+	return [][]key.Binding{}
+}
+
+func (m *Queryialog) renderHelp() string {
+	return m.styles.help.Render(m.styles.helpLine.Render(m.help.View(m)))
 }
 
 func (m *Queryialog) renderOperatorSelection() string {
