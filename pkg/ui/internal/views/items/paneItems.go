@@ -254,10 +254,6 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 	return p
 }
 
-func (m *ItemSelectionPane) cleanSlate() {
-	m.err = nil
-}
-
 func (m *ItemSelectionPane) activateSpinner() tea.Cmd {
 	m.spinner.active = true
 	m.updateSize()
@@ -276,6 +272,7 @@ func (m *ItemSelectionPane) Init() tea.Cmd {
 // softReset initalises stateful parameters except for sessions and the selected
 // table
 func (m *ItemSelectionPane) softReset() tea.Cmd {
+	m.err = nil
 	// cancel any lingering calls
 	m.pageCancel()
 
@@ -322,6 +319,8 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 			} else {
 				return m.escape()
 			}
+		case key.Matches(msg, m.KeyMap.Reload):
+			return tea.Batch(m.Init(), m.selectTable(u.IfNotNil(m.selectedTable.TableName, ""), m.selectedTable))
 		case key.Matches(msg, m.KeyMap.ChCols):
 			m.content.SetDynamicColumnWidth(!m.content.DynamicColumnWidth())
 		case key.Matches(msg, m.KeyMap.Zoom):
@@ -512,7 +511,7 @@ func (m *ItemSelectionPane) ProcessPage(msg messages.PageReady) tea.Cmd {
 	defer func() { m.deactivateSpinner() }()
 
 	if msg.Err != nil {
-		m.err = msg.Err // TODO: allow user to exit error message state
+		m.err = msg.Err
 	}
 
 	page := msg.Response
@@ -648,7 +647,6 @@ func (m *ItemSelectionPane) selectTable(tableName string, details types.Describe
 		m.tableIndex.indexItemCount = *details.ItemCount
 	}
 	// resetting state
-	m.cleanSlate()
 	m.content.ResetVirtualRows()
 	m.selectedTable = details
 

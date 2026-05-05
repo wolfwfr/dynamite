@@ -57,17 +57,18 @@ type ItemPaneKeyMap struct {
 	Copy            key.Binding
 	ColVis          key.Binding
 	ColSort         key.Binding
+	Reload          key.Binding
 }
 
 // ShortHelp implements the KeyMap interface.
 func (km *ItemPaneKeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{km.Search, km.Zoom, km.Esc, km.ToggleFmt, km.Scan, km.ScanParameters, km.Query, km.QueryParameters}
+	return []key.Binding{km.Search, km.Zoom, km.Reload, km.Esc, km.ToggleFmt, km.Scan, km.ScanParameters, km.Query, km.QueryParameters}
 }
 
 // FullHelp implements the KeyMap interface.
 func (km *ItemPaneKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{km.Search, km.Zoom, km.Esc, km.ChCols, km.ToggleFmt, km.Scan, km.ScanParameters, km.Query, km.QueryParameters, km.Copy, km.ColVis, km.ColSort},
+		{km.Search, km.Zoom, km.Reload, km.Esc, km.ChCols, km.ToggleFmt, km.Scan, km.ScanParameters, km.Query, km.QueryParameters, km.Copy, km.ColVis, km.ColSort},
 	}
 }
 
@@ -81,6 +82,10 @@ func DefaultItemPaneKeyMap() *ItemPaneKeyMap {
 		Zoom: key.NewBinding(
 			key.WithKeys("Z"),
 			key.WithHelp("shift+z", "zoom"),
+		),
+		Reload: key.NewBinding(
+			key.WithKeys("ctrl+r"),
+			key.WithHelp("ctrl+r", "reload"),
 		),
 		Esc: key.NewBinding(
 			key.WithKeys("esc"),

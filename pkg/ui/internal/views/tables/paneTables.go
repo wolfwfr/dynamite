@@ -242,7 +242,7 @@ func (m *tableSelectionPane) processPage(msg messages.TablePageReady, preview bo
 		return nil
 	}
 	if msg.Err != nil {
-		m.err = msg.Err // TODO: keymap for retry or continue on displaying error
+		m.err = msg.Err
 		return nil
 	}
 	init := len(m.tables) == 0
@@ -313,6 +313,8 @@ func (m *tableSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 			return m.Zoom()
 		case key.Matches(msg, m.KeyMap.Esc):
 			m.search.Reset()
+		case key.Matches(msg, m.KeyMap.Reload):
+			return m.Init()
 		case key.Matches(msg, m.KeyMap.Copy):
 			return m.copy()
 		default:
