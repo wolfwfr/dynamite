@@ -84,9 +84,7 @@ func ScanTable(client dynamodbClient, ctx context.Context, table string, params 
 		ExclusiveStartKey: params.LastEvaluatedKey,
 		IndexName:         index,
 
-		// Limit:                     new(int32),
 		// ScanFilter:                map[string]types.Condition{},
-
 		// AttributesToGet:           []string{},
 		// ConditionalOperator:       "",
 		// ConsistentRead:            new(bool),
@@ -130,7 +128,7 @@ func ScanTable(client dynamodbClient, ctx context.Context, table string, params 
 
 // TODO: add options for rangekey comparisons (e.g. 'eq', 'gt', 'between', etc.)
 func QueryTable(client dynamodbClient, ctx context.Context, table string, params apitypes.QueryParameters) (*apitypes.QueryResponse, error) {
-	hkey, rkey, keys, values, err := formatQueryKeys(params)
+	hkey, rkey, keys, values, names, err := formatQueryKeys(params)
 	if err != nil {
 		return nil, err
 	}
@@ -138,24 +136,24 @@ func QueryTable(client dynamodbClient, ctx context.Context, table string, params
 	if params.IndexName != nil && *params.IndexName != "" {
 		index = params.IndexName
 	}
+	ascendingOrder := !params.Descending
 	p := dynamodb.QueryInput{
 		TableName:                 &table,
 		Limit:                     toPtr(int32(params.Limit)),
 		KeyConditionExpression:    &keys,
 		ExpressionAttributeValues: values,
+		ExpressionAttributeNames:  names,
 		Select:                    "ALL_ATTRIBUTES",
 		IndexName:                 index,
 		ExclusiveStartKey:         params.LastEvaluatedKey,
+		ScanIndexForward:          &ascendingOrder,
 
 		// AttributesToGet:           []string{},
 		// ConsistentRead:            new(bool),
-		// ExpressionAttributeNames:  map[string]string{},
-		// ExpressionAttributeValues: map[string]types.AttributeValue{},
 		// FilterExpression:          new(string),
 		// ProjectionExpression:      new(string),
 		// QueryFilter:               map[string]types.Condition{},
 		// ReturnConsumedCapacity:    "",
-		// ScanIndexForward:          new(bool),
 	}
 
 	out, err := client.Query(ctx, &p)

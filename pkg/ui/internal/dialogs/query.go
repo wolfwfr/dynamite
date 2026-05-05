@@ -32,14 +32,21 @@ func (h queryKeyMap) ShortHelp() []key.Binding {
 }
 
 type queryDialogFocus int
+type rangeOrder string
 
 const (
 	queryIndexSelection queryDialogFocus = iota
 	queryHashKeyInput
 	queryOperatorField
-	queryRangeKeyInput
+	queryRangeKeyInput1
 	queryRangeKeyInput2
+	queryOrderSelection
 	queryApplyButton
+)
+
+const (
+	rangeAscending  rangeOrder = "Ascending"
+	rangeDescending rangeOrder = "Descending"
 )
 
 // the Queryialog dialog enables the user to select an index to query and
@@ -72,6 +79,7 @@ type Queryialog struct {
 			rangeKeyValue    *string
 			rangeKeyValue2   *string
 			rangeKeyOperator messages.QueryOperator
+			orderDescending  bool // default to ascending
 		}
 		// table state is set excusively on initialisation
 		table struct {
@@ -95,32 +103,34 @@ type Queryialog struct {
 	styles queryListStyles
 
 	content struct {
-		indexSelection    list.Model
-		operatorSelection list.Model
-		hashKeyInput      textinput.Model
-		rangeKeyInput     textinput.Model
-		rangeKeyInput2    textinput.Model
+		indexSelection      list.Model
+		operatorSelection   list.Model
+		rangeOrderSelection list.Model
+		hashKeyInput        textinput.Model
+		rangeKeyInput1      textinput.Model
+		rangeKeyInput2      textinput.Model
 	}
 }
 
-type operatorItemStyles struct {
+// TODO: turn into shared, generic list item for all dialogs
+type queryListItemStyles struct {
 	item         lipgloss.Style
 	selectedItem lipgloss.Style
 }
 
-type operatorItem string
+type queryListItem string
 
-func (i operatorItem) FilterValue() string { return "" }
+func (i queryListItem) FilterValue() string { return "" }
 
-type operatorItemDelegate struct {
-	styles *operatorItemStyles
+type queryItemDelegate struct {
+	styles *queryListItemStyles
 }
 
-func (d operatorItemDelegate) Height() int                             { return 1 }
-func (d operatorItemDelegate) Spacing() int                            { return 0 }
-func (d operatorItemDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
-func (d operatorItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
-	i, ok := listItem.(operatorItem)
+func (d queryItemDelegate) Height() int                             { return 1 }
+func (d queryItemDelegate) Spacing() int                            { return 0 }
+func (d queryItemDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
+func (d queryItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
+	i, ok := listItem.(queryListItem)
 	if !ok {
 		return
 	}
@@ -143,19 +153,19 @@ type queryListStyles struct {
 	content  lipgloss.Style
 	help     lipgloss.Style
 	helpLine lipgloss.Style
-	keyInfo  lipgloss.Style
 
-	operatorLineTitle lipgloss.Style
-	operatorLine      lipgloss.Style
-	operatorFocused   lipgloss.Style
+	// box at width of content
+	narrowBox        lipgloss.Style
+	narrowBoxFocused lipgloss.Style
 
-	hashKeyInputTitle   lipgloss.Style
-	hashKeyInput        lipgloss.Style
-	hashKeyInputFocused lipgloss.Style
+	// box at full width of dialog
+	wideBox        lipgloss.Style
+	wideBoxFocused lipgloss.Style
 
-	rangeKeyInputTitle   lipgloss.Style
-	rangeKeyInput        lipgloss.Style
-	rangeKeyInputFocused lipgloss.Style
+	// titles
+	hashKeyInputTitle  lipgloss.Style
+	rangeKeyInputTitle lipgloss.Style
+	rangeKeyOrderTitle lipgloss.Style
 
 	applyButton        lipgloss.Style
 	applyButtonFocused lipgloss.Style
@@ -173,21 +183,21 @@ func newQueryStyles(darkBG bool) queryListStyles {
 	s.header = lipgloss.NewStyle().Foreground(headerColour)
 	s.help = list.DefaultStyles(darkBG).HelpStyle.Padding(1, 2, 0, 2)
 	s.helpLine = lipgloss.NewStyle().PaddingBottom(1)
-	s.keyInfo = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(lipgloss.Color("#636363")).Padding(1, 2, 1, 2)
 
-	// s.operatorLine = lipgloss.NewStyle().Underline(true).UnderlineColor(unFocusedColour).Padding(1, 0, 1, 1)
-	s.operatorLineTitle = lipgloss.NewStyle().PaddingLeft(1).Foreground(headerColour)
-	s.operatorLine = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(unFocusedColour)
-	s.operatorFocused = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(focusedColour)
+	// narrow boxes
+	s.narrowBox = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(unFocusedColour).Padding(0, 1, 0, 1)
+	s.narrowBoxFocused = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(focusedColour).Padding(0, 1, 0, 1)
 
+	// wide boxes
+	s.wideBox = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(unFocusedColour)
+	s.wideBoxFocused = s.wideBox.BorderForeground(focusedColour)
+
+	// inputs fields
 	s.hashKeyInputTitle = lipgloss.NewStyle().PaddingLeft(1).Foreground(headerColour)
-	s.hashKeyInput = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(unFocusedColour)
-	s.hashKeyInputFocused = s.hashKeyInput.BorderForeground(focusedColour)
-
 	s.rangeKeyInputTitle = lipgloss.NewStyle().PaddingLeft(1).Foreground(headerColour).Padding(1, 0, 0, 0)
-	s.rangeKeyInput = s.hashKeyInput
-	s.rangeKeyInputFocused = s.rangeKeyInput.BorderForeground(focusedColour)
+	s.rangeKeyOrderTitle = lipgloss.NewStyle().PaddingLeft(1).Foreground(headerColour).Padding(1, 0, 0, 0)
 
+	// query button
 	s.applyButton = lipgloss.NewStyle().Border(lipgloss.DoubleBorder()).BorderForeground(unFocusedColour).Padding(0, 2, 0, 2).Margin(1, 0, 1, 0)
 	s.applyButtonFocused = lipgloss.NewStyle().Border(lipgloss.DoubleBorder()).BorderForeground(focusedColour).Padding(0, 2, 0, 2).Margin(1, 0, 1, 0)
 
@@ -241,7 +251,7 @@ func NewQueryDialog(close key.Binding) *Queryialog {
 	}
 
 	{ // operator selection
-		l := list.New([]list.Item{}, operatorItemDelegate{}, d.dialog.width, d.dialog.height)
+		l := list.New([]list.Item{}, queryItemDelegate{}, d.dialog.width, d.dialog.height)
 		l.Title = "Range Key Operator"
 		l.SetShowStatusBar(false)
 		l.SetFilteringEnabled(false)
@@ -259,13 +269,24 @@ func NewQueryDialog(close key.Binding) *Queryialog {
 		d.content.operatorSelection = l
 	}
 
+	{ // range order selection
+		l := list.New([]list.Item{}, queryItemDelegate{}, d.dialog.width, d.dialog.height)
+		l.Title = "List Order Selection"
+		l.SetShowStatusBar(false)
+		l.SetFilteringEnabled(false)
+		l.SetShowHelp(false)
+		l.SetShowTitle(false)
+
+		d.content.rangeOrderSelection = l
+	}
+
 	{ // hash key input
 		hashKeyInput := textinput.New()
 		d.content.hashKeyInput = hashKeyInput
 	}
 	{ // range key input
 		rangeKeyInput := textinput.New()
-		d.content.rangeKeyInput = rangeKeyInput
+		d.content.rangeKeyInput1 = rangeKeyInput
 	}
 	{ // range key input 2
 		rangeKeyInput := textinput.New()
@@ -295,9 +316,9 @@ func (m *Queryialog) newIndexDelegate(s *queryListStyles) indexItemDelegate {
 	}
 }
 
-func (m *Queryialog) newOperatorDelegate(s *queryListStyles) operatorItemDelegate {
-	return operatorItemDelegate{
-		styles: &operatorItemStyles{
+func (m *Queryialog) newQueryItemDelegate(s *queryListStyles) queryItemDelegate {
+	return queryItemDelegate{
+		styles: &queryListItemStyles{
 			item:         m.styles.indexItemStyles.item,         // use same styling
 			selectedItem: m.styles.indexItemStyles.selectedItem, // use same styling
 		},
@@ -310,21 +331,19 @@ func (m *Queryialog) updateStyles(isDark bool) {
 	m.content.indexSelection.Styles.HelpStyle = s.help
 
 	subwidth := m.dialog.width - 10
-	s.keyInfo = s.keyInfo.Width(subwidth)
-	s.operatorLineTitle = s.operatorLineTitle.Width(subwidth)
-	// s.operatorLine = s.operatorLine.Width(subwidth)
-	// s.operatorFocused = s.operatorFocused.Width(subwidth)
+
+	s.wideBox = s.wideBox.Width(subwidth)
+	s.wideBoxFocused = s.wideBoxFocused.Width(subwidth)
+
 	s.hashKeyInputTitle = s.hashKeyInputTitle.Width(subwidth)
-	s.hashKeyInput = s.hashKeyInput.Width(subwidth)
-	s.hashKeyInputFocused = s.hashKeyInputFocused.Width(subwidth)
 	s.rangeKeyInputTitle = s.rangeKeyInputTitle.Width(subwidth)
-	s.rangeKeyInput = s.rangeKeyInput.Width(subwidth)
-	s.rangeKeyInputFocused = s.rangeKeyInputFocused.Width(subwidth)
+	s.rangeKeyOrderTitle = s.rangeKeyOrderTitle.Width(subwidth)
 
 	m.styles = s
 
 	m.content.indexSelection.SetDelegate(m.newIndexDelegate(&s))
-	m.content.operatorSelection.SetDelegate(m.newOperatorDelegate(&s))
+	m.content.operatorSelection.SetDelegate(m.newQueryItemDelegate(&s))
+	m.content.rangeOrderSelection.SetDelegate(m.newQueryItemDelegate(&s))
 }
 
 func (m *Queryialog) Init() tea.Cmd {
@@ -364,10 +383,12 @@ func (m *Queryialog) handleNavigation(msg tea.Msg) tea.Cmd {
 		m.content.hashKeyInput, cmd = m.content.hashKeyInput.Update(msg)
 	case queryOperatorField:
 		m.content.operatorSelection, cmd = m.content.operatorSelection.Update(msg)
-	case queryRangeKeyInput:
-		m.content.rangeKeyInput, cmd = m.content.rangeKeyInput.Update(msg)
+	case queryRangeKeyInput1:
+		m.content.rangeKeyInput1, cmd = m.content.rangeKeyInput1.Update(msg)
 	case queryRangeKeyInput2:
 		m.content.rangeKeyInput2, cmd = m.content.rangeKeyInput2.Update(msg)
+	case queryOrderSelection:
+		m.content.rangeOrderSelection, cmd = m.content.rangeOrderSelection.Update(msg)
 	case queryApplyButton:
 		if msg, ok := msg.(tea.KeyPressMsg); ok && key.Matches(msg, m.keyMap.enter) {
 			cmd = m.applyParameters()
@@ -387,11 +408,13 @@ func (m *Queryialog) MoveFocus(i int) tea.Cmd {
 	case queryHashKeyInput:
 		m.content.hashKeyInput.Blur()
 	case queryOperatorField:
-	// TODO: close side dialog
-	case queryRangeKeyInput:
-		m.content.rangeKeyInput.Blur()
+		// nothing to do
+	case queryRangeKeyInput1:
+		m.content.rangeKeyInput1.Blur()
 	case queryRangeKeyInput2:
 		m.content.rangeKeyInput2.Blur()
+	case queryOrderSelection:
+		// nothing to do
 	case queryApplyButton:
 		// nothing to do
 	}
@@ -404,7 +427,7 @@ func (m *Queryialog) MoveFocus(i int) tea.Cmd {
 	}
 
 	// range-input-2 only applies when 'between' operator is selected
-	if m.focus == queryRangeKeyInput2 && messages.QueryOperator(m.content.operatorSelection.SelectedItem().(operatorItem)) != messages.Between {
+	if m.focus == queryRangeKeyInput2 && messages.QueryOperator(m.content.operatorSelection.SelectedItem().(queryListItem)) != messages.Between {
 		m.focus += queryDialogFocus(i)
 	}
 
@@ -414,11 +437,13 @@ func (m *Queryialog) MoveFocus(i int) tea.Cmd {
 	case queryHashKeyInput:
 		m.content.hashKeyInput.Focus()
 	case queryOperatorField:
-	// TODO: open side dialog
-	case queryRangeKeyInput:
-		m.content.rangeKeyInput.Focus()
+		// nothing to do
+	case queryRangeKeyInput1:
+		m.content.rangeKeyInput1.Focus()
 	case queryRangeKeyInput2:
 		m.content.rangeKeyInput2.Focus()
+	case queryOrderSelection:
+		// nothing to do
 	case queryApplyButton:
 		// nothing to do
 	}
@@ -432,6 +457,7 @@ func (m *Queryialog) ResetState() {
 	m.state.init.rangeKeyValue = nil
 	m.state.init.rangeKeyValue2 = nil
 	m.state.init.selectedIndex = ""
+	m.state.init.orderDescending = false
 
 	m.state.table.TableARN = ""
 	m.state.table.TableIndex = messages.TableIndex{}
@@ -448,7 +474,7 @@ func (m *Queryialog) ResetState() {
 	m.content.operatorSelection.SetItems([]list.Item{})
 	m.content.operatorSelection.Select(0)
 	m.content.hashKeyInput.Reset()
-	m.content.rangeKeyInput.Reset()
+	m.content.rangeKeyInput1.Reset()
 	m.content.rangeKeyInput2.Reset()
 }
 
@@ -470,6 +496,7 @@ func (m *Queryialog) SetState(msg messages.InitQueryParameters) tea.Cmd {
 	m.state.init.rangeKeyValue = msg.RangeKeyValue1
 	m.state.init.rangeKeyValue2 = msg.RangeKeyValue2
 	m.state.init.rangeKeyOperator = msg.RangeKeyOperator
+	m.state.init.orderDescending = msg.RangeOrderDescending
 
 	// update list item delegates
 	m.updateStyles(true)
@@ -517,18 +544,18 @@ func (m *Queryialog) InitContent() tea.Cmd {
 
 	{ // set query operators
 		operators := make([]list.Item, 6, 7)
-		operators[0] = operatorItem(messages.Equals)
-		operators[1] = operatorItem(messages.Greater)
-		operators[2] = operatorItem(messages.GreaterEqual)
-		operators[3] = operatorItem(messages.Less)
-		operators[4] = operatorItem(messages.LessEqual)
-		operators[5] = operatorItem(messages.Between)
+		operators[0] = queryListItem(messages.Equals)
+		operators[1] = queryListItem(messages.Greater)
+		operators[2] = queryListItem(messages.GreaterEqual)
+		operators[3] = queryListItem(messages.Less)
+		operators[4] = queryListItem(messages.LessEqual)
+		operators[5] = queryListItem(messages.Between)
 		if m.state.resolved.RangeKeyType != "N" {
-			operators = append(operators, operatorItem(messages.BeginsWith))
+			operators = append(operators, queryListItem(messages.BeginsWith))
 		}
 		var idx int
 		for i, item := range operators {
-			if messages.QueryOperator(item.(operatorItem)) == m.state.init.rangeKeyOperator {
+			if messages.QueryOperator(item.(queryListItem)) == m.state.init.rangeKeyOperator {
 				idx = i
 				break
 			}
@@ -537,9 +564,19 @@ func (m *Queryialog) InitContent() tea.Cmd {
 		cmds = append(cmds, m.content.operatorSelection.SetItems(operators))
 	}
 
+	{ // set range order options
+		orderOptions := []list.Item{
+			queryListItem(rangeAscending),
+			queryListItem(rangeDescending),
+		}
+		idx := u.Ternary(1, 0, m.state.init.orderDescending)
+		m.content.rangeOrderSelection.Select(idx)
+		cmds = append(cmds, m.content.rangeOrderSelection.SetItems(orderOptions))
+	}
+
 	{ // set input fields
 		m.content.hashKeyInput.SetValue(m.state.init.hashKeyValue)
-		m.content.rangeKeyInput.SetValue(u.IfNotNil(m.state.init.rangeKeyValue, ""))
+		m.content.rangeKeyInput1.SetValue(u.IfNotNil(m.state.init.rangeKeyValue, ""))
 		m.content.rangeKeyInput2.SetValue(u.IfNotNil(m.state.init.rangeKeyValue2, ""))
 	}
 
@@ -550,14 +587,14 @@ func (m *Queryialog) InitContent() tea.Cmd {
 // updateContent updates the content based on the resolved state.
 func (m *Queryialog) updateContent() tea.Cmd {
 	operators := make([]list.Item, 6, 7)
-	operators[0] = operatorItem(messages.Equals)
-	operators[1] = operatorItem(messages.Greater)
-	operators[2] = operatorItem(messages.GreaterEqual)
-	operators[3] = operatorItem(messages.Less)
-	operators[4] = operatorItem(messages.LessEqual)
-	operators[5] = operatorItem(messages.Between)
+	operators[0] = queryListItem(messages.Equals)
+	operators[1] = queryListItem(messages.Greater)
+	operators[2] = queryListItem(messages.GreaterEqual)
+	operators[3] = queryListItem(messages.Less)
+	operators[4] = queryListItem(messages.LessEqual)
+	operators[5] = queryListItem(messages.Between)
 	if m.state.resolved.RangeKeyType != "N" {
-		operators = append(operators, operatorItem(messages.BeginsWith))
+		operators = append(operators, queryListItem(messages.BeginsWith))
 	}
 
 	if m.content.operatorSelection.Index() > len(operators)-1 {
@@ -569,16 +606,18 @@ func (m *Queryialog) updateContent() tea.Cmd {
 func (m *Queryialog) applyParameters() tea.Cmd {
 	indexSelection := m.content.indexSelection.SelectedItem().(indexItem).name
 	hashKeySelection := m.content.hashKeyInput.Value()
-	rangeKeySelection := m.content.rangeKeyInput.Value()
+	rangeKeySelection := m.content.rangeKeyInput1.Value()
 	rangeKeySelection2 := m.content.rangeKeyInput2.Value()
-	rangeKeyOpSelection := messages.QueryOperator(m.content.operatorSelection.SelectedItem().(operatorItem))
+	rangeKeyOpSelection := messages.QueryOperator(m.content.operatorSelection.SelectedItem().(queryListItem))
+	orderDescending := string(m.content.rangeOrderSelection.SelectedItem().(queryListItem)) == string(rangeDescending)
 
 	if true &&
 		indexSelection == m.state.init.selectedIndex &&
 		hashKeySelection == m.state.init.hashKeyValue &&
 		rangeKeySelection == u.IfNotNil(m.state.init.rangeKeyValue, "") &&
 		rangeKeySelection2 == u.IfNotNil(m.state.init.rangeKeyValue2, "") &&
-		rangeKeyOpSelection == m.state.init.rangeKeyOperator {
+		rangeKeyOpSelection == m.state.init.rangeKeyOperator &&
+		orderDescending == m.state.init.orderDescending {
 		return m.toggleDialog() // no changes
 	}
 
@@ -589,20 +628,22 @@ func (m *Queryialog) queryParametersUpdate() tea.Cmd {
 	// update the init state when committing changes
 	m.state.init.selectedIndex = m.content.indexSelection.SelectedItem().(indexItem).name
 	m.state.init.hashKeyValue = m.content.hashKeyInput.Value()
-	rangeKeyV := m.content.rangeKeyInput.Value()
+	rangeKeyV := m.content.rangeKeyInput1.Value()
 	rangeKeyV2 := m.content.rangeKeyInput2.Value()
 	m.state.init.rangeKeyValue = u.Ternary(&rangeKeyV, nil, rangeKeyV != "")
 	m.state.init.rangeKeyValue2 = u.Ternary(&rangeKeyV2, nil, rangeKeyV2 != "")
-	m.state.init.rangeKeyOperator = messages.QueryOperator(m.content.operatorSelection.SelectedItem().(operatorItem))
+	m.state.init.rangeKeyOperator = messages.QueryOperator(m.content.operatorSelection.SelectedItem().(queryListItem))
+	m.state.init.orderDescending = string(m.content.rangeOrderSelection.SelectedItem().(queryListItem)) == string(rangeDescending)
 
 	return func() tea.Msg {
 		return messages.QueryParametersChanged{
-			TableARN:         m.state.table.TableARN,
-			IndexName:        u.Ternary(m.state.init.selectedIndex, "", m.state.init.selectedIndex != tableIndexName),
-			HashKeyValue:     m.state.init.hashKeyValue,
-			RangeKeyValue1:   m.state.init.rangeKeyValue,
-			RangeKeyValue2:   m.state.init.rangeKeyValue2,
-			RangeKeyOperator: m.state.init.rangeKeyOperator,
+			TableARN:             m.state.table.TableARN,
+			IndexName:            u.Ternary(m.state.init.selectedIndex, "", m.state.init.selectedIndex != tableIndexName),
+			HashKeyValue:         m.state.init.hashKeyValue,
+			RangeKeyValue1:       m.state.init.rangeKeyValue,
+			RangeKeyValue2:       m.state.init.rangeKeyValue2,
+			RangeKeyOperator:     m.state.init.rangeKeyOperator,
+			RangeOrderDescending: m.state.init.orderDescending,
 		}
 	}
 }
@@ -613,6 +654,7 @@ func (m *Queryialog) toggleDialog() tea.Cmd {
 	}
 }
 
+// TODO: set max heights
 func (m *Queryialog) applySize(height, width int) {
 	m.window.width = width
 	m.window.height = height
@@ -629,6 +671,10 @@ func (m *Queryialog) updateSize() {
 	// set height of the operator list
 	padding = 3
 	m.content.operatorSelection.SetHeight(min(len(m.content.operatorSelection.Items())+padding, m.window.height))
+
+	// set height of range order options list
+	padding = 3
+	m.content.rangeOrderSelection.SetHeight(min(len(m.content.rangeOrderSelection.Items())+padding, m.window.height))
 
 	// determine the width of the list within the dialog
 	width := m.defaultDialogWidth
@@ -684,11 +730,17 @@ func (m *Queryialog) View() string {
 	c := lipgloss.NewCompositor(mainLayer)
 	c.AddLayers(mainLayer)
 
-	if m.focus == queryOperatorField {
-		operatorSelection := m.renderOperatorSelection()
-		l := lipgloss.NewLayer(operatorSelection).
+	var subLayerContent string
+	switch m.focus {
+	case queryOperatorField:
+		subLayerContent = m.renderOperatorSelection()
+	case queryOrderSelection:
+		subLayerContent = m.renderRangeOrderSelection()
+	}
+	if subLayerContent != "" {
+		l := lipgloss.NewLayer(subLayerContent).
 			X(mainLayer.GetX() + lipgloss.Width(mainDialog)).
-			Y(mainLayer.GetY() + lipgloss.Height(mainDialog) - lipgloss.Height(operatorSelection))
+			Y(mainLayer.GetY() + lipgloss.Height(mainDialog) - lipgloss.Height(subLayerContent))
 		c.AddLayers(l)
 	}
 
@@ -699,12 +751,12 @@ func (m *Queryialog) renderOperatorSelection() string {
 	return queryOperatorDialogStyle.Render(m.styles.content.Render(m.content.operatorSelection.View()))
 }
 
-func (m *Queryialog) renderOperatorField() string {
-	op := m.content.operatorSelection.SelectedItem().(operatorItem)
-	return fmt.Sprintf("Range Key Operator: %s", op)
+func (m *Queryialog) renderRangeOrderSelection() string {
+	return queryOperatorDialogStyle.Render(m.styles.content.Render(m.content.rangeOrderSelection.View()))
 }
+
 func (m *Queryialog) renderHashKey() string {
-	hashKeyInputStyle := u.Ternary(m.styles.hashKeyInputFocused, m.styles.hashKeyInput, m.focus == queryHashKeyInput)
+	hashKeyInputStyle := u.Ternary(m.styles.wideBoxFocused, m.styles.wideBox, m.focus == queryHashKeyInput)
 
 	return lipgloss.JoinVertical(
 		lipgloss.Left,
@@ -713,40 +765,23 @@ func (m *Queryialog) renderHashKey() string {
 	)
 }
 
-func (m *Queryialog) renderRangeKeyOperator() string {
-	rangeKeyOperatorStyle := u.Ternary(m.styles.operatorFocused, m.styles.operatorLine, m.focus == queryOperatorField)
-	op := m.content.operatorSelection.SelectedItem().(operatorItem)
-
-	return lipgloss.JoinVertical(
-		lipgloss.Left,
-		m.styles.operatorLineTitle.Render(lipgloss.NewStyle().Width(m.dialog.width-10).Render(" Range Key Operator: ")),
-		rangeKeyOperatorStyle.Render(" "+string(op)+" "),
-	)
-}
-
-func (m *Queryialog) renderRangeKey() string {
-	rangeKeyInputStyle := u.Ternary(m.styles.rangeKeyInputFocused, m.styles.rangeKeyInput, m.focus == queryRangeKeyInput)
-
-	return lipgloss.JoinVertical(
-		lipgloss.Left,
-		m.styles.rangeKeyInputTitle.Render(fmt.Sprintf("Range Key (%s): %s", m.state.resolved.RangeKeyType, *&m.state.resolved.RangeKey)),
-		rangeKeyInputStyle.Render(m.content.rangeKeyInput.View()),
-	)
-}
-
 func (m *Queryialog) renderJoinedRangeKeyFields() string {
-	rangeKeyOperatorStyle := u.Ternary(m.styles.operatorFocused, m.styles.operatorLine, m.focus == queryOperatorField)
-	rangeKeyInputStyle1 := u.Ternary(m.styles.rangeKeyInputFocused, m.styles.rangeKeyInput, m.focus == queryRangeKeyInput)
-	rangeKeyInputStyle2 := u.Ternary(m.styles.rangeKeyInputFocused, m.styles.rangeKeyInput, m.focus == queryRangeKeyInput2)
-	op := m.content.operatorSelection.SelectedItem().(operatorItem)
+	rangeKeyOperatorStyle := u.Ternary(m.styles.narrowBoxFocused, m.styles.narrowBox, m.focus == queryOperatorField)
+	rangeKeyInputStyle1 := u.Ternary(m.styles.wideBoxFocused, m.styles.wideBox, m.focus == queryRangeKeyInput1)
+	rangeKeyInputStyle2 := u.Ternary(m.styles.wideBoxFocused, m.styles.wideBox, m.focus == queryRangeKeyInput2)
+	rangeOrderStyle := u.Ternary(m.styles.narrowBoxFocused, m.styles.narrowBox, m.focus == queryOrderSelection)
+	op := m.content.operatorSelection.SelectedItem().(queryListItem)
+	or := m.content.rangeOrderSelection.SelectedItem().(queryListItem)
 
 	rendering := []string{
 		m.styles.rangeKeyInputTitle.Render(fmt.Sprintf("Range Key (%s): %s", m.state.resolved.RangeKeyType, *m.state.resolved.RangeKey)),
-		rangeKeyOperatorStyle.Render(" " + string(op) + " "),
-		rangeKeyInputStyle1.Render(m.content.rangeKeyInput.View()),
+		rangeKeyOperatorStyle.Render(string(op)),
+		rangeKeyInputStyle1.Render(m.content.rangeKeyInput1.View()),
+		m.styles.rangeKeyOrderTitle.Render("Range Order"),
+		rangeOrderStyle.Render(string(or)),
 	}
-	if messages.QueryOperator(m.content.operatorSelection.SelectedItem().(operatorItem)) == messages.Between {
-		rendering = append(rendering, rangeKeyInputStyle2.Render(m.content.rangeKeyInput2.View()))
+	if messages.QueryOperator(m.content.operatorSelection.SelectedItem().(queryListItem)) == messages.Between {
+		rendering = slices.Insert(rendering, 3, rangeKeyInputStyle2.Render(m.content.rangeKeyInput2.View()))
 	}
 	return lipgloss.JoinVertical(lipgloss.Left, rendering...)
 }

@@ -92,6 +92,7 @@ type ( // QUERY
 
 		Limit            int
 		LastEvaluatedKey map[string]types.AttributeValue
+		Descending       bool // default to ascending
 	}
 	QueryResponse struct {
 		Items            Items

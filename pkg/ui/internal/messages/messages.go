@@ -133,15 +133,16 @@ type InitScanParameters struct {
 }
 
 type InitQueryParameters struct {
-	TableARN         string
-	TableIndex       TableIndex
-	GSI              []GlobalSecondaryIndex
-	LSI              []LocalSecondaryIndex
-	CurrentIndex     *string
-	HashKeyValue     string
-	RangeKeyValue1   *string
-	RangeKeyValue2   *string // used for BETWEEN operator
-	RangeKeyOperator QueryOperator
+	TableARN             string
+	TableIndex           TableIndex
+	GSI                  []GlobalSecondaryIndex
+	LSI                  []LocalSecondaryIndex
+	CurrentIndex         *string
+	HashKeyValue         string
+	RangeKeyValue1       *string
+	RangeKeyValue2       *string // used for BETWEEN operator
+	RangeKeyOperator     QueryOperator
+	RangeOrderDescending bool // ascending by default
 }
 
 type ColumnVisibilityUpdate struct {
@@ -163,12 +164,13 @@ type ScanIndexChanged struct {
 }
 
 type QueryParametersChanged struct {
-	TableARN         string
-	IndexName        string // empty == table index
-	HashKeyValue     string
-	RangeKeyValue1   *string
-	RangeKeyValue2   *string // used for BETWEEN operator
-	RangeKeyOperator QueryOperator
+	TableARN             string
+	IndexName            string // empty == table index
+	HashKeyValue         string
+	RangeKeyValue1       *string
+	RangeKeyValue2       *string // used for BETWEEN operator
+	RangeKeyOperator     QueryOperator
+	RangeOrderDescending bool // ascending by default
 }
 
 type ColumnSortingReset struct {

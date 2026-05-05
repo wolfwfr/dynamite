@@ -42,10 +42,11 @@ const (
 type SessionData struct {
 	queryMode   messages.ItemsQueryMode
 	queryParams struct {
-		hashKeyValue     string
-		rangeKeyValue1   *string
-		rangeKeyValue2   *string
-		rangeKeyOperator messages.QueryOperator
+		hashKeyValue         string
+		rangeKeyValue1       *string
+		rangeKeyValue2       *string
+		rangeKeyOperator     messages.QueryOperator
+		rangeOrderDescending bool
 	}
 	chosenIndex *string
 }
@@ -101,10 +102,11 @@ type ItemSelectionPane struct {
 	queryLimit int
 	// TODO: name collision with reset function
 	queryParameters struct {
-		hashKeyValue     string
-		rangeKeyValue1   *string
-		rangeKeyValue2   *string
-		rangeKeyOperator messages.QueryOperator
+		hashKeyValue         string
+		rangeKeyValue1       *string
+		rangeKeyValue2       *string
+		rangeKeyOperator     messages.QueryOperator
+		rangeOrderDescending bool
 	}
 
 	items types.Items
@@ -401,6 +403,7 @@ func (m *ItemSelectionPane) PageNext(init bool) tea.Cmd {
 	rang1 := m.queryParameters.rangeKeyValue1
 	rang2 := m.queryParameters.rangeKeyValue2
 	rangOp := m.queryParameters.rangeKeyOperator
+	rangOr := m.queryParameters.rangeOrderDescending
 	pageCmd := func() tea.Msg {
 		defer cc()
 		switch mode {
@@ -421,6 +424,7 @@ func (m *ItemSelectionPane) PageNext(init bool) tea.Cmd {
 				RangeKeyValue1:   rang1,
 				RangeKeyValue2:   rang2,
 				RangeKeyOperator: parseRangeKeyOperator(rangOp),
+				Descending:       rangOr,
 				Limit:            queryLimit,
 				LastEvaluatedKey: key,
 			})
@@ -625,6 +629,7 @@ func (m *ItemSelectionPane) selectTable(tableName string, details types.Describe
 		m.queryParameters.rangeKeyValue1 = session.queryParams.rangeKeyValue1
 		m.queryParameters.rangeKeyValue2 = session.queryParams.rangeKeyValue2
 		m.queryParameters.rangeKeyOperator = session.queryParams.rangeKeyOperator
+		m.queryParameters.rangeOrderDescending = session.queryParams.rangeOrderDescending
 		if session.chosenIndex == nil {
 			m.tableIndex.indexItemCount = *details.ItemCount
 		} else {
@@ -749,6 +754,7 @@ func (m *ItemSelectionPane) resetQueryParameters() tea.Cmd {
 	m.queryParameters.rangeKeyOperator = messages.Noop
 	m.queryParameters.rangeKeyValue1 = nil
 	m.queryParameters.rangeKeyValue2 = nil
+	m.queryParameters.rangeOrderDescending = false
 	return cmd
 }
 
@@ -795,6 +801,7 @@ func (m *ItemSelectionPane) escape() tea.Cmd {
 		d.queryParams.rangeKeyValue1 = m.queryParameters.rangeKeyValue1
 		d.queryParams.rangeKeyValue2 = m.queryParameters.rangeKeyValue2
 		d.queryParams.rangeKeyOperator = m.queryParameters.rangeKeyOperator
+		d.queryParams.rangeOrderDescending = m.queryParameters.rangeOrderDescending
 		m.sessions[*arn] = d
 	}
 
@@ -971,6 +978,7 @@ func (m *ItemSelectionPane) ChangeQueryParameters(msg messages.QueryParametersCh
 	m.queryParameters.rangeKeyValue1 = msg.RangeKeyValue1
 	m.queryParameters.rangeKeyValue2 = msg.RangeKeyValue2
 	m.queryParameters.rangeKeyOperator = msg.RangeKeyOperator
+	m.queryParameters.rangeOrderDescending = msg.RangeOrderDescending
 
 	return m.PageNext(true)
 }

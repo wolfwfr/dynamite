@@ -77,6 +77,7 @@ func (m *ItemSelectionPane) ToggleQueryParametersDialog() tea.Cmd {
 	op := m.queryParameters.rangeKeyOperator
 	rangeKeyV1 := m.queryParameters.rangeKeyValue1
 	rangeKeyV2 := m.queryParameters.rangeKeyValue2
+	orderDesc := m.queryParameters.rangeOrderDescending
 	tgl := func() tea.Msg {
 		return messages.ToggleQueryParameters{}
 	}
@@ -91,13 +92,14 @@ func (m *ItemSelectionPane) ToggleQueryParametersDialog() tea.Cmd {
 				RangeKey:     rang,
 				RangeKeyType: rangType,
 			},
-			GSI:              globalIndices,
-			LSI:              localIndices,
-			CurrentIndex:     index,
-			HashKeyValue:     hashKeyV,
-			RangeKeyValue1:   rangeKeyV1,
-			RangeKeyValue2:   rangeKeyV2,
-			RangeKeyOperator: op,
+			GSI:                  globalIndices,
+			LSI:                  localIndices,
+			CurrentIndex:         index,
+			HashKeyValue:         hashKeyV,
+			RangeKeyValue1:       rangeKeyV1,
+			RangeKeyValue2:       rangeKeyV2,
+			RangeKeyOperator:     op,
+			RangeOrderDescending: orderDesc,
 		}
 	}
 	return tea.Batch(tgl, init)
@@ -114,7 +116,7 @@ func parseRangeKeyOperator(op messages.QueryOperator) types.RangeKeyOperator {
 	case messages.Less:
 		return types.RangeLess
 	case messages.LessEqual:
-		return types.RangeLess
+		return types.RangeLessEqual
 	case messages.Between:
 		return types.RangeBetween
 	case messages.BeginsWith:
