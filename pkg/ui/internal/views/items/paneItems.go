@@ -22,6 +22,7 @@ import (
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/components/search"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/components/table"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
+	commonstyles "github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/util/keymaps"
 	u "github.com/wolfwfr/dynamite/pkg/util"
 )
@@ -29,7 +30,7 @@ import (
 var tableInfoBox = lipgloss.NewStyle().
 	Height(2).
 	Padding(0, 1, 1, 1).
-	Foreground(lipgloss.Color("#878787"))
+	Foreground(commonstyles.SubtleColour2)
 
 type previewFormat int
 type queryMode int

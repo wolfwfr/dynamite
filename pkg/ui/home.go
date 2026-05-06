@@ -15,6 +15,7 @@ import (
 	"github.com/wolfwfr/dynamite/pkg/aws/dynamodb"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/dialogs"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
+	commonstyles "github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
 	itemsview "github.com/wolfwfr/dynamite/pkg/ui/internal/views/items"
 	tablesview "github.com/wolfwfr/dynamite/pkg/ui/internal/views/tables"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/util/keymaps"
@@ -38,21 +39,15 @@ const (
 	query_param_dialog
 )
 
-var (
-	queryColour = "#046645"
-	scanColour  = "#0E3080"
-	adminColour = "#0E5680"
-)
-
 var regionBlock = lipgloss.NewStyle().
-	Background(lipgloss.Color("#80380E")).
+	Background(commonstyles.RegionBoxBg).
 	Align(lipgloss.Left, lipgloss.Top).
 	PaddingLeft(1).
 	PaddingRight(1).
 	Height(1)
 
 var queryModeBlock = lipgloss.NewStyle().
-	Background(lipgloss.Color(scanColour)).
+	Background(commonstyles.QueryModeBoxScanBg).
 	Align(lipgloss.Left, lipgloss.Top).
 	PaddingLeft(1).
 	PaddingRight(1).
@@ -247,9 +242,9 @@ func (m Model) SwitchQueryMode(msg messages.SwitchQueryMode) (Model, tea.Cmd) {
 	m.QueryMode = msg.NewMode
 	switch m.QueryMode {
 	case messages.ScanMode:
-		queryModeBlock = queryModeBlock.Background(lipgloss.Color(scanColour))
+		queryModeBlock = queryModeBlock.Background(commonstyles.QueryModeBoxScanBg)
 	case messages.QueryMode:
-		queryModeBlock = queryModeBlock.Background(lipgloss.Color(queryColour))
+		queryModeBlock = queryModeBlock.Background(commonstyles.QueryModeBoxQeuryBg)
 	}
 	return m, nil
 }

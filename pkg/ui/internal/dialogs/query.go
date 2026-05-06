@@ -140,14 +140,11 @@ type queryListStyles struct {
 }
 
 func newQueryStyles(darkBG bool) queryListStyles {
-	focusedColour := lipgloss.Color("#F58427")
-	unFocusedColour := lipgloss.Color("#636363")
-	headerColour := lipgloss.Color("#B0B0B0")
 	var s queryListStyles
 
 	s.Item = lipgloss.NewStyle().PaddingLeft(4)
 	s.SelectedItem = lipgloss.NewStyle().PaddingLeft(2).Foreground(commonstyles.DialogFocusColour)
-	s.Header = lipgloss.NewStyle().Foreground(headerColour)
+	s.Header = lipgloss.NewStyle().Foreground(commonstyles.SubtleColour)
 
 	s.title = lipgloss.NewStyle().Padding(1, 0, 2, 0)
 	s.content = lipgloss.NewStyle().PaddingTop(1).PaddingBottom(2)
@@ -155,21 +152,21 @@ func newQueryStyles(darkBG bool) queryListStyles {
 	s.helpLine = lipgloss.NewStyle().PaddingBottom(1)
 
 	// narrow boxes
-	s.narrowBox = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(unFocusedColour).Padding(0, 1, 0, 1)
-	s.narrowBoxFocused = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(focusedColour).Padding(0, 1, 0, 1)
+	s.narrowBox = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(commonstyles.DialogUnfocusColour).Padding(0, 1, 0, 1)
+	s.narrowBoxFocused = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(commonstyles.DialogFocusColour).Padding(0, 1, 0, 1)
 
 	// wide boxes
-	s.wideBox = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(unFocusedColour)
-	s.wideBoxFocused = s.wideBox.BorderForeground(focusedColour)
+	s.wideBox = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(commonstyles.DialogUnfocusColour)
+	s.wideBoxFocused = s.wideBox.BorderForeground(commonstyles.DialogFocusColour)
 
 	// inputs fields
-	s.hashKeyInputTitle = lipgloss.NewStyle().PaddingLeft(1).Foreground(headerColour)
-	s.rangeKeyInputTitle = lipgloss.NewStyle().PaddingLeft(1).Foreground(headerColour).Padding(1, 0, 0, 0)
-	s.rangeKeyOrderTitle = lipgloss.NewStyle().PaddingLeft(1).Foreground(headerColour).Padding(1, 0, 0, 0)
+	s.hashKeyInputTitle = lipgloss.NewStyle().PaddingLeft(1).Foreground(commonstyles.SubtleColour)
+	s.rangeKeyInputTitle = lipgloss.NewStyle().PaddingLeft(1).Foreground(commonstyles.SubtleColour).Padding(1, 0, 0, 0)
+	s.rangeKeyOrderTitle = lipgloss.NewStyle().PaddingLeft(1).Foreground(commonstyles.SubtleColour).Padding(1, 0, 0, 0)
 
 	// query button
-	s.applyButton = lipgloss.NewStyle().Border(lipgloss.DoubleBorder()).BorderForeground(unFocusedColour).Padding(0, 2, 0, 2).Margin(1, 0, 1, 0)
-	s.applyButtonFocused = lipgloss.NewStyle().Border(lipgloss.DoubleBorder()).BorderForeground(focusedColour).Padding(0, 2, 0, 2).Margin(1, 0, 1, 0)
+	s.applyButton = lipgloss.NewStyle().Border(lipgloss.DoubleBorder()).BorderForeground(commonstyles.DialogUnfocusColour).Padding(0, 2, 0, 2).Margin(1, 0, 1, 0)
+	s.applyButtonFocused = lipgloss.NewStyle().Border(lipgloss.DoubleBorder()).BorderForeground(commonstyles.DialogFocusColour).Padding(0, 2, 0, 2).Margin(1, 0, 1, 0)
 
 	return s
 }

@@ -75,7 +75,7 @@ func newColumnSortingStyles(darkBG bool) sortingListStyles {
 	s.content = lipgloss.NewStyle().Padding(1, 0, 2, 0)
 	s.item = lipgloss.NewStyle().PaddingLeft(4)
 	s.selectedItem = lipgloss.NewStyle().PaddingLeft(2).Foreground(commonstyles.DialogFocusColour)
-	s.header = lipgloss.NewStyle().Foreground(lipgloss.Color("#B0B0B0"))
+	s.header = lipgloss.NewStyle().Foreground(commonstyles.SubtleColour)
 	s.help = list.DefaultStyles(darkBG).HelpStyle.Padding(1, 2, 0, 2)
 	s.helpLine = lipgloss.NewStyle().PaddingBottom(1)
 	return s

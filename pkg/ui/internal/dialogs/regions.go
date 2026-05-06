@@ -65,7 +65,7 @@ func newRegionStyles(darkBG bool) regionListStyles {
 
 	s.Item = lipgloss.NewStyle().PaddingLeft(4)
 	s.SelectedItem = lipgloss.NewStyle().PaddingLeft(2).Foreground(commonstyles.DialogFocusColour)
-	s.Header = lipgloss.NewStyle().Foreground(lipgloss.Color("#B0B0B0"))
+	s.Header = lipgloss.NewStyle().Foreground(commonstyles.SubtleColour)
 
 	s.title = lipgloss.NewStyle().Padding(1, 0, 2, 0)
 	s.content = lipgloss.NewStyle().PaddingTop(1).PaddingBottom(2)

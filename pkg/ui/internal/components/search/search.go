@@ -5,13 +5,15 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/google/uuid"
+
+	commonstyles "github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
 )
 
 var (
 	SearchBoxStyle = lipgloss.NewStyle().
 		Align(lipgloss.Left, lipgloss.Center).
 		BorderStyle(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("#4F4F4F")).
+		BorderForeground(commonstyles.SearchFg).
 		PaddingLeft(2).
 		Height(2)
 )
