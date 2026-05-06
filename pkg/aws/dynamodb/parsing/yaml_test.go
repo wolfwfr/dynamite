@@ -10,7 +10,7 @@ import (
 
 func genericTestItemYAML() string {
 	tabsize = 2
-	return `string-key: "string-value"
+	return `string-key: "string-value\nwith-newline"
 bool-false-key: false
 bool-true-key: true
 byte-key: <bytes>(len=10)
@@ -39,6 +39,7 @@ number-set-key:
 string-set-key: 
   - "string-set-value-1"
   - "string-set-value-2"
+  - "string-set-value-3\nwith-newline"
 `
 }
 

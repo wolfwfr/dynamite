@@ -10,10 +10,10 @@ import (
 func genericTestItem() map[string]types.AttributeValue {
 	item := map[string]types.AttributeValue{}
 	item["string-key"] = &types.AttributeValueMemberS{
-		Value: "string-value",
+		Value: "string-value\nwith-newline",
 	}
 	item["string-set-key"] = &types.AttributeValueMemberSS{
-		Value: []string{"string-set-value-1", "string-set-value-2"},
+		Value: []string{"string-set-value-1", "string-set-value-2", "string-set-value-3\nwith-newline"},
 	}
 	item["number-key"] = &types.AttributeValueMemberN{
 		Value: "100.5",
@@ -76,7 +76,7 @@ func genericTestItem() map[string]types.AttributeValue {
 func genericTestItemJSON() string {
 	tabsize = 2
 	return `{
-  "string-key": "string-value",
+  "string-key": "string-value\nwith-newline",
   "bool-false-key": false,
   "bool-true-key": true,
   "byte-key": <bytes>(len=10),
@@ -113,7 +113,8 @@ func genericTestItemJSON() string {
   ],
   "string-set-key": [
     "string-set-value-1",
-    "string-set-value-2"
+    "string-set-value-2",
+    "string-set-value-3\nwith-newline"
   ]
 }`
 }

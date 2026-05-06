@@ -57,9 +57,9 @@ func switchAttrValueYAML(v types.AttributeValue, hashkey string, rangekey *strin
 		}
 		return "NOT NULL\n"
 	case *types.AttributeValueMemberS:
-		return fmt.Sprintf("\"%s\"\n", vv.Value)
+		return fmt.Sprintf("%q\n", vv.Value)
 	case *types.AttributeValueMemberSS:
-		return stringableAsListYAML(vv.Value, nestLevel, func(s string) string { return fmt.Sprintf("\"%s\"\n", s) })
+		return stringableAsListYAML(vv.Value, nestLevel, func(s string) string { return fmt.Sprintf("%q\n", s) })
 	default:
 		return "<failed to parse>\n" // TODO: error?
 	}
