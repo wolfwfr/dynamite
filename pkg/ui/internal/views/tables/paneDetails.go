@@ -274,7 +274,7 @@ func (m *detailsPane) applySize(height, width int) {
 }
 
 func (m *detailsPane) View() string {
-	if m.err != nil { // TODO: formatting
+	if m.err != nil {
 		return m.err.Error()
 	}
 	return m.content.View()

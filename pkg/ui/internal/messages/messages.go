@@ -110,6 +110,10 @@ type ToggleColumnVisibility struct{}
 type ToggleColumnSorting struct{}
 type ToggleScanParameters struct{}
 type ToggleQueryParameters struct{}
+type ToggleErrorDialog struct{ Error error }
+type ErrorTick struct{ ID string }
+
+type ErrorExpired struct{ ID string }
 
 type InitColumnVisibility struct {
 	TableARN   string

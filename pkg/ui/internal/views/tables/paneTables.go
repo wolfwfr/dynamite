@@ -336,7 +336,9 @@ func (m *tableSelectionPane) copy() tea.Cmd {
 	}
 
 	if err := clipboard.WriteAll(r[c].String()); err != nil {
-		// TODO: notify user
+		return func() tea.Msg {
+			return messages.ToggleErrorDialog{Error: fmt.Errorf("failed to copy: %w", err)}
+		}
 	}
 	return nil
 }

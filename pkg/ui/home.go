@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"slices"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -74,6 +75,8 @@ type Model struct {
 		scanParams       *dialogs.ScanDialog
 		queryParams      *dialogs.Queryialog
 		active           Dialog
+
+		errors []*dialogs.ErrorDialog
 	}
 
 	// top-level context
@@ -166,6 +169,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m, cmd = m.ToggleScanParametersDialog()
 	case messages.ToggleQueryParameters:
 		m, cmd = m.ToggleQueryParametersDialog()
+	case messages.ToggleErrorDialog:
+		m, cmd = m.ToggleErrorDialog(msg)
+	case messages.ErrorExpired:
+		m, cmd = m.HandleExpiredError(msg)
+	case messages.ErrorTick:
+		m, cmd = m.handleErrorTick(msg)
 	case messages.SwitchRegion:
 		m, cmd = m.switchRegion(msg.OldRegion, msg.NewRegion)
 	case messages.SwitchQueryMode:
@@ -269,6 +278,29 @@ func (m Model) handleSwitchView(msg messages.SwitchView) (Model, tea.Cmd) {
 		m.activeView = items_view
 	}
 	return m, m.dialogs.help.Update(msg)
+}
+
+func (m Model) handleErrorTick(msg messages.ErrorTick) (Model, tea.Cmd) {
+	var cmds []tea.Cmd
+	for _, d := range m.dialogs.errors {
+		cmds = append(cmds, d.Update(msg))
+	}
+	return m, tea.Batch(cmds...)
+}
+
+func (m Model) HandleExpiredError(msg messages.ErrorExpired) (Model, tea.Cmd) {
+	if idx := u.FindBy(m.dialogs.errors, func(d *dialogs.ErrorDialog) bool {
+		return d != nil && d.ID() == msg.ID
+	}); idx >= 0 {
+		m.dialogs.errors = slices.Delete(m.dialogs.errors, idx, idx+1)
+	}
+	return m, nil
+}
+
+func (m Model) ToggleErrorDialog(msg messages.ToggleErrorDialog) (Model, tea.Cmd) {
+	d := dialogs.NewErrorDialog(msg.Error)
+	m.dialogs.errors = append(m.dialogs.errors, d)
+	return m, d.Tick() // initialise ticking
 }
 
 func (m Model) ToggleHelpDialog() (Model, tea.Cmd) {
@@ -386,6 +418,17 @@ func (m Model) View() tea.View {
 			X(m.window.width/2 - lipgloss.Width(renderedDialog)/2).
 			Y(m.window.height/2 - lipgloss.Height(renderedDialog)/2)
 		c.AddLayers(dialogLayer)
+	}
+
+	// error messages
+	var errors []string
+	for _, d := range m.dialogs.errors {
+		errors = append(errors, d.View())
+	}
+	if len(errors) > 0 {
+		errorContent := lipgloss.JoinVertical(lipgloss.Left, errors...)
+		errorLayer := lipgloss.NewLayer(errorContent).X(1).Y(1)
+		c.AddLayers(errorLayer)
 	}
 
 	v := tea.NewView(c.Render())

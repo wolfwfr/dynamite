@@ -36,6 +36,15 @@ func Find[S []E, E comparable](slice S, target E) int {
 	return -1
 }
 
+func FindBy[S []E, E comparable](slice S, cond func(i E) bool) int {
+	for i, e := range slice {
+		if cond(e) {
+			return i
+		}
+	}
+	return -1
+}
+
 func Clamp(v, low, high int) int {
 	return min(max(v, low), high)
 }

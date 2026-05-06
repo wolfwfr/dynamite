@@ -2,6 +2,7 @@ package itemselection
 
 import (
 	"context"
+	"fmt"
 
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/viewport"
@@ -115,7 +116,9 @@ func (m *detailsPane) Zoom() tea.Cmd {
 func (m *detailsPane) copy() tea.Cmd {
 	c := m.content.GetContent()
 	if err := clipboard.WriteAll(c); err != nil {
-		// TODO: inform user of error (dialog?)
+		return func() tea.Msg {
+			return messages.ToggleErrorDialog{Error: fmt.Errorf("failed to copy: %w", err)}
+		}
 	}
 	return nil
 }
