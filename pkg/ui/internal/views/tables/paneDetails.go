@@ -9,12 +9,14 @@ import (
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 
 	appconfig "github.com/wolfwfr/dynamite/pkg"
 	apitypes "github.com/wolfwfr/dynamite/pkg/aws/dynamodb/types"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
+	"github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/util/keymaps"
 	u "github.com/wolfwfr/dynamite/pkg/util"
 )
@@ -38,7 +40,14 @@ type detailsPane struct {
 	// Additional Keys
 	AddKeyMap keymaps.AdditionalKeys
 
+	styles detailsStyles
+
 	content viewport.Model
+}
+
+type detailsStyles struct {
+	headerStyle    lipgloss.Style
+	fieldNameStyle lipgloss.Style
 }
 
 type detailsPaneOption func(p *detailsPane)
@@ -61,6 +70,12 @@ func newDetailsPane(ctx context.Context, config *appconfig.Config, opts ...detai
 		content: c,
 		KeyMap:  DefaultDetailsKeyMap(),
 	}
+
+	p.styles = detailsStyles{
+		headerStyle:    lipgloss.NewStyle().Bold(true).Foreground(styles.ViewFocusBorderColour).PaddingBottom(1),
+		fieldNameStyle: lipgloss.NewStyle().Foreground(styles.SubtleColour), //.Bold(true),
+	}
+
 	for _, o := range opts {
 		o(p)
 	}
@@ -92,7 +107,7 @@ func (m *detailsPane) Update(msg tea.Msg) (cmd tea.Cmd) {
 			}
 		}
 	case messages.TableDetails:
-		m.content.SetContent(renderDetails(msg.Details))
+		m.content.SetContent(renderDetails(msg.Details, m.styles))
 		return nil
 	}
 
@@ -100,7 +115,7 @@ func (m *detailsPane) Update(msg tea.Msg) (cmd tea.Cmd) {
 	return
 }
 
-func renderDetails(details *apitypes.DescribeTableResponse) string {
+func renderDetails(details *apitypes.DescribeTableResponse, styles detailsStyles) string {
 	if details == nil {
 		return ""
 	}
@@ -124,95 +139,89 @@ func renderDetails(details *apitypes.DescribeTableResponse) string {
 	arn := u.IfNotNil(details.TableArn, "")
 	id := u.IfNotNil(details.TableId, "")
 
+	header := styles.headerStyle.Render
+	field := styles.fieldNameStyle.Render
+
 	s := strings.Builder{}
-	fmt.Fprintf(&s, "----------------------------------------------------\n")
-	fmt.Fprintf(&s, "[GENERAL]\n")
-	fmt.Fprintf(&s, "----------------------------------------------------\n\n")
-	fmt.Fprintf(&s, "Table name:   %s\n", name)
-	fmt.Fprintf(&s, "Table ARN:    %s\n", arn)
-	fmt.Fprintf(&s, "Table ID:     %s\n", id)
+	fmt.Fprintf(&s, "%s\n", header("GENERAL"))
+	fmt.Fprintf(&s, "%s:   %s\n", field("Table name"), name)
+	fmt.Fprintf(&s, "%s:    %s\n", field("Table ARN"), arn)
+	fmt.Fprintf(&s, "%s:     %s\n", field("Table ID"), id)
 	fmt.Fprintf(&s, "\n")
 	if details.TableClassSummary != nil {
-		fmt.Fprintf(&s, "Table Class:  %s\n", details.TableClassSummary.TableClass)
+		fmt.Fprintf(&s, "%s:  %s\n", field("Table Class"), details.TableClassSummary.TableClass)
 		fmt.Fprintf(&s, "\n")
 	}
-	fmt.Fprintf(&s, "Created At:   %s\n", details.CreationDateTime.Format(time.RFC1123Z))
-	fmt.Fprintf(&s, "\n----------------------------------------------------\n")
-	fmt.Fprintf(&s, "[COUNT]\n")
-	fmt.Fprintf(&s, "----------------------------------------------------\n\n")
-	fmt.Fprintf(&s, "Table Item Count:                   %d\n", *details.ItemCount)
-	fmt.Fprintf(&s, "Global Secondary Index Item Count:  %d\n", globalIdxItemCount)
-	fmt.Fprintf(&s, "Local Secondary Index Itemm Count:  %d\n", localIdxItemCount)
-	fmt.Fprintf(&s, "\n----------------------------------------------------\n")
-	fmt.Fprintf(&s, "[SIZE]\n")
-	fmt.Fprintf(&s, "----------------------------------------------------\n\n")
-	fmt.Fprintf(&s, "Total Size:                   %s\n", formatBytes(totalSize))
-	fmt.Fprintf(&s, "Table Size:                   %s\n", formatBytes(*details.TableSizeBytes))
-	fmt.Fprintf(&s, "Global Secondary Index Size:  %s\n", formatBytes(globalIdxSize))
-	fmt.Fprintf(&s, "Local Secondary Index Size:   %s\n", formatBytes(localIdxSize))
-	fmt.Fprintf(&s, "\n----------------------------------------------------\n")
-	fmt.Fprintf(&s, "[TABLE KEYS]\n")
-	fmt.Fprintf(&s, "----------------------------------------------------\n\n")
+	fmt.Fprintf(&s, "%s:   %s\n", field("Created At"), details.CreationDateTime.Format(time.RFC1123Z))
+	fmt.Fprintf(&s, "\n")
+	fmt.Fprintf(&s, "%s\n", header("COUNT"))
+	fmt.Fprintf(&s, "%s:                   %d\n", field("Table Item Count"), *details.ItemCount)
+	fmt.Fprintf(&s, "%s:  %d\n", field("Global Secondary Index Item Count"), globalIdxItemCount)
+	fmt.Fprintf(&s, "%s:   %d\n", field("Local Secondary Index Item Count"), localIdxItemCount)
+	fmt.Fprintf(&s, "\n")
+	fmt.Fprintf(&s, "%s\n", header("SIZE"))
+	fmt.Fprintf(&s, "%s:                   %s\n", field("Total Size"), formatBytes(totalSize))
+	fmt.Fprintf(&s, "%s:                   %s\n", field("Table Size"), formatBytes(*details.TableSizeBytes))
+	fmt.Fprintf(&s, "%s:  %s\n", field("Global Secondary Index Size"), formatBytes(globalIdxSize))
+	fmt.Fprintf(&s, "%s:   %s\n", field("Local Secondary Index Size"), formatBytes(localIdxSize))
+	fmt.Fprintf(&s, "\n")
+	fmt.Fprintf(&s, "%s\n", header("TABLE KEYS"))
 	hash, rang := primaryKeysFromSchema(details.KeySchema)
-	fmt.Fprintf(&s, "%s", formatKeys(hash, rang, "", details.AttributeDefinitions))
+	fmt.Fprintf(&s, "%s", formatKeys(hash, rang, "", details.AttributeDefinitions, styles))
+	fmt.Fprintf(&s, "\n")
 	if len(details.GlobalSecondaryIndexes) > 0 {
-		fmt.Fprintf(&s, "\n----------------------------------------------------\n")
-		fmt.Fprintf(&s, "[GLOBAL SECONDARY INDICES]\n")
-		fmt.Fprintf(&s, "----------------------------------------------------\n\n")
-	}
-	for i, idx := range details.GlobalSecondaryIndexes {
-		fmt.Fprintf(&s, "Index Name: %s\n", *idx.IndexName)
-		fmt.Fprintf(&s, "Index ARN:  %s\n", *idx.IndexArn)
-		fmt.Fprintf(&s, "\n")
-		hash, rang := primaryKeysFromSchema(idx.KeySchema)
-		fmt.Fprintf(&s, "%s", formatKeys(hash, rang, "  ", details.AttributeDefinitions))
-		if i != len(details.GlobalSecondaryIndexes)-1 {
+		fmt.Fprintf(&s, "%s\n", header("GLOBAL SECONDARY INDICES"))
+		for i, idx := range details.GlobalSecondaryIndexes {
+			fmt.Fprintf(&s, "%s: %s\n", field("Index Name"), *idx.IndexName)
+			fmt.Fprintf(&s, "%s:  %s\n", field("Index ARN"), *idx.IndexArn)
 			fmt.Fprintf(&s, "\n")
+			hash, rang := primaryKeysFromSchema(idx.KeySchema)
+			fmt.Fprintf(&s, "%s", formatKeys(hash, rang, "  ", details.AttributeDefinitions, styles))
+			if i != len(details.GlobalSecondaryIndexes)-1 {
+				fmt.Fprintf(&s, "\n")
+			}
 		}
+		fmt.Fprintf(&s, "\n")
 	}
 	if len(details.LocalSecondaryIndexes) > 0 {
-		fmt.Fprintf(&s, "\n----------------------------------------------------\n")
-		fmt.Fprintf(&s, "[LOCAL SECONDARY INDICES]\n")
-		fmt.Fprintf(&s, "----------------------------------------------------\n\n")
-	}
-	for i, idx := range details.LocalSecondaryIndexes {
-		fmt.Fprintf(&s, "Index Name: %s\n", *idx.IndexName)
-		fmt.Fprintf(&s, "Index ARN:  %s\n", *idx.IndexArn)
-		fmt.Fprintf(&s, "\n")
-		hash, rang := primaryKeysFromSchema(idx.KeySchema)
-		fmt.Fprintf(&s, "%s", formatKeys(hash, rang, "  ", details.AttributeDefinitions))
-		if i != len(details.LocalSecondaryIndexes)-1 {
+		fmt.Fprintf(&s, "%s\n", header("LOCAL SECONDARY INDICES"))
+		for i, idx := range details.LocalSecondaryIndexes {
+			fmt.Fprintf(&s, "%s: %s\n", field("Index Name"), *idx.IndexName)
+			fmt.Fprintf(&s, "%s:  %s\n", field("Index ARN"), *idx.IndexArn)
 			fmt.Fprintf(&s, "\n")
+			hash, rang := primaryKeysFromSchema(idx.KeySchema)
+			fmt.Fprintf(&s, "%s", formatKeys(hash, rang, "  ", details.AttributeDefinitions, styles))
+			if i != len(details.LocalSecondaryIndexes)-1 {
+				fmt.Fprintf(&s, "\n")
+			}
 		}
+		fmt.Fprintf(&s, "\n")
 	}
-	fmt.Fprintf(&s, "\n----------------------------------------------------\n")
-	fmt.Fprintf(&s, "[SECURITY]\n")
-	fmt.Fprintf(&s, "----------------------------------------------------\n\n")
-	fmt.Fprintf(&s, "Deletion Protection Enabled: %t\n", *details.DeletionProtectionEnabled)
+	fmt.Fprintf(&s, "%s\n", header("SECURITY"))
+	fmt.Fprintf(&s, "%s: %t\n", field("Deletion Protection Enabled"), *details.DeletionProtectionEnabled)
+	fmt.Fprintf(&s, "\n")
 	if details.BillingModeSummary != nil {
-		fmt.Fprintf(&s, "\n----------------------------------------------------\n")
-		fmt.Fprintf(&s, "[BILLING]\n")
-		fmt.Fprintf(&s, "----------------------------------------------------\n\n")
-		fmt.Fprintf(&s, "Billing Mode: %s\n", details.BillingModeSummary.BillingMode)
+		fmt.Fprintf(&s, "%s\n", header("BILLING"))
+		fmt.Fprintf(&s, "%s: %s\n", field("Billing Mode"), details.BillingModeSummary.BillingMode)
+		fmt.Fprintf(&s, "\n")
 	}
 	if details.ProvisionedThroughput != nil {
-		fmt.Fprintf(&s, "\n----------------------------------------------------\n")
-		fmt.Fprintf(&s, "[THROUGHPUT PROVISIONED]\n")
-		fmt.Fprintf(&s, "----------------------------------------------------\n\n")
-		fmt.Fprintf(&s, "Read Capacity Units:   %d\n", *details.ProvisionedThroughput.ReadCapacityUnits)
-		fmt.Fprintf(&s, "Write Capacity Units:  %d\n", *details.ProvisionedThroughput.WriteCapacityUnits)
+		fmt.Fprintf(&s, "%s\n", header("THROUGHPUT PROVISIONED"))
+		fmt.Fprintf(&s, "%s:   %d\n", field("Read Capacity Units"), *details.ProvisionedThroughput.ReadCapacityUnits)
+		fmt.Fprintf(&s, "%s:  %d\n", field("Write Capacity Units"), *details.ProvisionedThroughput.WriteCapacityUnits)
+		fmt.Fprintf(&s, "\n")
 	}
 	if details.OnDemandThroughput != nil {
-		fmt.Fprintf(&s, "\n----------------------------------------------------\n")
-		fmt.Fprintf(&s, "[THROUGHPUT ON DEMAND]\n")
-		fmt.Fprintf(&s, "----------------------------------------------------\n\n")
-		fmt.Fprintf(&s, "Max Read Capacity Units:   %d\n", *details.OnDemandThroughput.MaxReadRequestUnits)
-		fmt.Fprintf(&s, "Max Write Capacity Units:  %d\n", *details.OnDemandThroughput.MaxWriteRequestUnits)
+		fmt.Fprintf(&s, "%s\n", header("THROUGHPUT ON DEMAND"))
+		fmt.Fprintf(&s, "%s:   %d\n", field("Max Read Capacity Units"), *details.OnDemandThroughput.MaxReadRequestUnits)
+		fmt.Fprintf(&s, "%s:  %d\n", field("Max Write Capacity Units"), *details.OnDemandThroughput.MaxWriteRequestUnits)
+		fmt.Fprintf(&s, "\n")
 	}
 	return s.String()
 }
 
-func formatKeys(hash string, rang *string, indentation string, attrDef []dynamodbtypes.AttributeDefinition) string {
+func formatKeys(hash string, rang *string, indentation string, attrDef []dynamodbtypes.AttributeDefinition, styles detailsStyles) string {
+	field := styles.fieldNameStyle.Render
 	var hashAttr string
 	var rangAttr *string
 	for _, d := range attrDef {
@@ -229,11 +238,11 @@ func formatKeys(hash string, rang *string, indentation string, attrDef []dynamod
 			}
 		}
 	}
-	hashfmt := fmt.Sprintf("%sHash Key  (%s):  %s\n", indentation, hashAttr, hash)
+	hashfmt := fmt.Sprintf("%s%s:  %s\n", indentation, field(fmt.Sprintf("Hash Key  (%s)", hashAttr)), hash)
 	if rang == nil {
 		return hashfmt
 	}
-	return fmt.Sprintf("%s%sRange Key (%s):  %s\n", hashfmt, indentation, *rangAttr, *rang)
+	return fmt.Sprintf("%s%s%s:  %s\n", hashfmt, indentation, field(fmt.Sprintf("Range Key (%s)", *rangAttr)), *rang)
 }
 
 func formatBytes(bytes int64) string {
