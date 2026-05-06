@@ -10,6 +10,10 @@ var (
 	ViewFocusBorderColour   = lipgloss.Color("#2381CF")
 	ViewUnFocusBorderColour = lipgloss.Color("#415278")
 
+	TableSelectedBg = lipgloss.Color("57")
+	TableSelectedFg = lipgloss.Color("229")
+	TableDefaultFg  = lipgloss.Color("240")
+
 	SubtleColour  = lipgloss.Color("#B0B0B0")
 	SubtleColour2 = lipgloss.Color("#878787")
 

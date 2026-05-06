@@ -20,6 +20,7 @@ import (
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/components/search"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/components/table"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
+	commonstyles "github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/util/keymaps"
 	u "github.com/wolfwfr/dynamite/pkg/util"
 )
@@ -102,12 +103,12 @@ func newTableSelectionPane(ctx context.Context, config *appconfig.Config, opts .
 		s := table.DefaultStyles()
 		s.Header = s.Header.
 			BorderStyle(lipgloss.NormalBorder()).
-			BorderForeground(lipgloss.Color("240")).
+			BorderForeground(commonstyles.TableDefaultFg).
 			BorderBottom(true).
 			Bold(false)
 		s.Selected = s.Selected.
-			Foreground(lipgloss.Color("229")).
-			Background(lipgloss.Color("57")).
+			Foreground(commonstyles.TableSelectedFg).
+			Background(commonstyles.TableSelectedBg).
 			Bold(false)
 		t.SetStyles(s)
 
