@@ -93,7 +93,7 @@ func (p JSONParser) pJSON(elements map[string]types.AttributeValue, hashkey stri
 
 		// write field-name
 		fieldName := func(quotedName, colon string) string {
-			return spf("%s%s%s", tabs(nestLevel), quotedName, colon)
+			return spf("%s%s%s ", tabs(nestLevel), quotedName, colon)
 		}
 		quotedName := spf("\"%s\"", k)
 		json.WriteString(fieldName(quotedName, ":"))
