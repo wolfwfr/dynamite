@@ -6,7 +6,6 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 
-	"github.com/wolfwfr/dynamite/pkg/aws/dynamodb/parsing"
 	apitypes "github.com/wolfwfr/dynamite/pkg/aws/dynamodb/types"
 )
 
@@ -72,7 +71,6 @@ func DescribeTable(client dynamodbClient, ctx context.Context, tableName string)
 }
 
 func ScanTable(client dynamodbClient, ctx context.Context, table string, params apitypes.ScanParameters) (*apitypes.ScanResponse, error) {
-	hkey, rkey := parsePrimaryKeys(params.KeySchema) // TODO: prevent waste
 	var index *string
 	if params.IndexName != nil && *params.IndexName != "" {
 		index = params.IndexName
@@ -104,29 +102,15 @@ func ScanTable(client dynamodbClient, ctx context.Context, table string, params 
 		return nil, fmt.Errorf("expected output, but dynamo-db query returned 'nil'")
 	}
 	res := &apitypes.ScanResponse{
-		Items: apitypes.Items{
-			JSON:      make([]string, 0, len(out.Items)),
-			YAML:      make([]string, 0, len(out.Items)),
-			Raw:       out.Items,
-			TableKeys: make([][]apitypes.KeyValue, 0, len(out.Items)),
-		},
+		Items:            out.Items,
 		LastEvaluatedKey: out.LastEvaluatedKey,
-	}
-
-	// TODO: reconsider parsing to both JSON & YAML all the time
-	for _, item := range out.Items {
-		yaml := parsing.ParseItemToYAML(item, *hkey, rkey)
-		json, keys := parsing.ParseToJSONWithKeys(item, *hkey, rkey)
-		res.Items.JSON = append(res.Items.JSON, json)
-		res.Items.YAML = append(res.Items.YAML, yaml)
-		res.Items.TableKeys = append(res.Items.TableKeys, keys)
 	}
 
 	return res, nil
 }
 
 func QueryTable(client dynamodbClient, ctx context.Context, table string, params apitypes.QueryParameters) (*apitypes.QueryResponse, error) {
-	hkey, rkey, keys, values, names, err := formatQueryKeys(params)
+	keys, values, names, err := formatQueryKeys(params)
 	if err != nil {
 		return nil, err
 	}
@@ -162,22 +146,8 @@ func QueryTable(client dynamodbClient, ctx context.Context, table string, params
 		return nil, fmt.Errorf("expected output, but dynamo-db query returned 'nil'")
 	}
 	res := &apitypes.QueryResponse{
-		Items: apitypes.Items{
-			JSON:      make([]string, 0, len(out.Items)),
-			YAML:      make([]string, 0, len(out.Items)),
-			Raw:       out.Items,
-			TableKeys: make([][]apitypes.KeyValue, 0, len(out.Items)),
-		},
+		Items:            out.Items,
 		LastEvaluatedKey: out.LastEvaluatedKey,
-	}
-
-	// TODO: reconsider parsing to both JSON & YAML all the time
-	for _, item := range out.Items {
-		yaml := parsing.ParseItemToYAML(item, hkey, rkey)
-		json, keys := parsing.ParseToJSONWithKeys(item, hkey, rkey)
-		res.Items.JSON = append(res.Items.JSON, json)
-		res.Items.YAML = append(res.Items.YAML, yaml)
-		res.Items.TableKeys = append(res.Items.TableKeys, keys)
 	}
 
 	return res, nil

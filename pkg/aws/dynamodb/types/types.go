@@ -74,7 +74,7 @@ type ( // SCAN
 		LastEvaluatedKey map[string]types.AttributeValue
 	}
 	ScanResponse struct {
-		Items            Items
+		Items            []map[string]types.AttributeValue
 		LastEvaluatedKey map[string]types.AttributeValue
 	}
 )
@@ -95,7 +95,7 @@ type ( // QUERY
 		Descending       bool // default to ascending
 	}
 	QueryResponse struct {
-		Items            Items
+		Items            []map[string]types.AttributeValue
 		LastEvaluatedKey map[string]types.AttributeValue
 	}
 )

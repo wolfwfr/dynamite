@@ -6,8 +6,9 @@ import (
 	"context"
 
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 
-	"github.com/wolfwfr/dynamite/pkg/ui/internal/adapters/dynamodb/types"
+	"github.com/wolfwfr/dynamite/pkg/ui/internal/adapters/dynamodb/parsing"
 	apitypes "github.com/wolfwfr/dynamite/pkg/ui/internal/adapters/dynamodb/types"
 
 	connector "github.com/wolfwfr/dynamite/pkg/aws/dynamodb"
@@ -64,34 +65,33 @@ func ScanTable(client *dynamodb.Client, ctx context.Context, table string, param
 		Limit:            params.Limit,
 		LastEvaluatedKey: params.LastEvaluatedKey,
 	}
-	res, err := connector.ScanTable(client, ctx, table, dparams)
-	if res == nil {
+	out, err := connector.ScanTable(client, ctx, table, dparams)
+	if out == nil || err != nil {
 		return nil, err
 	}
 
-	tableKeys := make([][]apitypes.KeyValue, len(res.Items.TableKeys))
-	for i, kk := range res.Items.TableKeys {
-		v := make([]apitypes.KeyValue, len(kk))
-		for j, k := range kk {
-			v[j] = apitypes.KeyValue{
-				Key:   k.Key,
-				Value: k.Value,
-			}
-		}
-		tableKeys[i] = v
+	res := &apitypes.ScanResponse{
+		Items: apitypes.Items{
+			JSON:      make([]string, 0, len(out.Items)),
+			YAML:      make([]string, 0, len(out.Items)),
+			Raw:       out.Items,
+			TableKeys: make([][]apitypes.KeyValue, 0, len(out.Items)),
+		},
+		LastEvaluatedKey: out.LastEvaluatedKey,
 	}
 
-	items := apitypes.Items{
-		JSON:      res.Items.JSON,
-		YAML:      res.Items.YAML,
-		Raw:       res.Items.Raw,
-		TableKeys: tableKeys,
+	hkey, rkey := parsePrimaryKeys(params.KeySchema)
+
+	// TODO: reconsider parsing to both JSON & YAML all the time
+	for _, item := range out.Items {
+		yaml := parsing.ParseItemToYAML(item, *hkey, rkey)
+		json, keys := parsing.ParseToJSONWithKeys(item, *hkey, rkey)
+		res.Items.JSON = append(res.Items.JSON, json)
+		res.Items.YAML = append(res.Items.YAML, yaml)
+		res.Items.TableKeys = append(res.Items.TableKeys, keys)
 	}
 
-	return &apitypes.ScanResponse{
-		Items:            items,
-		LastEvaluatedKey: res.LastEvaluatedKey,
-	}, err
+	return res, err
 }
 
 func QueryTable(client *dynamodb.Client, ctx context.Context, table string, params apitypes.QueryParameters) (*apitypes.QueryResponse, error) {
@@ -108,31 +108,45 @@ func QueryTable(client *dynamodb.Client, ctx context.Context, table string, para
 		Descending:       params.Descending,
 	}
 	out, err := connector.QueryTable(client, ctx, table, dparams)
-	if out == nil {
+	if out == nil || err != nil {
 		return nil, err
 	}
 
-	tableKeys := make([][]types.KeyValue, len(out.Items.TableKeys))
-	for i, kk := range out.Items.TableKeys {
-		v := make([]types.KeyValue, len(kk))
-		for j, k := range kk {
-			v[j] = types.KeyValue{
-				Key:   k.Key,
-				Value: k.Value,
-			}
-		}
-		tableKeys[i] = v
-	}
-
-	items := types.Items{
-		JSON:      out.Items.JSON,
-		YAML:      out.Items.YAML,
-		Raw:       out.Items.Raw,
-		TableKeys: tableKeys,
-	}
-
-	return &types.QueryResponse{
-		Items:            items,
+	res := &apitypes.QueryResponse{
+		Items: apitypes.Items{
+			JSON:      make([]string, 0, len(out.Items)),
+			YAML:      make([]string, 0, len(out.Items)),
+			Raw:       out.Items,
+			TableKeys: make([][]apitypes.KeyValue, 0, len(out.Items)),
+		},
 		LastEvaluatedKey: out.LastEvaluatedKey,
-	}, err
+	}
+
+	hkey, rkey := parsePrimaryKeys(params.KeySchema)
+
+	// TODO: reconsider parsing to both JSON & YAML all the time
+	for _, item := range out.Items {
+		yaml := parsing.ParseItemToYAML(item, *hkey, rkey)
+		json, keys := parsing.ParseToJSONWithKeys(item, *hkey, rkey)
+		res.Items.JSON = append(res.Items.JSON, json)
+		res.Items.YAML = append(res.Items.YAML, yaml)
+		res.Items.TableKeys = append(res.Items.TableKeys, keys)
+	}
+	return res, nil
+}
+
+func parsePrimaryKeys(schema []types.KeySchemaElement) (*string, *string) {
+	var hash *string
+	var rang *string
+
+	// obtain key names
+	for _, k := range schema {
+		if k.KeyType == types.KeyTypeHash {
+			hash = k.AttributeName
+		} else if k.KeyType == types.KeyTypeRange {
+			rang = k.AttributeName
+		}
+	}
+
+	return hash, rang
 }

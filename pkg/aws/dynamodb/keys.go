@@ -26,11 +26,8 @@ func parsePrimaryKeys(schema []types.KeySchemaElement) (*string, *string) {
 
 // formatQueryKeys parses query parameters and prepares inputs for a dynamodb
 // query.
-func formatQueryKeys(params apitypes.QueryParameters) (hashkey string, rangekey *string, expression string, expressionValues map[string]types.AttributeValue, expressionNames map[string]string, err error) {
+func formatQueryKeys(params apitypes.QueryParameters) (expression string, expressionValues map[string]types.AttributeValue, expressionNames map[string]string, err error) {
 	hash, rang := parsePrimaryKeys(params.KeySchema)
-
-	hashkey = *hash
-	rangekey = rang
 
 	var hashType *types.ScalarAttributeType
 	var rangType *types.ScalarAttributeType
