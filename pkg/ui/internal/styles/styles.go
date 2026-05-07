@@ -24,7 +24,7 @@ var (
 	BytesColour  = lipgloss.Color("#F58427")
 	NULLColour   = lipgloss.Color("#F58427")
 	StringColour = lipgloss.Color("#a7bc85")
-	TokenColour  = lipgloss.Color("#484896")
+	TokenColour  = lipgloss.Color("#5D5DBA")
 	ErrorColour  = lipgloss.Color("#B51010")
 
 	RegionBoxBg         = lipgloss.Color("#80380E")
