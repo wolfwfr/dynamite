@@ -93,15 +93,34 @@ type Model struct {
 
 	// help
 	Help help.Model
+
+	// additional options
+	options options
 }
 
-func NewModel(ctx context.Context, cfg appconfig.Config) Model {
+type options struct {
+	InitialError error
+}
+
+type Option func(*options)
+
+func WithInitialErrorNotification(err error) Option {
+	return func(o *options) {
+		o.InitialError = err
+	}
+}
+
+func NewModel(ctx context.Context, cfg appconfig.Config, opts ...Option) Model {
 	m := Model{
 		ctx:    ctx,
 		config: &cfg,
 
 		activeView: tables_view,
 		Help:       help.New(),
+	}
+
+	for _, o := range opts {
+		o(&m.options)
 	}
 
 	km := DefaultKeyMap()
@@ -143,15 +162,34 @@ func NewModel(ctx context.Context, cfg appconfig.Config) Model {
 }
 
 func (m Model) Init() tea.Cmd {
+	var cmds []tea.Cmd
+
+	// notify user of any initialisation errors
+	if err := m.options.InitialError; err != nil {
+		cmds = append(cmds, errorMsg(err))
+		m.options.InitialError = nil // reset
+	}
+
+	// load a new aws client
 	cfg, err := aws.LoadAWSConfig(m.ctx, m.config.Region, m.config.Profile, m.config.MFACredentialCB)
 	if err != nil {
-		// TODO: handling
+		cmds = append(cmds, errorMsg(err))
+		return tea.Batch(cmds...)
 	}
+
+	// set and reinitialise
 	m.config.Client = dynamodb.NewClient(cfg, m.config.URL)
-	var cmds []tea.Cmd
 	cmds = append(cmds, m.tableSelection.Init())
 	cmds = append(cmds, m.itemselection.Init())
+
 	return tea.Batch(cmds...)
+}
+
+// errorMsg returns a command to open a new error notification dialog
+func errorMsg(err error) tea.Cmd {
+	return func() tea.Msg {
+		return messages.ToggleErrorDialog{Error: err}
+	}
 }
 
 // update handles the message and proceeds to forward it to the model's children

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -25,23 +26,16 @@ const (
 
 var configDir string
 
-func initDirs() error {
+func init() {
 	// Local user configuration.
 	var err error
-	configDir, err = os.UserConfigDir()
+	configDir, _ = os.UserConfigDir()
 	if err != nil {
 		configDir = corrupt_config_dir
-		return err
 	}
-	return nil
 }
 
 func main() {
-	err := initDirs()
-	if err != nil {
-		// TODO: notify user
-	}
-
 	cmd := &cli.Command{
 		Flags: []cli.Flag{
 			&cli.StringFlag{
@@ -78,15 +72,11 @@ func main() {
 }
 
 func runApplication(ctx context.Context, cmd *cli.Command) error {
-	full, err := filepath.Abs(cmd.String(config_key))
-	if err != nil {
-		// TODO: handling
-	}
+	var uiopts []ui.Option
 
-	configman := configfile.NewConfigManager(full)
-	cfgf, err := configman.LoadConfig(true)
+	cfgf, _, err := loadConfig(cmd.String(config_key))
 	if err != nil {
-		// TODO: handling
+		uiopts = append(uiopts, ui.WithInitialErrorNotification(err))
 	}
 
 	urlS := cmd.String(dynamo_url_key)
@@ -116,9 +106,27 @@ func runApplication(ctx context.Context, cmd *cli.Command) error {
 		MFACredentialC:  credsC,
 	}
 
-	p = tea.NewProgram(ui.NewModel(ctx, cfg))
+	p = tea.NewProgram(ui.NewModel(ctx, cfg, uiopts...))
 	_, err = p.Run()
 	return err
+}
+
+func loadConfig(path string) (configfile.ConfigFile, *configfile.ConfigManager, error) {
+	full, err1 := filepath.Abs(path)
+	if err1 != nil {
+		err1 = fmt.Errorf("failed to construct a valid config-path: %w", err1)
+	}
+
+	configman := configfile.NewConfigManager(full)
+	cfgf, err2 := configman.LoadConfig(true)
+	if err1 != nil {
+		return cfgf, configman, err1
+	}
+	if err2 != nil {
+		return cfgf, configman, fmt.Errorf("failed to load local config: %w", err2)
+	}
+
+	return cfgf, configman, nil
 }
 
 func resolveProfile(cmd *cli.Command, cfg configfile.ConfigFile) *string {
@@ -145,5 +153,4 @@ func resolveRegion(cmd *cli.Command, cfg configfile.ConfigFile) string {
 		return r
 	}
 	return "us-east-1"
-
 }

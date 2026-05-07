@@ -87,7 +87,7 @@ func NewErrorDialog(err error, opts ...Option) *ErrorDialog {
 		o(d)
 	}
 
-	d.tracker.ticker = time.NewTicker(500 * time.Millisecond)
+	d.tracker.ticker = time.NewTicker(50 * time.Millisecond)
 
 	d.newStyles()
 	d.updateSize()

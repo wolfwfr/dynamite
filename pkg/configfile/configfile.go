@@ -89,6 +89,8 @@ func NewConfigManager(absPath string) *ConfigManager {
 	}
 }
 
+// LoadConfig will always return a valid config, either the default config, or
+// the one it could find, regardless of whether errors occurred.
 func (m *ConfigManager) LoadConfig(create bool) (ConfigFile, error) {
 	f, err := os.Open(m.full)
 	if err != nil {
