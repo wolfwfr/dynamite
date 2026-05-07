@@ -38,6 +38,7 @@ const (
 	column_sorting_dialog
 	scan_param_dialog
 	query_param_dialog
+	mfa_dialog
 )
 
 var regionBlock = lipgloss.NewStyle().
@@ -74,6 +75,7 @@ type Model struct {
 		columnSorting    *dialogs.ColumnSorting
 		scanParams       *dialogs.ScanDialog
 		queryParams      *dialogs.Queryialog
+		mfa              *dialogs.MFA
 		active           Dialog
 
 		errors []*dialogs.ErrorDialog
@@ -114,6 +116,10 @@ func NewModel(ctx context.Context, cfg appconfig.Config) Model {
 		},
 	}
 
+	{ // mfa dialog
+		m.dialogs.mfa = dialogs.NewMFADialog(cfg.MFACredentialC)
+	}
+
 	{ // views
 		m.tableSelection = tablesview.NewTableSelectionView(ctx, &cfg, tablesview.WithAdditionalKeys(keymaps.AdditionalKeys(inheritedKeys)))
 		m.itemselection = itemsview.NewItemSelectionView(ctx, &cfg, itemsview.WithAdditionalKeys(keymaps.AdditionalKeys(inheritedKeys)))
@@ -134,11 +140,10 @@ func NewModel(ctx context.Context, cfg appconfig.Config) Model {
 	}
 
 	return m
-
 }
 
 func (m Model) Init() tea.Cmd {
-	cfg, err := aws.LoadAWSConfig(m.ctx, m.config.Region, m.config.Profile)
+	cfg, err := aws.LoadAWSConfig(m.ctx, m.config.Region, m.config.Profile, m.config.MFACredentialCB)
 	if err != nil {
 		// TODO: handling
 	}
@@ -153,6 +158,10 @@ func (m Model) Init() tea.Cmd {
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
+	case appconfig.CredentialsRequest:
+		m, cmd = m.OpenMFADialog()
+	case messages.CloseMFADialog:
+		m, cmd = m.CloseMFADialog()
 	case messages.SwitchView:
 		m, cmd = m.handleSwitchView(msg)
 	case tea.WindowSizeMsg:
@@ -210,6 +219,7 @@ func (m Model) broadcast(msg tea.Msg) (Model, tea.Cmd) {
 	cmds = append(cmds, m.dialogs.columnSorting.Update(msg))
 	cmds = append(cmds, m.dialogs.scanParams.Update(msg))
 	cmds = append(cmds, m.dialogs.queryParams.Update(msg))
+	cmds = append(cmds, m.dialogs.mfa.Update(msg))
 
 	return m, tea.Batch(cmds...)
 }
@@ -232,6 +242,8 @@ func (m Model) routeToActiveOnly(msg tea.Msg) (Model, tea.Cmd) {
 			return m, m.dialogs.scanParams.Update(msg)
 		case query_param_dialog:
 			return m, m.dialogs.queryParams.Update(msg)
+		case mfa_dialog:
+			return m, m.dialogs.mfa.Update(msg)
 		}
 	}
 
@@ -369,6 +381,21 @@ func (m Model) ToggleQueryParametersDialog() (Model, tea.Cmd) {
 	return m, nil
 }
 
+// TODO: now assuming no dialog can be open prior to MFA call; ensure existing
+// dialogs are closed first!
+func (m Model) OpenMFADialog() (Model, tea.Cmd) {
+	m.dialogs.open = true
+	m.dialogs.active = mfa_dialog
+	return m, m.dialogs.mfa.Update(messages.MFAFocus{}) // init focus
+}
+
+// TODO: now assuming no dialog can be open prior to MFA call; fallback to
+// previous dialog if appliccable!
+func (m Model) CloseMFADialog() (Model, tea.Cmd) {
+	m.dialogs.open = false
+	return m, nil
+}
+
 type dialog interface {
 	View() string
 }
@@ -412,6 +439,8 @@ func (m Model) View() tea.View {
 			dialog = m.dialogs.scanParams
 		case query_param_dialog:
 			dialog = m.dialogs.queryParams
+		case mfa_dialog:
+			dialog = m.dialogs.mfa
 		}
 		renderedDialog := dialog.View()
 		dialogLayer := lipgloss.NewLayer(renderedDialog).

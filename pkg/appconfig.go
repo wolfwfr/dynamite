@@ -10,4 +10,15 @@ type Config struct {
 	StarredRegions   []string
 	Client           *dynamodb.Client
 	MaxTables        int
+
+	// credentials
+	MFACredentialCB func() (string, error)
+	MFACredentialC  chan<- CredentialsResponse
+}
+
+type CredentialsRequest struct{}
+
+type CredentialsResponse struct {
+	Token string
+	Error error
 }

@@ -95,6 +95,15 @@ func runApplication(ctx context.Context, cmd *cli.Command) error {
 		urlP = &urlS
 	}
 
+	// set up credentials channel for the aws-client mfa-token-provider
+	credsC := make(chan appconfig.CredentialsResponse, 1)
+	var p *tea.Program
+	f := func() (string, error) {
+		p.Send(appconfig.CredentialsRequest{})
+		resp := <-credsC
+		return resp.Token, resp.Error
+	}
+
 	cfg := appconfig.Config{
 		Profile:          resolveProfile(cmd, cfgf),
 		Region:           resolveRegion(cmd, cfgf),
@@ -102,9 +111,12 @@ func runApplication(ctx context.Context, cmd *cli.Command) error {
 		AvailableRegions: cfgf.AWSRegions,
 		StarredRegions:   cfgf.StarredRegions,
 		MaxTables:        cfgf.MaxTables,
+
+		MFACredentialCB: f,
+		MFACredentialC:  credsC,
 	}
 
-	p := tea.NewProgram(ui.NewModel(ctx, cfg))
+	p = tea.NewProgram(ui.NewModel(ctx, cfg))
 	_, err = p.Run()
 	return err
 }

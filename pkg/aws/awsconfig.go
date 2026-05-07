@@ -9,21 +9,21 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 )
 
-func MustLoadAWSConfig(ctx context.Context, region string, profile *string) *aws.Config {
-	cfg, err := LoadAWSConfig(ctx, region, profile)
+func MustLoadAWSConfig(ctx context.Context, region string, profile *string, tokenProvider func() (string, error)) *aws.Config {
+	cfg, err := LoadAWSConfig(ctx, region, profile, tokenProvider)
 	if err != nil {
 		panic(err)
 	}
 	return cfg
 }
 
-func LoadAWSConfig(ctx context.Context, region string, profile *string) (*aws.Config, error) {
+func LoadAWSConfig(ctx context.Context, region string, profile *string, tokenProvider func() (string, error)) (*aws.Config, error) {
 	opts := make([]func(*config.LoadOptions) error, 0, 1)
 	opts = append(opts, config.WithRegion(region))
 	if profile != nil && *profile != "" {
 		opts = append(opts, config.WithSharedConfigProfile(*profile))
 		opts = append(opts, config.WithAssumeRoleCredentialOptions(func(roleOpts *stscreds.AssumeRoleOptions) {
-			roleOpts.TokenProvider = stscreds.StdinTokenProvider
+			roleOpts.TokenProvider = tokenProvider
 		}))
 	}
 	cfg, err := config.LoadDefaultConfig(ctx, opts...)
