@@ -17,8 +17,8 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	appconfig "github.com/wolfwfr/dynamite/pkg"
-	"github.com/wolfwfr/dynamite/pkg/aws/dynamodb"
-	"github.com/wolfwfr/dynamite/pkg/aws/dynamodb/types"
+	"github.com/wolfwfr/dynamite/pkg/ui/internal/adapters/dynamodb"
+	"github.com/wolfwfr/dynamite/pkg/ui/internal/adapters/dynamodb/types"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/components/search"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/components/table"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"

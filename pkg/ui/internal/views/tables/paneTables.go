@@ -15,8 +15,8 @@ import (
 	"github.com/atotto/clipboard"
 
 	appconfig "github.com/wolfwfr/dynamite/pkg"
-	"github.com/wolfwfr/dynamite/pkg/aws/dynamodb"
-	apitypes "github.com/wolfwfr/dynamite/pkg/aws/dynamodb/types"
+	"github.com/wolfwfr/dynamite/pkg/ui/internal/adapters/dynamodb"
+	apitypes "github.com/wolfwfr/dynamite/pkg/ui/internal/adapters/dynamodb/types"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/components/search"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/components/table"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"

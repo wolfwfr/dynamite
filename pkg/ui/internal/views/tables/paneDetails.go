@@ -14,7 +14,7 @@ import (
 	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 
 	appconfig "github.com/wolfwfr/dynamite/pkg"
-	apitypes "github.com/wolfwfr/dynamite/pkg/aws/dynamodb/types"
+	apitypes "github.com/wolfwfr/dynamite/pkg/ui/internal/adapters/dynamodb/types"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/util/keymaps"

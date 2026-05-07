@@ -3,7 +3,7 @@ package itemselection
 import (
 	tea "charm.land/bubbletea/v2"
 
-	apitypes "github.com/wolfwfr/dynamite/pkg/aws/dynamodb/types"
+	apitypes "github.com/wolfwfr/dynamite/pkg/ui/internal/adapters/dynamodb/types"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	"github.com/wolfwfr/dynamite/pkg/util"
 	u "github.com/wolfwfr/dynamite/pkg/util"

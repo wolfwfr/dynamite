@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/wolfwfr/dynamite/pkg/aws/dynamodb/types"
+	"github.com/wolfwfr/dynamite/pkg/ui/internal/adapters/dynamodb/types"
 )
 
 func TestCompileCompleteKeys(t *testing.T) {
