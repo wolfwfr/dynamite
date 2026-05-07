@@ -9,6 +9,11 @@ import (
 
 	apitypes "github.com/wolfwfr/dynamite/pkg/ui/internal/adapters/dynamodb/types"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
+	"github.com/wolfwfr/dynamite/pkg/util"
+)
+
+const (
+	jsonFmt = "%s%s\n"
 )
 
 type JSONParser struct {
@@ -18,29 +23,39 @@ type JSONParser struct {
 type jsonParserStyles struct {
 	FieldNameStyle lipgloss.Style
 	NumberStyle    lipgloss.Style
+	BoolStyle      lipgloss.Style
+	BytesStyle     lipgloss.Style
+	NULLStyle      lipgloss.Style
 	StringStyle    lipgloss.Style
 	TokenStyle     lipgloss.Style
+	ErrorStyle     lipgloss.Style
 }
 
 func NewJSONParser() JSONParser {
 	p := JSONParser{}
 	p.Styles.FieldNameStyle = lipgloss.NewStyle().Foreground(styles.SubtleColour)
 	p.Styles.NumberStyle = lipgloss.NewStyle().Foreground(styles.NumberColour)
+	p.Styles.BoolStyle = lipgloss.NewStyle().Foreground(styles.BoolColour)
+	p.Styles.BytesStyle = lipgloss.NewStyle().Foreground(styles.BytesColour)
+	p.Styles.NULLStyle = lipgloss.NewStyle().Foreground(styles.NULLColour)
 	p.Styles.StringStyle = lipgloss.NewStyle().Foreground(styles.StringColour)
 	p.Styles.TokenStyle = lipgloss.NewStyle().Foreground(styles.TokenColour)
+	p.Styles.ErrorStyle = lipgloss.NewStyle().Foreground(styles.ErrorColour)
 	return p
 }
 
 func (p JSONParser) ParseToJSONWithKeys(item map[string]types.AttributeValue, hashkey string, rangekey *string) (string, string, []apitypes.KeyValue) {
 	token := p.Styles.TokenStyle.Render
 	json, styled, keyValues := p.pJSON(item, hashkey, rangekey, 0)
-	return strings.TrimSuffix(json, ",\n"), strings.TrimSuffix(styled, fmt.Sprintf("%s\n", token(","))), keyValues
+	trim := func(s, token string) string { return strings.TrimSuffix(s, spf("%s\n", token)) }
+	return trim(json, ","), trim(styled, token(",")), keyValues
 }
 
 func (p JSONParser) ParseItemToJSON(item map[string]types.AttributeValue, hashkey string, rangekey *string) (string, string) {
 	token := p.Styles.TokenStyle.Render
 	json, styled, _ := p.pJSON(item, hashkey, rangekey, 0)
-	return strings.TrimSuffix(json, ",\n"), strings.TrimSuffix(styled, fmt.Sprintf("%s\n", token(","))) // no trailing commas
+	trim := func(s, token string) string { return strings.TrimSuffix(s, spf("%s\n", token)) }
+	return trim(json, ","), trim(styled, token(","))
 }
 
 // nestLevel determines indentations pJSON is an internal, recursive function
@@ -49,8 +64,7 @@ func (p JSONParser) ParseItemToJSON(item map[string]types.AttributeValue, hashke
 // key-value mapping, but for now this saves double work and the two are always
 // used together.
 func (p JSONParser) pJSON(elements map[string]types.AttributeValue, hashkey string, rangekey *string, nestLevel int) (string, string, []apitypes.KeyValue) {
-	json := strings.Builder{}
-	styled := strings.Builder{}
+	json, styled := strings.Builder{}, strings.Builder{}
 
 	// obtain sorted keys
 	keysSorted := getSortedKeys(hashkey, rangekey, elements, nestLevel == 0)
@@ -64,28 +78,47 @@ func (p JSONParser) pJSON(elements map[string]types.AttributeValue, hashkey stri
 	}
 
 	token := p.Styles.TokenStyle.Render
-	fieldName := p.Styles.FieldNameStyle.Render
+	field := p.Styles.FieldNameStyle.Render
 
 	hasContent := len(keysSorted) > 0
-	fmt.Fprintf(&json, "{%s", newLineIf(hasContent))                // opening '{'
-	fmt.Fprintf(&styled, "%s%s", token("{"), newLineIf(hasContent)) // opening '{'
+
+	// write prefix token
+	prefix := func(token string) string { return spf("%s%s", token, newLineIf(hasContent)) }
+	json.WriteString(prefix("{"))
+	styled.WriteString(prefix(token("{")))
+
 	for i, k := range keysSorted {
 		v := elements[k]
 		isLast := i == len(keysSorted)-1
 
-		fmt.Fprintf(&json, "%s\"%s\": ", tabs(nestLevel), k)                                              // write key
-		fmt.Fprintf(&styled, "%s%s%s ", tabs(nestLevel), fieldName(fmt.Sprintf("\"%s\"", k)), token(":")) // write key
+		// write field-name
+		fieldName := func(quotedName, colon string) string {
+			return spf("%s%s%s", tabs(nestLevel), quotedName, colon)
+		}
+		quotedName := spf("\"%s\"", k)
+		json.WriteString(fieldName(quotedName, ":"))
+		styled.WriteString(fieldName(field(quotedName), token(":")))
 
+		// obtain block content
 		content, styledContent := p.switchAttrValueJSON(v, hashkey, rangekey, nestLevel)
 		if isRootLevel {
 			kv[i] = apitypes.KeyValue{Key: k, Value: flatten(content)}
 		}
 
-		fmt.Fprintf(&json, "%s", suffixIf(trimSuffixIf(content, ",\n", isLast), "\n", isLast))                                   // no trailing commas
-		fmt.Fprintf(&styled, "%s", suffixIf(trimSuffixIf(styledContent, fmt.Sprintf("%s\n", token(",")), isLast), "\n", isLast)) // no trailing commas
+		// write comma & newline, unless last element
+		withSuffix := func(s, comma string) string {
+			return spf("%s", suffixIf(trimSuffixIf(s, spf("%s\n", comma), isLast), "\n", isLast)) // no trailing commas
+		}
+		json.WriteString(withSuffix(content, ","))
+		styled.WriteString(withSuffix(styledContent, token(",")))
 	}
-	fmt.Fprintf(&json, "%s},\n", prefixIf("", tabs(nestLevel-1), hasContent))                             // closing '}'
-	fmt.Fprintf(&styled, "%s%s%s\n", prefixIf("", tabs(nestLevel-1), hasContent), token("}"), token(",")) // closing '}'
+
+	//write suffix tokens
+	suffix := func(token, comma string) string {
+		return spf("%s%s%s\n", prefixIf("", tabs(nestLevel-1), hasContent), token, comma)
+	}
+	json.WriteString(suffix("}", ","))
+	styled.WriteString(suffix(token("}"), token(",")))
 
 	return json.String(), styled.String(), kv
 }
@@ -93,82 +126,93 @@ func (p JSONParser) pJSON(elements map[string]types.AttributeValue, hashkey stri
 func (p JSONParser) switchAttrValueJSON(v types.AttributeValue, hashkey string, rangekey *string, nestLevel int) (string, string) {
 	str := p.Styles.StringStyle.Render
 	num := p.Styles.NumberStyle.Render
-	token := p.Styles.TokenStyle.Render
+	bol := p.Styles.BoolStyle.Render
+	byt := p.Styles.BytesStyle.Render
+	tok := p.Styles.TokenStyle.Render
+	nul := p.Styles.NULLStyle.Render
+	err := p.Styles.ErrorStyle.Render
 
 	switch vv := v.(type) {
 	case *types.AttributeValueMemberB:
-		return twice(fmt.Sprintf("<bytes>(len=%d),\n", len(vv.Value)))
+		return pJSONBytes(vv.Value, tok(","), byt)
 	case *types.AttributeValueMemberBOOL:
-		return twice(fmt.Sprintf("%t,\n", vv.Value))
+		return pJSONBool(vv.Value, tok(","), bol)
 	case *types.AttributeValueMemberBS:
-		return stringableAsListJSON(p.Styles, vv.Value, nestLevel, func(s []byte) (string, string) { return twice(fmt.Sprintf("<bytes>(len=%d),\n", len(s))) })
+		return stringableAsListJSON(p.Styles, vv.Value, nestLevel, func(s []byte) (string, string) { return pJSONBytes(s, tok(","), byt) })
 	case *types.AttributeValueMemberL:
 		return stringableAsListJSON(p.Styles, vv.Value, nestLevel, func(s types.AttributeValue) (string, string) {
 			return p.switchAttrValueJSON(s, hashkey, rangekey, nestLevel+1)
 		})
 	case *types.AttributeValueMemberM:
-		j := strings.Builder{}
-		s := strings.Builder{}
+		raw, styled := strings.Builder{}, strings.Builder{}
 		str, st, _ := p.pJSON(vv.Value, hashkey, rangekey, nestLevel)
-		fmt.Fprintf(&j, "%s", str)
-		fmt.Fprintf(&s, "%s", st)
-		return j.String(), s.String()
+		fmt.Fprintf(&raw, "%s", str)
+		fmt.Fprintf(&styled, "%s", st)
+		return raw.String(), styled.String()
 	case *types.AttributeValueMemberN:
-		return fmt.Sprintf("%s,\n", vv.Value), fmt.Sprintf("%s%s\n", num(vv.Value), token(","))
+		return pJSONNum(vv.Value, tok(","), num)
 	case *types.AttributeValueMemberNS:
-		return stringableAsListJSON(p.Styles, vv.Value, nestLevel, func(s string) (string, string) {
-			return fmt.Sprintf("%s,\n", s), fmt.Sprintf("%s%s\n", num(s), token(","))
-		})
+		return stringableAsListJSON(p.Styles, vv.Value, nestLevel, func(s string) (string, string) { return pJSONNum(s, tok(","), num) })
 	case *types.AttributeValueMemberNULL: // TODO: ignore?
-		if vv.Value {
-			return twice("NULL,\n")
-		}
-		return twice("NOT NULL,\n")
+		v := util.Ternary("NULL", "NOT NULL", vv.Value)
+		return spf(jsonFmt, v, ","), spf(jsonFmt, nul(v), tok(","))
 	case *types.AttributeValueMemberS:
-		return fmt.Sprintf("%q,\n", vv.Value), fmt.Sprintf("%s%s\n", str(fmt.Sprintf("%q", vv.Value)), token(","))
+		return pJSONString(vv.Value, tok(","), str)
 	case *types.AttributeValueMemberSS:
-		return stringableAsListJSON(p.Styles, vv.Value, nestLevel, func(s string) (string, string) {
-			return fmt.Sprintf("%q,\n", s), fmt.Sprintf("%s%s\n", str(fmt.Sprintf("%q", s)), token(","))
-		})
+		return stringableAsListJSON(p.Styles, vv.Value, nestLevel, func(s string) (string, string) { return pJSONString(s, tok(","), str) })
 	default:
-		return twice("<failed to parse>,\n") // TODO: error?
+		fm := "<failed to parse>"
+		return spf(jsonFmt, fm, ","), spf(jsonFmt, err(fm), tok(",")) // TODO: error?
 	}
-}
-
-func twice[T any](t T) (T, T) {
-	return t, t
 }
 
 func stringableAsListJSON[S []E, E any](styles jsonParserStyles, s S, nestLevel int, tr func(E) (string, string)) (string, string) {
 	token := styles.TokenStyle.Render
+
 	json := strings.Builder{}
 	styled := strings.Builder{}
+
 	hasContent := len(s) > 0
-	fmt.Fprintf(&json, "[%s", newLineIf(hasContent))
-	fmt.Fprintf(&styled, "%s%s", token("["), newLineIf(hasContent))
+
+	prefix := func(token string) string { return spf("%s%s", token, newLineIf(hasContent)) }
+	json.WriteString(prefix("["))
+	styled.WriteString(prefix(token("[")))
+
+	line := func(in, token string, atEnd bool) string {
+		return spf("%s%s", tabs(nestLevel+1), suffixIf(trimSuffixIf(in, spf("%s\n", token), atEnd), "\n", atEnd)) // no trailing commas
+	}
 	for i, v := range s {
 		j, st := tr(v)
-		fmt.Fprintf(&json, "%s%s", tabs(nestLevel+1), suffixIf(trimSuffixIf(j, ",\n", i == len(s)-1), "\n", i == len(s)-1))                              // no trailing commas
-		fmt.Fprintf(&styled, "%s%s", tabs(nestLevel+1), suffixIf(trimSuffixIf(st, fmt.Sprintf("%s\n", token(",")), i == len(s)-1), "\n", i == len(s)-1)) // no trailing commas
+		json.WriteString(line(j, ",", i == len(s)-1))
+		styled.WriteString(line(st, token(","), i == len(s)-1))
 	}
-	fmt.Fprintf(&json, "%s],\n", prefixIf("", tabs(nestLevel), hasContent))
-	fmt.Fprintf(&styled, "%s%s\n", prefixIf("", tabs(nestLevel), hasContent), token("],"))
+
+	suffix := func(token, comma string) string {
+		return spf("%s%s%s\n", prefixIf("", tabs(nestLevel), hasContent), token, comma)
+	}
+	json.WriteString(suffix("]", ","))
+	styled.WriteString(suffix(token("]"), token(",")))
+
 	return json.String(), styled.String()
 }
 
-// flatten takes a string and removes newlines and any spaces that are not
-// captured within a double-quoted string. It also removes a trailing comma.
-func flatten(in string) string {
-	str := strings.ReplaceAll(in, "\n", "")
-	looking := true
-	b := strings.Builder{}
-	for _, r := range str {
-		if r == '"' {
-			looking = !looking
-		}
-		if !looking || r != ' ' {
-			b.WriteRune(r)
-		}
-	}
-	return strings.TrimSuffix(b.String(), ",")
+func pJSONBool(bl bool, renderedToken string, render func(...string) string) (string, string) {
+	b := spf("%t", bl)
+	return spf(jsonFmt, b, ","), spf(jsonFmt, render(b), renderedToken)
+}
+
+func pJSONBytes(bt []byte, renderedToken string, render func(...string) string) (string, string) {
+	bytesFmt := "<bytes>(len=%d)"
+	b := spf(bytesFmt, len(bt))
+	return spf(jsonFmt, b, ","), spf(jsonFmt, render(b), renderedToken)
+}
+
+func pJSONString(str, renderedToken string, render func(...string) string) (string, string) {
+	s := spf("%q", str)
+	return spf(jsonFmt, s, ","), spf(jsonFmt, render(s), renderedToken)
+}
+
+func pJSONNum(num, renderedToken string, render func(...string) string) (string, string) {
+	n := spf("%s", num)
+	return spf(jsonFmt, n, ","), spf(jsonFmt, render(n), renderedToken)
 }

@@ -2,6 +2,8 @@ package styles
 
 import "charm.land/lipgloss/v2"
 
+// TODO: enable configurability through config file
+// TODO: prepare basic dark & light theme
 var (
 	DialogFocusColour   = lipgloss.Color("#F58427")
 	DialogUnfocusColour = lipgloss.Color("#636363")
@@ -18,8 +20,12 @@ var (
 	SubtleColour2 = lipgloss.Color("#878787")
 
 	NumberColour = lipgloss.Color("#F58427")
+	BoolColour   = lipgloss.Color("#F58427")
+	BytesColour  = lipgloss.Color("#F58427")
+	NULLColour   = lipgloss.Color("#F58427")
 	StringColour = lipgloss.Color("#a7bc85")
-	TokenColour  = lipgloss.Color("#484896") // default terminal colour
+	TokenColour  = lipgloss.Color("#484896")
+	ErrorColour  = lipgloss.Color("#B51010")
 
 	RegionBoxBg         = lipgloss.Color("#80380E")
 	QueryModeBoxQeuryBg = lipgloss.Color("#046645")

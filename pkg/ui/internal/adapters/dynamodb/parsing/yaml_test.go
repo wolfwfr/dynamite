@@ -46,7 +46,7 @@ string-set-key:
 func TestYAMLParsing(t *testing.T) {
 	tabsize = 2
 	item := genericTestItem()
-	res := ParseItemToYAML(item, "string-key", nil)
+	res, _ := NewYAMLParser().ParseItemToYAML(item, "string-key", nil)
 	exp := genericTestItemYAML()
 	assert.EqualValues(t, exp, res)
 	fmt.Print(res)

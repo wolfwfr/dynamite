@@ -2,171 +2,159 @@ package parsing
 
 import (
 	"fmt"
-	"slices"
 	"strings"
 
+	"charm.land/lipgloss/v2"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
+	"github.com/wolfwfr/dynamite/pkg/util"
 )
 
-func ParseItemToYAML(item map[string]types.AttributeValue, hashkey string, rangekey *string) string {
-	return pYAML(item, hashkey, rangekey, 0)
+const (
+	yamlFmt = "%s\n"
+)
+
+type YAMLParser struct {
+	Styles yamlParserStyles
+}
+
+type yamlParserStyles struct {
+	FieldNameStyle lipgloss.Style
+	NumberStyle    lipgloss.Style
+	BoolStyle      lipgloss.Style
+	BytesStyle     lipgloss.Style
+	NULLStyle      lipgloss.Style
+	StringStyle    lipgloss.Style
+	TokenStyle     lipgloss.Style
+	ErrorStyle     lipgloss.Style
+}
+
+func NewYAMLParser() YAMLParser {
+	p := YAMLParser{}
+	p.Styles.FieldNameStyle = lipgloss.NewStyle().Foreground(styles.SubtleColour)
+	p.Styles.NumberStyle = lipgloss.NewStyle().Foreground(styles.NumberColour)
+	p.Styles.BoolStyle = lipgloss.NewStyle().Foreground(styles.BoolColour)
+	p.Styles.BytesStyle = lipgloss.NewStyle().Foreground(styles.BytesColour)
+	p.Styles.NULLStyle = lipgloss.NewStyle().Foreground(styles.NULLColour)
+	p.Styles.StringStyle = lipgloss.NewStyle().Foreground(styles.StringColour)
+	p.Styles.TokenStyle = lipgloss.NewStyle().Foreground(styles.TokenColour)
+	p.Styles.ErrorStyle = lipgloss.NewStyle().Foreground(styles.ErrorColour)
+	return p
+}
+
+func (p YAMLParser) ParseItemToYAML(item map[string]types.AttributeValue, hashkey string, rangekey *string) (string, string) {
+	return p.pYAML(item, hashkey, rangekey, 0)
 }
 
 // nestLevel determines indentations pYAML is an internal, recursive function
 // that takes a dynamo-db item and parses it to a yaml-formatted string.
-func pYAML(elements map[string]types.AttributeValue, hashkey string, rangekey *string, nestLevel int) string {
-	b := strings.Builder{}
+func (p YAMLParser) pYAML(elements map[string]types.AttributeValue, hashkey string, rangekey *string, nestLevel int) (string, string) {
+	raw, styled := strings.Builder{}, strings.Builder{}
 
 	// obtain sorted keys
 	keysSorted := getSortedKeys(hashkey, rangekey, elements, nestLevel == 0)
 
+	fieldName := p.Styles.FieldNameStyle.Render
+
 	for _, k := range keysSorted {
-		fmt.Fprintf(&b, "%s%s: ", tabs(nestLevel), k)
+		fmt.Fprintf(&raw, "%s%s: ", tabs(nestLevel), k)
+		fmt.Fprintf(&styled, "%s%s: ", tabs(nestLevel), fieldName(k))
 		v := elements[k]
-		b.WriteString(switchAttrValueYAML(v, hashkey, rangekey, nestLevel, false))
+		r, s := p.switchAttrValueYAML(v, hashkey, rangekey, nestLevel, false)
+		raw.WriteString(r)
+		styled.WriteString(s)
 	}
 
-	return b.String()
+	return raw.String(), styled.String()
 }
 
-func switchAttrValueYAML(v types.AttributeValue, hashkey string, rangekey *string, nestLevel int, isListItem bool) string {
+func (p YAMLParser) switchAttrValueYAML(v types.AttributeValue, hashkey string, rangekey *string, nestLevel int, isListItem bool) (string, string) {
+	str := p.Styles.StringStyle.Render
+	num := p.Styles.NumberStyle.Render
+	bol := p.Styles.BoolStyle.Render
+	byt := p.Styles.BytesStyle.Render
+	nul := p.Styles.NULLStyle.Render
+	err := p.Styles.ErrorStyle.Render
+
 	switch vv := v.(type) {
 	case *types.AttributeValueMemberB:
-		return fmt.Sprintf("<bytes>(len=%d)\n", len(vv.Value))
+		return pYAMLBytes(vv.Value, byt)
 	case *types.AttributeValueMemberBOOL:
-		return fmt.Sprintf("%t\n", vv.Value)
+		return pYAMLBool(vv.Value, bol)
 	case *types.AttributeValueMemberBS:
-		return stringableAsListYAML(vv.Value, nestLevel, func(s []byte) string { return fmt.Sprintf("<bytes>(len=%d)\n", len(s)) })
+		return stringableAsListYAML(p.Styles, vv.Value, nestLevel, func(s []byte) (string, string) { return pYAMLBytes(s, byt) })
 	case *types.AttributeValueMemberL:
-		return stringableAsListYAML(vv.Value, nestLevel, func(s types.AttributeValue) string { return switchAttrValueYAML(s, hashkey, rangekey, nestLevel, true) })
+		return stringableAsListYAML(p.Styles, vv.Value, nestLevel, func(s types.AttributeValue) (string, string) {
+			return p.switchAttrValueYAML(s, hashkey, rangekey, nestLevel, true)
+		})
 	case *types.AttributeValueMemberM:
-		b := strings.Builder{}
-		str := pYAML(vv.Value, hashkey, rangekey, nestLevel+1)
+		b, s := strings.Builder{}, strings.Builder{}
+		raw, styled := p.pYAML(vv.Value, hashkey, rangekey, nestLevel+1)
 		if isListItem {
-			str = strings.TrimSuffix(strings.ReplaceAll(str, "\n", "\n  "), "  ")
+			trim := func(s string) string { return strings.TrimSuffix(strings.ReplaceAll(s, "\n", "\n  "), "  ") }
+			raw = trim(raw)
+			styled = trim(styled)
 		}
-		fmt.Fprintf(&b, "%s%s%s", newLineIf(!isListItem && str != ""), trimPrefixIf(str, tabs(nestLevel+1), isListItem), newLineIf(str == ""))
-		return b.String()
+		pr := func(s string) string {
+			return spf("%s%s%s", newLineIf(!isListItem && s != ""), trimPrefixIf(s, tabs(nestLevel+1), isListItem), newLineIf(s == ""))
+		}
+		b.WriteString(pr(raw))
+		s.WriteString(pr(styled))
+		return b.String(), s.String()
 	case *types.AttributeValueMemberN:
-		return fmt.Sprintf("%s\n", vv.Value)
+		return pYAMLNum(vv.Value, num)
 	case *types.AttributeValueMemberNS:
-		return stringableAsListYAML(vv.Value, nestLevel, func(s string) string { return fmt.Sprintf("%s\n", s) })
+		return stringableAsListYAML(p.Styles, vv.Value, nestLevel, func(s string) (string, string) { return pYAMLNum(s, num) })
 	case *types.AttributeValueMemberNULL: // TODO: ignore?
-		if vv.Value {
-			return "NULL\n"
-		}
-		return "NOT NULL\n"
+		v := util.Ternary("NULL", "NOT NULL", vv.Value)
+		return spf(yamlFmt, v), spf(yamlFmt, nul(v))
 	case *types.AttributeValueMemberS:
-		return fmt.Sprintf("%q\n", vv.Value)
+		return pYAMLString(vv.Value, str)
 	case *types.AttributeValueMemberSS:
-		return stringableAsListYAML(vv.Value, nestLevel, func(s string) string { return fmt.Sprintf("%q\n", s) })
+		return stringableAsListYAML(p.Styles, vv.Value, nestLevel, func(s string) (string, string) { return pYAMLString(s, str) })
 	default:
-		return "<failed to parse>\n" // TODO: error?
+		fm := "<failed to parse>"
+		return spf(yamlFmt, fm), spf(yamlFmt, err(fm)) // TODO: error?
 	}
 }
 
-func stringableAsListYAML[S []E, E any](s S, nestLevel int, tr func(E) string) string {
-	b := strings.Builder{}
-	b.WriteString("\n")
+func stringableAsListYAML[S []E, E any](styles yamlParserStyles, s S, nestLevel int, tr func(E) (string, string)) (string, string) {
+	token := styles.TokenStyle.Render
+
+	raw := strings.Builder{}
+	styled := strings.Builder{}
+
+	raw.WriteString("\n")
+	styled.WriteString("\n")
+
+	line := func(token, ele string) string { return spf("%s%s %s", tabs(nestLevel+1), token, ele) }
+
 	for _, v := range s {
-		fmt.Fprintf(&b, "%s- %s", tabs(nestLevel+1), tr(v))
+		r, st := tr(v)
+		raw.WriteString(line("-", r))
+		styled.WriteString(line(token("-"), st))
 	}
-	return b.String()
+
+	return raw.String(), styled.String()
 }
 
-func newLineIf(b bool) string {
-	if b {
-		return "\n"
-	}
-	return ""
+func pYAMLBool(bl bool, render func(...string) string) (string, string) {
+	b := spf("%t", bl)
+	return spf(yamlFmt, b), spf(yamlFmt, render(b))
 }
 
-func suffixIf(s string, x string, b bool) string {
-	if b {
-		return s + x
-	}
-	return s
+func pYAMLBytes(bt []byte, render func(...string) string) (string, string) {
+	bytesFmt := "<bytes>(len=%d)"
+	b := spf(bytesFmt, len(bt))
+	return spf(yamlFmt, b), spf(yamlFmt, render(b))
 }
 
-func prefixIf(s string, p string, b bool) string {
-	if b {
-		return p + s
-	}
-	return s
+func pYAMLString(str string, render func(...string) string) (string, string) {
+	s := spf("%q", str)
+	return spf(yamlFmt, s), spf(yamlFmt, render(s))
 }
 
-func trimPrefixIf(s string, p string, b bool) string {
-	if b {
-		return strings.TrimPrefix(s, p)
-	}
-	return s
-}
-func trimSuffixIf(s string, x string, b bool) string {
-	if b {
-		return strings.TrimSuffix(s, x)
-	}
-	return s
-}
-
-// TODO: make configurable
-var tabsize = 3
-
-func tabs(n int) string {
-	var res string
-	for range n * tabsize {
-		res += fmt.Sprintf(" ")
-	}
-	return res
-}
-
-// getSortedKeys returns the dynamo-db item keys as a `[]string` sorted
-// alphabetically. If `rootLevel` equals `true`, the hashkey and rangekey (if
-// not nil) are extracted from the slice and prefixed at indices 0 and 1,
-// respectively.
-func getSortedKeys(hashkey string, rangekey *string, elements map[string]types.AttributeValue, rootLevel bool) []string {
-	keysSorted := make([]string, 0, len(elements))
-	for key := range elements {
-		keysSorted = append(keysSorted, key)
-	}
-	slices.Sort(keysSorted)
-
-	if !rootLevel {
-		return keysSorted
-	}
-
-	var hidx *int
-	var ridx *int
-
-	for i, k := range keysSorted {
-		if k == hashkey {
-			hidx = &i
-			if rangekey == nil {
-				break
-			}
-		}
-		if rangekey != nil && k == *rangekey {
-			ridx = &i
-			if hidx != nil {
-				break
-			}
-		}
-	}
-
-	if hidx == nil {
-		panic(fmt.Sprintf("\nhashkey: %s; keys: %+v\n", hashkey, keysSorted))
-	}
-
-	keysSorted = slices.Delete(keysSorted, *hidx, *hidx+1)
-	if ridx != nil {
-		if *hidx < *ridx { // removed element before ridx; shifting the item ridx points to
-			*ridx -= 1
-		}
-		keysSorted = slices.Delete(keysSorted, *ridx, *ridx+1)
-	}
-
-	ret := []string{hashkey}
-	if rangekey != nil {
-		ret = append(ret, *rangekey)
-	}
-	return slices.Clip(append(ret, keysSorted...))
+func pYAMLNum(num string, render func(...string) string) (string, string) {
+	n := spf("%s", num)
+	return spf(yamlFmt, n), spf(yamlFmt, render(n))
 }

@@ -88,12 +88,12 @@ func ScanTable(client *dynamodb.Client, ctx context.Context, table string, param
 
 	// TODO: reconsider parsing to both JSON & YAML all the time
 	for _, item := range out.Items {
-		yaml := parsing.ParseItemToYAML(item, *hkey, rkey)
+		yaml, yamlStyled := parsing.NewYAMLParser().ParseItemToYAML(item, *hkey, rkey)
 		json, jsonStyled, keys := parsing.NewJSONParser().ParseToJSONWithKeys(item, *hkey, rkey)
 		res.Items.JSON = append(res.Items.JSON, json)
 		res.Items.JSONStyled = append(res.Items.JSONStyled, jsonStyled)
 		res.Items.YAML = append(res.Items.YAML, yaml)
-		res.Items.YAMLStyled = append(res.Items.YAMLStyled, yaml)
+		res.Items.YAMLStyled = append(res.Items.YAMLStyled, yamlStyled)
 		res.Items.TableKeys = append(res.Items.TableKeys, keys)
 	}
 
@@ -122,10 +122,12 @@ func QueryTable(client *dynamodb.Client, ctx context.Context, table string, para
 
 	res := &apitypes.QueryResponse{
 		Items: apitypes.Items{
-			JSON:      make([]string, 0, len(out.Items)),
-			YAML:      make([]string, 0, len(out.Items)),
-			Raw:       out.Items,
-			TableKeys: make([][]apitypes.KeyValue, 0, len(out.Items)),
+			JSON:       make([]string, 0, len(out.Items)),
+			JSONStyled: make([]string, 0, len(out.Items)),
+			YAML:       make([]string, 0, len(out.Items)),
+			YAMLStyled: make([]string, 0, len(out.Items)),
+			Raw:        out.Items,
+			TableKeys:  make([][]apitypes.KeyValue, 0, len(out.Items)),
 		},
 		LastEvaluatedKey: out.LastEvaluatedKey,
 	}
@@ -134,10 +136,12 @@ func QueryTable(client *dynamodb.Client, ctx context.Context, table string, para
 
 	// TODO: reconsider parsing to both JSON & YAML all the time
 	for _, item := range out.Items {
-		yaml := parsing.ParseItemToYAML(item, *hkey, rkey)
-		json, _, keys := parsing.NewJSONParser().ParseToJSONWithKeys(item, *hkey, rkey)
+		yaml, yamlStyled := parsing.NewYAMLParser().ParseItemToYAML(item, *hkey, rkey)
+		json, jsonStyled, keys := parsing.NewJSONParser().ParseToJSONWithKeys(item, *hkey, rkey)
 		res.Items.JSON = append(res.Items.JSON, json)
+		res.Items.JSONStyled = append(res.Items.JSONStyled, jsonStyled)
 		res.Items.YAML = append(res.Items.YAML, yaml)
+		res.Items.YAMLStyled = append(res.Items.YAMLStyled, yamlStyled)
 		res.Items.TableKeys = append(res.Items.TableKeys, keys)
 	}
 	return res, nil
