@@ -469,12 +469,12 @@ func (m *ItemSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
 	}
 	// render empty preview when no items or no filter results
 	if m.initialised && len(m.items.Raw) == 0 || m.itemfiltering.enabled && len(m.itemfiltering.items) == 0 {
-		if m.lastPreviewMsg != nil && m.lastPreviewMsg.Item == "" { // prevent looping
+		if m.lastPreviewMsg != nil && m.lastPreviewMsg.StyledItem == "" { // prevent looping
 			return nil
 		}
 		return func() tea.Msg {
 			return messages.PreviewItem{
-				Item: "",
+				StyledItem: "",
 			}
 		}
 	}
@@ -488,16 +488,20 @@ func (m *ItemSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
 		return nil
 	}
 	m.lastPreviewItem = idx
-	var item string
+	var styled string
+	var raw string
 	switch m.previewFormat {
 	case JSONformat:
-		item = m.items.JSON[idx]
+		raw = m.items.JSON[idx]
+		styled = m.items.JSONStyled[idx]
 	case YAMLformat:
-		item = m.items.YAML[idx]
+		styled = m.items.YAMLStyled[idx]
+		raw = m.items.YAML[idx]
 	}
 	return func() tea.Msg {
 		return messages.PreviewItem{
-			Item: item,
+			StyledItem: styled,
+			RawItem:    raw,
 		}
 	}
 }
@@ -818,7 +822,7 @@ func (m *ItemSelectionPane) escape() tea.Cmd {
 	// clean up preview window
 	resetPreview := func() tea.Msg {
 		return messages.PreviewItem{
-			Item: "",
+			StyledItem: "",
 		}
 	}
 
@@ -1051,25 +1055,24 @@ func (m *ItemSelectionPane) renderTableInfo() string {
 
 func (m *ItemSelectionPane) appendItems(newItems types.Items) {
 	// JSON
-	j := make([]string, len(m.items.JSON)+len(newItems.JSON))
-	copy(j[:len(m.items.JSON)], m.items.JSON)
-	copy(j[len(m.items.JSON):], newItems.JSON)
-	m.items.JSON = j
+	m.items.JSON = mergeSlices(m.items.JSON, newItems.JSON)
+	// JSON-styled
+	m.items.JSONStyled = mergeSlices(m.items.JSONStyled, newItems.JSONStyled)
 	// YAML
-	y := make([]string, len(m.items.YAML)+len(newItems.YAML))
-	copy(y[:len(m.items.YAML)], m.items.YAML)
-	copy(y[len(m.items.YAML):], newItems.YAML)
-	m.items.YAML = y
+	m.items.YAML = mergeSlices(m.items.YAML, newItems.YAML)
+	// YAML-styled
+	m.items.YAMLStyled = mergeSlices(m.items.YAMLStyled, newItems.YAMLStyled)
 	// RAW
-	r := make([]map[string]dynamotypes.AttributeValue, len(m.items.Raw)+len(newItems.Raw))
-	copy(r[:len(m.items.Raw)], m.items.Raw)
-	copy(r[len(m.items.Raw):], newItems.Raw)
-	m.items.Raw = r
+	m.items.Raw = mergeSlices(m.items.Raw, newItems.Raw)
 	// KEYS
-	k := make([][]types.KeyValue, len(m.items.TableKeys)+len(newItems.TableKeys))
-	copy(k[:len(m.items.TableKeys)], m.items.TableKeys)
-	copy(k[len(m.items.TableKeys):], newItems.TableKeys)
-	m.items.TableKeys = k
+	m.items.TableKeys = mergeSlices(m.items.TableKeys, newItems.TableKeys)
+}
+
+func mergeSlices[S ~[]E, E any](s1, s2 S) S {
+	n := make([]E, len(s1)+len(s2))
+	copy(n[:len(s1)], s1)
+	copy(n[len(s1):], s2)
+	return n
 }
 
 func clamp(v, low, high int) int {

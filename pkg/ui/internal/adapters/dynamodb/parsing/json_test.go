@@ -122,6 +122,7 @@ func genericTestItemJSON() string {
 func TestJSONParsing(t *testing.T) {
 	item := genericTestItem()
 	exp := genericTestItemJSON()
-	res := ParseItemToJSON(item, "string-key", nil)
+	p := JSONParser{}
+	res, _ := p.ParseItemToJSON(item, "string-key", nil)
 	assert.EqualValues(t, exp, res)
 }

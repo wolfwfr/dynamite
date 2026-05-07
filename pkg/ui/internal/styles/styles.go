@@ -17,6 +17,10 @@ var (
 	SubtleColour  = lipgloss.Color("#B0B0B0")
 	SubtleColour2 = lipgloss.Color("#878787")
 
+	NumberColour = lipgloss.Color("#F58427")
+	StringColour = lipgloss.Color("#a7bc85")
+	TokenColour  = lipgloss.Color("#484896") // default terminal colour
+
 	RegionBoxBg         = lipgloss.Color("#80380E")
 	QueryModeBoxQeuryBg = lipgloss.Color("#046645")
 	QueryModeBoxScanBg  = lipgloss.Color("#0E3080")

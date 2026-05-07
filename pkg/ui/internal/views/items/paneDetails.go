@@ -34,6 +34,8 @@ type detailsPane struct {
 	AddKeyMap keymaps.AdditionalKeys
 
 	content viewport.Model
+
+	previewing messages.PreviewItem
 }
 
 type detailsPaneOption func(p *detailsPane)
@@ -71,6 +73,7 @@ func (m *detailsPane) cleanSlate() {
 }
 
 func (m *detailsPane) Init() tea.Cmd {
+	m.previewing = messages.PreviewItem{}
 	m.cleanSlate()
 	return nil
 }
@@ -91,7 +94,8 @@ func (m *detailsPane) Update(msg tea.Msg) (cmd tea.Cmd) {
 			}
 		}
 	case messages.PreviewItem:
-		m.content.SetContent(msg.Item)
+		m.previewing = msg
+		m.content.SetContent(msg.StyledItem)
 		return nil
 	case messages.CopyItem:
 		return m.copy()
@@ -114,7 +118,7 @@ func (m *detailsPane) Zoom() tea.Cmd {
 }
 
 func (m *detailsPane) copy() tea.Cmd {
-	c := m.content.GetContent()
+	c := m.previewing.RawItem
 	if err := clipboard.WriteAll(c); err != nil {
 		return func() tea.Msg {
 			return messages.ToggleErrorDialog{Error: fmt.Errorf("failed to copy: %w", err)}

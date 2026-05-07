@@ -75,7 +75,8 @@ type ZoomToggleTableSelectionPane struct{}
 type ZoomToggleTableDetailsPane struct{}
 
 type PreviewItem struct {
-	Item string
+	StyledItem string
+	RawItem    string
 }
 
 type TableDetails struct {

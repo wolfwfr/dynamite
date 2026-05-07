@@ -58,10 +58,12 @@ type ( // DESCRIBE TABLE
 )
 
 type Items struct {
-	JSON      []string
-	YAML      []string
-	Raw       []map[string]types.AttributeValue // TODO: review usefullness
-	TableKeys [][]KeyValue                      // TODO: review: should this be part of items?
+	JSON       []string
+	JSONStyled []string
+	YAML       []string
+	YAMLStyled []string
+	Raw        []map[string]types.AttributeValue // TODO: review usefullness
+	TableKeys  [][]KeyValue                      // TODO: review: should this be part of items?
 }
 
 type ( // SCAN
