@@ -9,26 +9,27 @@ import (
 // KeyMap defines keybindings. It satisfies to the help.KeyMap interface, which
 // is used to render the help menu.
 type KeyMap struct {
-	Quit key.Binding
-	Help key.Binding
+	ForceQuit key.Binding
+	Help      key.Binding
 }
 
 // ShortHelp implements the KeyMap interface.
 func (km *KeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{km.Quit, km.Help}
+	return []key.Binding{km.ForceQuit, km.Help}
 }
 
 // FullHelp implements the KeyMap interface.
 func (km *KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{km.Quit}, {km.Help},
+		{km.ForceQuit}, {km.Help},
 	}
 }
 
 // DefaultKeyMap returns a default set of keybindings.
-func DefaultKeyMap() *KeyMap {
-	return &KeyMap{
-		Quit: key.NewBinding(
+func DefaultKeyMap() KeyMap {
+	return KeyMap{
+		// WARN: checked at home level; keys must not be required for anything else
+		ForceQuit: key.NewBinding(
 			key.WithKeys("ctrl+c"),
 			key.WithHelp("ctrl+c", "quit"),
 		),

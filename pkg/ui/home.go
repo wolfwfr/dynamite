@@ -10,6 +10,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"charm.land/bubbles/v2/help"
+	"charm.land/bubbles/v2/key"
 
 	appconfig "github.com/wolfwfr/dynamite/pkg"
 	"github.com/wolfwfr/dynamite/pkg/aws"
@@ -61,6 +62,8 @@ type Model struct {
 	activeView View
 
 	QueryMode messages.ItemsQueryMode
+
+	KeyMap KeyMap
 
 	window struct {
 		width  int
@@ -125,14 +128,14 @@ func NewModel(ctx context.Context, cfg appconfig.Config, opts ...Option) Model {
 		o(&m.options)
 	}
 
-	km := DefaultKeyMap()
+	m.KeyMap = DefaultKeyMap()
 
 	inheritedKeys := []keymaps.AdditionalKey{
 		{
-			Binding: km.Quit,
+			Binding: m.KeyMap.ForceQuit,
 			Call:    tea.Quit,
 		}, {
-			Binding: km.Help,
+			Binding: m.KeyMap.Help,
 			Call:    m.SignalOpenHelpDialog(),
 		},
 	}
@@ -148,7 +151,7 @@ func NewModel(ctx context.Context, cfg appconfig.Config, opts ...Option) Model {
 
 	{ // table view bound dialogs
 		tableViewDialogKeys := m.tableSelection.DialogKeyMaps()
-		m.dialogs.help = dialogs.NewHelp(m.tableSelection, m.itemselection, DialogCloseKeymapFrom(km.Help))
+		m.dialogs.help = dialogs.NewHelp(m.tableSelection, m.itemselection, DialogCloseKeymapFrom(m.KeyMap.Help))
 		m.dialogs.region = dialogs.NewRegionsDialog(m.config.AvailableRegions, m.config.StarredRegions, m.config.Region, DialogCloseKeymapFrom(tableViewDialogKeys.RegionDialog))
 	}
 
@@ -197,6 +200,9 @@ func errorMsg(err error) tea.Cmd {
 
 // update handles the message and proceeds to forward it to the model's children
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if msg, ok := msg.(tea.KeyPressMsg); ok && key.Matches(msg, m.KeyMap.ForceQuit) {
+		return m, tea.Quit
+	}
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
 	case appconfig.CredentialsRequest:
