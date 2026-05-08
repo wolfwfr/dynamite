@@ -1,6 +1,8 @@
 package search
 
 import (
+	"strings"
+
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -19,7 +21,7 @@ var (
 )
 
 type SearchCallbacks struct {
-	ToSearch       func() []string
+	ToSearch       func(prefix string) []string
 	EmptyInput     func() tea.Cmd
 	Results        func([]FilteredItem) tea.Cmd
 	Reset          func(searchHeight int) tea.Cmd
@@ -28,6 +30,8 @@ type SearchCallbacks struct {
 
 type SearchBox struct {
 	id string
+
+	divider string
 
 	height int
 	width  int
@@ -93,6 +97,31 @@ func (s *SearchBox) SetWidth(w int) {
 	s.input.SetWidth(w)
 }
 
+// SetPlaceHolder sets the placeholder
+func (s *SearchBox) SetPlaceHolder(h string) {
+	s.input.Placeholder = h
+}
+
+// SetDivider sets the divider dividing prefix and search.
+//
+// Search will only interpret what follows after the divider and what preceeds
+// the divider is passed on to the caller when retrieving search items.
+//
+// E.g. (when divider equals `=`):
+//
+// `client_id=The best`
+//
+// will request search items for:
+//
+// `client_id`
+//
+// and search the items for:
+//
+// `The best`.
+func (s *SearchBox) SetDivider(divider string) {
+	s.divider = divider
+}
+
 func (s *SearchBox) Update(msg tea.Msg) tea.Cmd {
 	cmds := []tea.Cmd{}
 	var cmd tea.Cmd
@@ -115,7 +144,7 @@ func (s *SearchBox) Update(msg tea.Msg) tea.Cmd {
 		if msg.ID != s.id {
 			return nil
 		}
-		if s.input.Value() == "" {
+		if s.emptyInput() {
 			cmds = append(cmds, s.Callbacks.EmptyInput())
 			break
 		}
@@ -131,11 +160,38 @@ func (s *SearchBox) Update(msg tea.Msg) tea.Cmd {
 	return tea.Batch(cmds...)
 }
 
+func (s *SearchBox) emptyInput() bool {
+	v := s.input.Value()
+	if s.divider == "" && v == "" {
+		return true
+	} else if s.divider == "" {
+		return false
+	}
+	idx := strings.Index(v, s.divider)
+	return idx < 0 || idx == len(v)-1
+}
+
 // Search applies the current search query to all searchable inputs returns a
 // cmd that the tea-framework can asynchronously process. Upon completion, it
 // returns a tea.Msg containing the items remaining post-filter.
-func (s *SearchBox) Search(query string) tea.Cmd {
-	rawItems := s.Callbacks.ToSearch()
+func (s *SearchBox) Search(q string) tea.Cmd {
+	query := q
+	var rawItems []string
+
+	// determine divider presence
+	idx := strings.Index(q, s.divider)
+	if s.divider != "" && (idx < 0 || idx == len(q)-1) {
+		return s.Callbacks.EmptyInput()
+	}
+
+	// apply divider when appliccable
+	if s.divider != "" {
+		rawItems = s.Callbacks.ToSearch(q[:idx])
+		query = q[idx+1:]
+	} else {
+		rawItems = s.Callbacks.ToSearch("")
+	}
+
 	f := s.F
 	// OPTIM: cancel on next text input for performance
 	return func() tea.Msg { // will execute async

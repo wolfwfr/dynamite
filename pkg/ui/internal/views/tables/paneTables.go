@@ -128,7 +128,7 @@ func newTableSelectionPane(ctx context.Context, config *appconfig.Config, opts .
 	{ // search box
 		p.search = search.NewSearchBox(
 			search.SearchCallbacks{
-				ToSearch: func() []string {
+				ToSearch: func(string) []string {
 					return table.Rows(p.content.Rows()).ToStrings()
 				},
 				EmptyInput: func() tea.Cmd {

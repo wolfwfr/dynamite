@@ -205,8 +205,10 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 	{ // search box
 		p.search = search.NewSearchBox(
 			search.SearchCallbacks{
-				ToSearch: func() []string {
-					return table.Rows(p.content.Rows()).ToStrings()
+				ToSearch: func(pr string) []string {
+					cols := p.content.Columns()
+					idx := findColumnByTitle(cols, pr)
+					return extractColumnFromRows(p.content.Rows(), idx)
 				},
 				EmptyInput: func() tea.Cmd {
 					p.itemfiltering.enabled = false
@@ -242,6 +244,8 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 				},
 			},
 		)
+		p.search.SetDivider("=")
+		p.search.SetPlaceHolder("'<column_name>=<search_input>'")
 	}
 
 	for _, o := range opts {
@@ -1206,4 +1210,26 @@ func indexCountFromTable(indexName string, tableDetails types.DescribeTableRespo
 		}
 	}
 	return -1
+}
+
+func findColumnByTitle(cols []table.Column, title string) int {
+	idx := -1
+	for i, c := range cols {
+		if c.Title == title {
+			idx = i
+			break
+		}
+	}
+	return idx
+}
+
+func extractColumnFromRows(rows []table.Row, idx int) []string {
+	if idx < 0 {
+		return nil
+	}
+	items := make([]string, len(rows))
+	for i, r := range rows {
+		items[i] = r.Raw[idx]
+	}
+	return items
 }
