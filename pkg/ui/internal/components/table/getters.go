@@ -7,13 +7,13 @@ func (m *Model) Focused() bool {
 
 // SelectedRow returns the selected row.
 // You can cast it to your own implementation.
-func (m *Model) SelectedRow() Row {
+func (m *Model) SelectedRow() *Row {
 	rows := m.VisualRows()
 	if m.cursor < 0 || m.cursor >= len(rows) {
 		return nil
 	}
 
-	return rows[m.cursor]
+	return &rows[m.cursor]
 }
 
 // Visual rows returns virtual rows when set or falls back to rows

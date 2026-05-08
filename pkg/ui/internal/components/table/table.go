@@ -160,7 +160,7 @@ func (m *Model) UpdateContent() (updateHeader bool) {
 		for j := range m.cols {
 			mx := len(m.cols[j].Title) + len(m.cols[j].Suffix)
 			for i := m.start; i < m.end; i++ {
-				mx = max(mx, len(m.VisualRows()[i][j]))
+				mx = max(mx, len(m.VisualRows()[i].Raw[j]))
 			}
 			colChanged = colChanged || mx != m.cols[j].Width // once true, stays true
 			m.cols[j].DynamicWidth = mx
@@ -403,12 +403,16 @@ func (m *Model) GotoRight() {
 // FromValues create the table rows from a simple string. It uses `\n` by
 // default for getting all the rows and the given separator for the fields on
 // each row.
+// This does not apply styling
 func (m *Model) FromValues(value, separator string) {
 	rows := []Row{} //nolint:prealloc
 	for _, line := range strings.Split(value, "\n") {
-		r := Row{}
+		r := Row{
+			Raw:    []string{},
+			Styled: []string{},
+		}
 		for _, field := range strings.Split(line, separator) {
-			r = append(r, field)
+			r.Raw = append(r.Raw, field)
 		}
 		rows = append(rows, r)
 	}
@@ -440,7 +444,8 @@ func (m *Model) renderHeader() string {
 // TODO: render filter match chars with underline or background when appliccable
 func (m *Model) renderRow(r int) string {
 	s := make([]string, 0, len(m.cols))
-	for i, value := range m.VisualRows()[r] {
+	rows := m.VisualRows()
+	for i := range rows[r].Raw {
 		if m.cols[i].InVisible {
 			continue
 		}
@@ -448,8 +453,16 @@ func (m *Model) renderRow(r int) string {
 		if width <= 0 {
 			continue
 		}
+
+		// determine rows raw & styled contents
+		value := rows[r].Raw[i]
+		if len(rows[r].Raw) == len(rows[r].Styled) && r != m.cursor {
+			value = rows[r].Styled[i]
+		}
+
 		style := lipgloss.NewStyle().Width(width).MaxWidth(width).Inline(true)
-		renderedCell := m.styles.Cell.Render(style.Render(ansi.Truncate(value, width, "…")))
+		renderedCell := m.styles.Cell.Render(style.Render(ternary(value, ansi.Truncate(value, width, "…"), m.dynCols)))
+
 		s = append(s, renderedCell)
 	}
 

@@ -19,8 +19,9 @@ const (
 )
 
 type KeyValue struct {
-	Key   string
-	Value string
+	Key         string
+	Value       string
+	StyledValue string
 }
 
 type ( // LIST TABLES

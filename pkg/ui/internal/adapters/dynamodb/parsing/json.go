@@ -101,8 +101,10 @@ func (p JSONParser) pJSON(elements map[string]types.AttributeValue, hashkey stri
 
 		// obtain block content
 		content, styledContent := p.switchAttrValueJSON(v, hashkey, rangekey, nestLevel)
+
+		// prepare table keys
 		if isRootLevel {
-			kv[i] = apitypes.KeyValue{Key: k, Value: flatten(content)}
+			kv[i] = apitypes.KeyValue{Key: k, Value: flatten(content, ","), StyledValue: flatten(styledContent, token(","))}
 		}
 
 		// write comma & newline, unless last element

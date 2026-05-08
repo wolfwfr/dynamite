@@ -41,10 +41,13 @@ type Model struct {
 }
 
 // Row represents one line in the table.
-type Row []string
+type Row struct {
+	Raw    []string
+	Styled []string
+}
 
 func (r Row) String() string {
-	return strings.Join(r, " ")
+	return strings.Join(r.Raw, " ")
 }
 
 type Rows []Row

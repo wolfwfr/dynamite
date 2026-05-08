@@ -111,7 +111,7 @@ func getSortedKeys(hashkey string, rangekey *string, elements map[string]types.A
 
 // flatten takes a string and removes newlines and any spaces that are not
 // captured within a double-quoted string. It also removes a trailing comma.
-func flatten(in string) string {
+func flatten(in, token string) string {
 	str := strings.ReplaceAll(in, "\n", "")
 	looking := true
 	b := strings.Builder{}
@@ -123,7 +123,7 @@ func flatten(in string) string {
 			b.WriteRune(r)
 		}
 	}
-	return strings.TrimSuffix(b.String(), ",")
+	return strings.TrimSuffix(b.String(), token)
 }
 
 func twice[T any](t T) (T, T) {

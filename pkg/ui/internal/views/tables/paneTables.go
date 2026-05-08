@@ -254,7 +254,9 @@ func (m *tableSelectionPane) processPage(msg messages.TablePageReady, preview bo
 	// parse and set rows of the new tables
 	rows := make([]table.Row, len(newTables))
 	for i := range newTables {
-		rows[i] = table.Row([]string{newTables[i]})
+		rows[i] = table.Row{
+			Raw: []string{newTables[i]},
+		}
 	}
 	if init {
 		m.content.SetRows(rows)
@@ -402,7 +404,11 @@ func (m *tableSelectionPane) selectTable() tea.Cmd {
 			NewView: messages.Item_selection,
 		}
 	}
-	r := []string(m.content.SelectedRow())
+	sr := m.content.SelectedRow()
+	if sr == nil {
+		return nil
+	}
+	r := sr.Raw
 	if len(r) == 0 {
 		return nil // nothing to select
 	}

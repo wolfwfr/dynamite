@@ -1,6 +1,8 @@
 package table
 
-import "charm.land/lipgloss/v2"
+import (
+	"charm.land/lipgloss/v2"
+)
 
 // Option is used to set options in New. For example:
 //

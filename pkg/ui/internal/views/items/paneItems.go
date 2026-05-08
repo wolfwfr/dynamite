@@ -583,8 +583,8 @@ func (m *ItemSelectionPane) sortRows(rows []table.Row) []table.Row {
 	// determine field-type
 	var field string
 	for _, r := range rows {
-		if r[idx] != "" {
-			field = r[idx]
+		if r.Raw[idx] != "" {
+			field = r.Raw[idx]
 			break
 		}
 	}
@@ -597,23 +597,23 @@ func (m *ItemSelectionPane) sortRows(rows []table.Row) []table.Row {
 	// NOTE: assumes that float fields always contain decimal point
 	case errFloat == nil:
 		sortFunc = func(a, b table.Row) int {
-			aI, _ := strconv.ParseFloat(a[idx], 64)
-			bI, _ := strconv.ParseFloat(b[idx], 64)
+			aI, _ := strconv.ParseFloat(a.Raw[idx], 64)
+			bI, _ := strconv.ParseFloat(b.Raw[idx], 64)
 			check := ternary(aI < bI, aI > bI, m.columnSorting.Ascending)
 			return ternary(-1, 1, check)
 		}
 	case errInt == nil:
 		sortFunc = func(a, b table.Row) int {
-			aI, _ := strconv.ParseInt(a[idx], 10, 64)
-			bI, _ := strconv.ParseInt(b[idx], 10, 64)
+			aI, _ := strconv.ParseInt(a.Raw[idx], 10, 64)
+			bI, _ := strconv.ParseInt(b.Raw[idx], 10, 64)
 			check := ternary(aI < bI, aI > bI, m.columnSorting.Ascending)
 			return ternary(-1, 1, check)
 		}
 	default:
 		sortFunc = func(a, b table.Row) int {
-			s := []string{a[idx], b[idx]}
+			s := []string{a.Raw[idx], b.Raw[idx]}
 			slices.Sort(s)
-			check := ternary(s[0] == a[idx], s[1] == a[idx], m.columnSorting.Ascending)
+			check := ternary(s[0] == a.Raw[idx], s[1] == a.Raw[idx], m.columnSorting.Ascending)
 			return ternary(-1, 1, check)
 		}
 	}
@@ -1002,11 +1002,12 @@ func (m *ItemSelectionPane) copy() tea.Cmd {
 		colStr[i] = c.Title
 	}
 
+	row := m.content.SelectedRow().Raw
 	init := func() tea.Msg {
 		return messages.InitColumnCopy{
 			TableARN:   u.IfNotNil(m.selectedTable.TableArn, ""),
 			AllColumns: colStr,
-			ColValues:  m.content.SelectedRow(),
+			ColValues:  row,
 		}
 	}
 	return tea.Batch(copyDialog, init)
@@ -1167,17 +1168,23 @@ func (m *ItemSelectionPane) getColumnSuffix(colTitle string) string {
 func parseRows(cols []string, tableKeys [][]types.KeyValue) []table.Row {
 	rows := make([]table.Row, len(tableKeys))
 	for i, k := range tableKeys {
-		row := make([]string, len(cols))
+		raw := make([]string, len(cols))
+		styled := make([]string, len(cols))
 		var x int
 		for j, key := range cols {
 			if key == k[x].Key { // matching key
-				row[j] = k[x].Value
+				raw[j] = k[x].Value
+				styled[j] = k[x].StyledValue
 				x = min(len(k)-1, x+1)
 			} else { // no matching key
-				row[j] = ""
+				raw[j] = ""
+				styled[j] = ""
 			}
 		}
-		rows[i] = row
+		rows[i] = table.Row{
+			Raw:    raw,
+			Styled: styled,
+		}
 	}
 	return rows
 }
