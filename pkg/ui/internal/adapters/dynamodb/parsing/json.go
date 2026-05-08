@@ -171,12 +171,14 @@ func (p JSONParser) switchAttrValueJSON(v types.AttributeValue, hashkey string, 
 func stringableAsListJSON[S []E, E any](styles jsonParserStyles, s S, nestLevel int, tr func(E) (string, string)) (string, string) {
 	token := styles.TokenStyle.Render
 
+	if len(s) == 0 {
+		return "[],\n", spf("%s%s\n", token("[]"), token(","))
+	}
+
 	json := strings.Builder{}
 	styled := strings.Builder{}
 
-	hasContent := len(s) > 0
-
-	prefix := func(token string) string { return spf("%s%s", token, newLineIf(hasContent)) }
+	prefix := func(token string) string { return spf("%s\n", token) }
 	json.WriteString(prefix("["))
 	styled.WriteString(prefix(token("[")))
 
@@ -190,7 +192,7 @@ func stringableAsListJSON[S []E, E any](styles jsonParserStyles, s S, nestLevel 
 	}
 
 	suffix := func(token, comma string) string {
-		return spf("%s%s%s\n", prefixIf("", tabs(nestLevel), hasContent), token, comma)
+		return spf("%s%s%s\n", tabs(nestLevel), token, comma)
 	}
 	json.WriteString(suffix("]", ","))
 	styled.WriteString(suffix(token("]"), token(",")))
