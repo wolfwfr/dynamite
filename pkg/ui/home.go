@@ -83,7 +83,7 @@ type Model struct {
 		mfa              *dialogs.MFA
 		active           Dialog
 
-		errors []*dialogs.ErrorDialog
+		notification []*dialogs.NotificationDialog
 	}
 
 	// top-level context
@@ -172,14 +172,14 @@ func (m Model) Init() tea.Cmd {
 
 	// notify user of any initialisation errors
 	if err := m.options.InitialError; err != nil {
-		cmds = append(cmds, errorMsg(err))
+		cmds = append(cmds, errorMsg("", err))
 		m.options.InitialError = nil // reset
 	}
 
 	// load a new aws client
 	cfg, err := aws.LoadAWSConfig(m.ctx, m.config.Region, m.config.Profile, m.config.MFACredentialCB)
 	if err != nil {
-		cmds = append(cmds, errorMsg(err))
+		cmds = append(cmds, errorMsg("", err))
 		return tea.Batch(cmds...)
 	}
 
@@ -192,9 +192,9 @@ func (m Model) Init() tea.Cmd {
 }
 
 // errorMsg returns a command to open a new error notification dialog
-func errorMsg(err error) tea.Cmd {
+func errorMsg(msg string, err error) tea.Cmd {
 	return func() tea.Msg {
-		return messages.ToggleErrorDialog{Error: err}
+		return messages.ToggleNotificationDialog{Msg: msg, Error: err}
 	}
 }
 
@@ -227,11 +227,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m, cmd = m.ToggleQueryParametersDialog()
 	case messages.ToggleColumnCopy:
 		m, cmd = m.ToggleCopyDialog()
-	case messages.ToggleErrorDialog:
-		m, cmd = m.ToggleErrorDialog(msg)
-	case messages.ErrorExpired:
+	case messages.ToggleNotificationDialog:
+		m, cmd = m.ToggleNotificationDialog(msg)
+	case messages.NotificationExpired:
 		m, cmd = m.HandleExpiredError(msg)
-	case messages.ErrorTick:
+	case messages.NotificationTick:
 		m, cmd = m.handleErrorTick(msg)
 	case messages.SwitchRegion:
 		m, cmd = m.switchRegion(msg.OldRegion, msg.NewRegion)
@@ -344,26 +344,30 @@ func (m Model) handleSwitchView(msg messages.SwitchView) (Model, tea.Cmd) {
 	return m, m.dialogs.help.Update(msg)
 }
 
-func (m Model) handleErrorTick(msg messages.ErrorTick) (Model, tea.Cmd) {
+func (m Model) handleErrorTick(msg messages.NotificationTick) (Model, tea.Cmd) {
 	var cmds []tea.Cmd
-	for _, d := range m.dialogs.errors {
+	for _, d := range m.dialogs.notification {
 		cmds = append(cmds, d.Update(msg))
 	}
 	return m, tea.Batch(cmds...)
 }
 
-func (m Model) HandleExpiredError(msg messages.ErrorExpired) (Model, tea.Cmd) {
-	if idx := u.FindBy(m.dialogs.errors, func(d *dialogs.ErrorDialog) bool {
+func (m Model) HandleExpiredError(msg messages.NotificationExpired) (Model, tea.Cmd) {
+	if idx := u.FindBy(m.dialogs.notification, func(d *dialogs.NotificationDialog) bool {
 		return d != nil && d.ID() == msg.ID
 	}); idx >= 0 {
-		m.dialogs.errors = slices.Delete(m.dialogs.errors, idx, idx+1)
+		m.dialogs.notification = slices.Delete(m.dialogs.notification, idx, idx+1)
 	}
 	return m, nil
 }
 
-func (m Model) ToggleErrorDialog(msg messages.ToggleErrorDialog) (Model, tea.Cmd) {
-	d := dialogs.NewErrorDialog(msg.Error)
-	m.dialogs.errors = append(m.dialogs.errors, d)
+func (m Model) ToggleNotificationDialog(msg messages.ToggleNotificationDialog) (Model, tea.Cmd) {
+	options := []dialogs.Option{}
+	if msg.Duration != 0 {
+		options = append(options, dialogs.WithDuration(msg.Duration))
+	}
+	d := dialogs.NewNotificationDialog(msg.Msg, msg.Error, options...)
+	m.dialogs.notification = append(m.dialogs.notification, d)
 	return m, d.Tick() // initialise ticking
 }
 
@@ -516,7 +520,7 @@ func (m Model) View() tea.View {
 
 	// error messages
 	var errors []string
-	for _, d := range m.dialogs.errors {
+	for _, d := range m.dialogs.notification {
 		errors = append(errors, d.View())
 	}
 	if len(errors) > 0 {

@@ -339,10 +339,10 @@ func (m *tableSelectionPane) copy() tea.Cmd {
 
 	if err := clipboard.WriteAll(r[c].String()); err != nil {
 		return func() tea.Msg {
-			return messages.ToggleErrorDialog{Error: fmt.Errorf("failed to copy: %w", err)}
+			return messages.ToggleNotificationDialog{Error: fmt.Errorf("failed to copy: %w", err)}
 		}
 	}
-	return nil
+	return notifyCopySuccess
 }
 
 // force is used on new pane initialization because lastPreviewItem could be 0
@@ -472,4 +472,8 @@ func (m *tableSelectionPane) noContentMessage() string {
 	fmt.Fprintf(&s, "             NO TABLES IN THIS REGION             \n")
 	fmt.Fprintf(&s, "==================================================\n")
 	return s.String()
+}
+
+func notifyCopySuccess() tea.Msg {
+	return messages.ToggleNotificationDialog{Msg: "Copied!", Duration: 1 * time.Second}
 }

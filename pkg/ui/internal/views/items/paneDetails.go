@@ -3,6 +3,7 @@ package itemselection
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/viewport"
@@ -121,10 +122,10 @@ func (m *detailsPane) copy() tea.Cmd {
 	c := m.previewing.RawItem
 	if err := clipboard.WriteAll(c); err != nil {
 		return func() tea.Msg {
-			return messages.ToggleErrorDialog{Error: fmt.Errorf("failed to copy: %w", err)}
+			return messages.ToggleNotificationDialog{Error: fmt.Errorf("failed to copy: %w", err)}
 		}
 	}
-	return nil
+	return notifyCopySuccess
 }
 
 func (m *detailsPane) applySize(height, width int) {
@@ -140,4 +141,8 @@ func (m *detailsPane) View() string {
 		return m.err.Error()
 	}
 	return m.content.View()
+}
+
+func notifyCopySuccess() tea.Msg {
+	return messages.ToggleNotificationDialog{Msg: "Copied!", Duration: 1 * time.Second}
 }

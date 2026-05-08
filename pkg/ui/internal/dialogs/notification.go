@@ -11,21 +11,26 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
+	"github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
 	commonstyles "github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
 )
 
-type errorDialogStyles struct {
-	errorStyle  lipgloss.Style
-	dialogStyle lipgloss.Style
+type notificationDialogStyles struct {
+	messageStyle  lipgloss.Style
+	errorStyle    lipgloss.Style
+	dividerStyle  lipgloss.Style
+	progressStyle lipgloss.Style
+	dialogStyle   lipgloss.Style
 }
 
 // the Welcome dialog depicts a welcome message
-type ErrorDialog struct {
+type NotificationDialog struct {
 	id string
 
-	error error
+	err error
+	msg string
 
-	styles errorDialogStyles
+	styles notificationDialogStyles
 
 	duration time.Duration
 
@@ -51,24 +56,25 @@ type ErrorDialog struct {
 	}
 }
 
-type Option func(e *ErrorDialog)
+type Option func(e *NotificationDialog)
 
 func WithDuration(d time.Duration) Option {
-	return func(e *ErrorDialog) {
+	return func(e *NotificationDialog) {
 		e.duration = d
 	}
 }
 
 func WithClosingKey(k key.Binding) Option {
-	return func(e *ErrorDialog) {
+	return func(e *NotificationDialog) {
 		e.close = &k
 	}
 }
 
-func NewErrorDialog(err error, opts ...Option) *ErrorDialog {
-	d := &ErrorDialog{
+func NewNotificationDialog(msg string, err error, opts ...Option) *NotificationDialog {
+	d := &NotificationDialog{
 		id:       uuid.New().String()[:6],
-		error:    err,
+		err:      err,
+		msg:      msg,
 		duration: 5 * time.Second,
 
 		defaultDialogHeight: 46,
@@ -95,40 +101,43 @@ func NewErrorDialog(err error, opts ...Option) *ErrorDialog {
 	return d
 }
 
-func (m *ErrorDialog) newStyles() {
-	s := errorDialogStyles{}
+func (m *NotificationDialog) newStyles() {
+	s := notificationDialogStyles{}
 	s.dialogStyle = commonstyles.DialogStyle.Align(lipgloss.Left, lipgloss.Center)
-	s.errorStyle = lipgloss.NewStyle().PaddingBottom(1)
+	s.messageStyle = lipgloss.NewStyle()
+	s.errorStyle = lipgloss.NewStyle()
+	s.dividerStyle = lipgloss.NewStyle().Foreground(styles.SubtleColour3)
+	s.progressStyle = lipgloss.NewStyle().PaddingTop(1)
 	m.styles = s
 }
 
 // to initialise ticking
-func (m *ErrorDialog) Tick() tea.Cmd {
+func (m *NotificationDialog) Tick() tea.Cmd {
 	return m.tick()
 }
 
-func (m *ErrorDialog) tick() tea.Cmd {
+func (m *NotificationDialog) tick() tea.Cmd {
 	id := m.id
 	return func() tea.Msg {
 		<-m.tracker.ticker.C
-		return messages.ErrorTick{ID: id}
+		return messages.NotificationTick{ID: id}
 	}
 }
 
-func (m *ErrorDialog) ID() string {
+func (m *NotificationDialog) ID() string {
 	return m.id
 }
 
-func (m *ErrorDialog) Init() tea.Cmd {
+func (m *NotificationDialog) Init() tea.Cmd {
 	return nil
 }
 
-func (m *ErrorDialog) Update(msg tea.Msg) tea.Cmd {
+func (m *NotificationDialog) Update(msg tea.Msg) tea.Cmd {
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.applySize(msg)
-	case messages.ErrorTick:
+	case messages.NotificationTick:
 		if msg.ID == m.id {
 			return m.onTick()
 		}
@@ -142,20 +151,20 @@ func (m *ErrorDialog) Update(msg tea.Msg) tea.Cmd {
 	return tea.Batch(cmd, m.checkExpiry())
 }
 
-func (m *ErrorDialog) onTick() tea.Cmd {
+func (m *NotificationDialog) onTick() tea.Cmd {
 	return tea.Batch(m.tick(), m.checkExpiry())
 }
 
-func (m *ErrorDialog) toggleDialog() tea.Cmd {
+func (m *NotificationDialog) toggleDialog() tea.Cmd {
 	id := m.id
 	return func() tea.Msg {
-		return messages.ErrorExpired{
+		return messages.NotificationExpired{
 			ID: id,
 		}
 	}
 }
 
-func (m *ErrorDialog) checkExpiry() tea.Cmd {
+func (m *NotificationDialog) checkExpiry() tea.Cmd {
 	if m.tracker.finished {
 		m.tracker.ticker.Stop()
 		return m.toggleDialog()
@@ -163,28 +172,41 @@ func (m *ErrorDialog) checkExpiry() tea.Cmd {
 	return nil
 }
 
-func (m *ErrorDialog) applySize(msg tea.WindowSizeMsg) {
+func (m *NotificationDialog) applySize(msg tea.WindowSizeMsg) {
 	m.window.width = msg.Width
 	m.window.height = msg.Height
 	m.updateSize()
 }
 
-func (m *ErrorDialog) updateSize() {
+func (m *NotificationDialog) updateSize() {
 	m.styles.dialogStyle = m.styles.dialogStyle.
 		MaxHeight(m.window.height - 10).
 		MaxWidth(m.window.width - 10).
 		Width(m.dialog.width)
 }
 
-func (m *ErrorDialog) View() string {
+func (m *NotificationDialog) View() string {
+	var main string
+	if m.msg != "" {
+		main = m.styles.messageStyle.Render(m.msg)
+	}
+	if m.err != nil && m.msg != "" {
+		main = lipgloss.JoinVertical(lipgloss.Left, main, m.styles.dividerStyle.Render(m.renderDivider()))
+	}
+	if m.err != nil {
+		main = lipgloss.JoinVertical(lipgloss.Left,
+			main,
+			m.styles.errorStyle.Render(m.err.Error()),
+		)
+	}
 	return m.styles.dialogStyle.Render(lipgloss.JoinVertical(
 		lipgloss.Left,
-		m.styles.errorStyle.Render(m.error.Error()),
-		m.renderProgress(),
+		main,
+		m.styles.progressStyle.Render(m.renderProgress()),
 	))
 }
 
-func (m *ErrorDialog) renderProgress() string {
+func (m *NotificationDialog) renderProgress() string {
 	w := m.dialog.width - 4
 
 	p := m.getProgression()
@@ -195,13 +217,25 @@ func (m *ErrorDialog) renderProgress() string {
 	s := strings.Builder{}
 
 	for range b {
-		s.WriteString("─") // TODO: replace
+		s.WriteString("─")
+	}
+
+	return s.String()
+}
+
+func (m *NotificationDialog) renderDivider() string {
+	w := m.dialog.width - 4
+
+	s := strings.Builder{}
+
+	for range w {
+		s.WriteString("─")
 	}
 
 	return s.String()
 }
 
 // returns fraction in [0, 1]
-func (m *ErrorDialog) getProgression() float64 {
+func (m *NotificationDialog) getProgression() float64 {
 	return min(1, float64(time.Since(m.tracker.start))/float64(m.duration))
 }

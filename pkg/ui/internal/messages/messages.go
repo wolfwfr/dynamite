@@ -1,6 +1,8 @@
 package messages
 
 import (
+	"time"
+
 	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 
 	apitypes "github.com/wolfwfr/dynamite/pkg/ui/internal/adapters/dynamodb/types"
@@ -111,14 +113,19 @@ type ToggleColumnVisibility struct{}
 type ToggleColumnSorting struct{}
 type ToggleScanParameters struct{}
 type ToggleQueryParameters struct{}
-type ToggleErrorDialog struct{ Error error }
+type ToggleNotificationDialog struct {
+	Msg      string
+	Error    error
+	Duration time.Duration
+}
+
 type ToggleColumnCopy struct{}
 
 type CloseMFADialog struct{}
 type MFAFocus struct{}
 
-type ErrorTick struct{ ID string }
-type ErrorExpired struct{ ID string }
+type NotificationTick struct{ ID string }
+type NotificationExpired struct{ ID string }
 
 type InitColumnVisibility struct {
 	TableARN   string

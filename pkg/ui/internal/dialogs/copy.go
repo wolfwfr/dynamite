@@ -2,6 +2,7 @@ package dialogs
 
 import (
 	"fmt"
+	"time"
 
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/list"
@@ -144,7 +145,7 @@ func (m *CopyDialog) Update(msg tea.Msg) tea.Cmd {
 	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, m.keyMap.close):
-			return m.toggleDialog()
+			return m.toggleDialog
 		case key.Matches(msg, m.keyMap.enter):
 			return m.selectItem()
 		default:
@@ -186,17 +187,19 @@ func (m *CopyDialog) selectItem() tea.Cmd {
 
 	if err := clipboard.WriteAll(m.state.ColValues[idx]); err != nil {
 		return func() tea.Msg {
-			return messages.ToggleErrorDialog{Error: fmt.Errorf("failed to copy: %w", err)}
+			return messages.ToggleNotificationDialog{Error: fmt.Errorf("failed to copy: %w", err)}
 		}
 	}
 
-	return m.toggleDialog()
+	return tea.Batch(m.toggleDialog, m.notifySuccess)
 }
 
-func (m *CopyDialog) toggleDialog() tea.Cmd {
-	return func() tea.Msg {
-		return messages.ToggleColumnCopy{}
-	}
+func (m *CopyDialog) notifySuccess() tea.Msg {
+	return messages.ToggleNotificationDialog{Msg: "Copied!", Duration: 1 * time.Second}
+}
+
+func (m *CopyDialog) toggleDialog() tea.Msg {
+	return messages.ToggleColumnCopy{}
 }
 
 func (m *CopyDialog) applySize(height, width int) {
