@@ -321,7 +321,7 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 				return m.escape()
 			}
 		case key.Matches(msg, m.KeyMap.Reload):
-			return tea.Batch(m.Init(), m.selectTable(u.IfNotNil(m.selectedTable.TableName, ""), m.selectedTable))
+			return m.Reload()
 		case key.Matches(msg, m.KeyMap.ChCols):
 			m.content.SetDynamicColumnWidth(!m.content.DynamicColumnWidth())
 		case key.Matches(msg, m.KeyMap.Zoom):
@@ -504,6 +504,11 @@ func (m *ItemSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
 			RawItem:    raw,
 		}
 	}
+}
+
+func (m *ItemSelectionPane) Reload() tea.Cmd {
+	m.resetContents()
+	return m.PageNext(true)
 }
 
 func (m *ItemSelectionPane) Zoom() tea.Cmd {
