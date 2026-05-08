@@ -18,14 +18,16 @@ var (
 
 	SubtleColour  = lipgloss.Color("#B0B0B0")
 	SubtleColour2 = lipgloss.Color("#878787")
+	SubtleColour3 = lipgloss.Color("#5E5E5E")
 
-	NumberColour = lipgloss.Color("#F58427")
-	BoolColour   = lipgloss.Color("#F58427")
-	BytesColour  = lipgloss.Color("#F58427")
-	NULLColour   = lipgloss.Color("#F58427")
-	StringColour = lipgloss.Color("#a7bc85")
-	TokenColour  = lipgloss.Color("#5D5DBA")
-	ErrorColour  = lipgloss.Color("#B51010")
+	FieldNameColour = lipgloss.Color("#B0B0B0")
+	NumberColour    = lipgloss.Color("#F58427")
+	BoolColour      = lipgloss.Color("#F58427")
+	BytesColour     = lipgloss.Color("#F58427")
+	NULLColour      = lipgloss.Color("#F58427")
+	StringColour    = lipgloss.Color("#a7bc85")
+	TokenColour     = SubtleColour3
+	ErrorColour     = lipgloss.Color("#B51010")
 
 	RegionBoxBg         = lipgloss.Color("#80380E")
 	QueryModeBoxQeuryBg = lipgloss.Color("#046645")

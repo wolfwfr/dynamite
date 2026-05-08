@@ -33,7 +33,7 @@ type jsonParserStyles struct {
 
 func NewJSONParser() JSONParser {
 	p := JSONParser{}
-	p.Styles.FieldNameStyle = lipgloss.NewStyle().Foreground(styles.SubtleColour)
+	p.Styles.FieldNameStyle = lipgloss.NewStyle().Foreground(styles.FieldNameColour)
 	p.Styles.NumberStyle = lipgloss.NewStyle().Foreground(styles.NumberColour)
 	p.Styles.BoolStyle = lipgloss.NewStyle().Foreground(styles.BoolColour)
 	p.Styles.BytesStyle = lipgloss.NewStyle().Foreground(styles.BytesColour)
