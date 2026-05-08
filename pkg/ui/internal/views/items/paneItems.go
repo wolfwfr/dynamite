@@ -987,9 +987,24 @@ func (m *ItemSelectionPane) ChangeQueryParameters(msg messages.QueryParametersCh
 }
 
 func (m *ItemSelectionPane) copy() tea.Cmd {
-	return func() tea.Msg {
-		return messages.CopyItem{}
+	copyDialog := func() tea.Msg {
+		return messages.ToggleColumnCopy{}
 	}
+
+	cols := m.content.Columns()
+	colStr := make([]string, len(cols))
+	for i, c := range cols {
+		colStr[i] = c.Title
+	}
+
+	init := func() tea.Msg {
+		return messages.InitColumnCopy{
+			TableARN:   u.IfNotNil(m.selectedTable.TableArn, ""),
+			AllColumns: colStr,
+			ColValues:  m.content.SelectedRow(),
+		}
+	}
+	return tea.Batch(copyDialog, init)
 }
 
 type dialog interface {

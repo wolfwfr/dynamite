@@ -146,6 +146,7 @@ type DialogKeyMaps struct {
 	ColumnSorting    key.Binding
 	ScanParams       key.Binding
 	QueryParams      key.Binding
+	Copy             key.Binding
 }
 
 func (m *ItemSelection) DialogKeyMaps() DialogKeyMaps {
@@ -154,6 +155,7 @@ func (m *ItemSelection) DialogKeyMaps() DialogKeyMaps {
 		ColumnSorting:    m.itemsPane.KeyMap.ColSort,
 		ScanParams:       m.itemsPane.KeyMap.ScanParameters,
 		QueryParams:      m.itemsPane.KeyMap.QueryParameters,
+		Copy:             m.itemsPane.KeyMap.Copy,
 	}
 }
 

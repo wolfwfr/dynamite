@@ -112,6 +112,7 @@ type ToggleColumnSorting struct{}
 type ToggleScanParameters struct{}
 type ToggleQueryParameters struct{}
 type ToggleErrorDialog struct{ Error error }
+type ToggleColumnCopy struct{}
 
 type CloseMFADialog struct{}
 type MFAFocus struct{}
@@ -151,6 +152,12 @@ type InitQueryParameters struct {
 	RangeKeyValue2       *string // used for BETWEEN operator
 	RangeKeyOperator     QueryOperator
 	RangeOrderDescending bool // ascending by default
+}
+
+type InitColumnCopy struct {
+	TableARN   string
+	AllColumns []string // matching by index
+	ColValues  []string // matching by index
 }
 
 type ColumnVisibilityUpdate struct {

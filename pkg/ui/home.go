@@ -38,6 +38,7 @@ const (
 	column_sorting_dialog
 	scan_param_dialog
 	query_param_dialog
+	copy_dialog
 	mfa_dialog
 )
 
@@ -75,6 +76,7 @@ type Model struct {
 		columnSorting    *dialogs.ColumnSorting
 		scanParams       *dialogs.ScanDialog
 		queryParams      *dialogs.Queryialog
+		copy             *dialogs.CopyDialog
 		mfa              *dialogs.MFA
 		active           Dialog
 
@@ -156,6 +158,7 @@ func NewModel(ctx context.Context, cfg appconfig.Config, opts ...Option) Model {
 		m.dialogs.columnSorting = dialogs.NewColumnSortingDialog(DialogCloseKeymapFrom(itemViewDialogKeys.ColumnSorting))
 		m.dialogs.scanParams = dialogs.NewScanDialog(DialogCloseKeymapFrom(itemViewDialogKeys.ScanParams))
 		m.dialogs.queryParams = dialogs.NewQueryDialog(DialogCloseKeymapFrom(itemViewDialogKeys.QueryParams))
+		m.dialogs.copy = dialogs.NewCopyDialog(DialogCloseKeymapFrom(itemViewDialogKeys.Copy))
 	}
 
 	return m
@@ -216,6 +219,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m, cmd = m.ToggleScanParametersDialog()
 	case messages.ToggleQueryParameters:
 		m, cmd = m.ToggleQueryParametersDialog()
+	case messages.ToggleColumnCopy:
+		m, cmd = m.ToggleCopyDialog()
 	case messages.ToggleErrorDialog:
 		m, cmd = m.ToggleErrorDialog(msg)
 	case messages.ErrorExpired:
@@ -257,6 +262,7 @@ func (m Model) broadcast(msg tea.Msg) (Model, tea.Cmd) {
 	cmds = append(cmds, m.dialogs.columnSorting.Update(msg))
 	cmds = append(cmds, m.dialogs.scanParams.Update(msg))
 	cmds = append(cmds, m.dialogs.queryParams.Update(msg))
+	cmds = append(cmds, m.dialogs.copy.Update(msg))
 	cmds = append(cmds, m.dialogs.mfa.Update(msg))
 
 	return m, tea.Batch(cmds...)
@@ -280,6 +286,8 @@ func (m Model) routeToActiveOnly(msg tea.Msg) (Model, tea.Cmd) {
 			return m, m.dialogs.scanParams.Update(msg)
 		case query_param_dialog:
 			return m, m.dialogs.queryParams.Update(msg)
+		case copy_dialog:
+			return m, m.dialogs.copy.Update(msg)
 		case mfa_dialog:
 			return m, m.dialogs.mfa.Update(msg)
 		}
@@ -419,6 +427,17 @@ func (m Model) ToggleQueryParametersDialog() (Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m Model) ToggleCopyDialog() (Model, tea.Cmd) {
+	if m.dialogs.open && m.dialogs.active != copy_dialog {
+		return m, nil
+	}
+	m.dialogs.open = !m.dialogs.open
+	if m.dialogs.open {
+		m.dialogs.active = copy_dialog
+	}
+	return m, nil
+}
+
 // TODO: now assuming no dialog can be open prior to MFA call; ensure existing
 // dialogs are closed first!
 func (m Model) OpenMFADialog() (Model, tea.Cmd) {
@@ -477,6 +496,8 @@ func (m Model) View() tea.View {
 			dialog = m.dialogs.scanParams
 		case query_param_dialog:
 			dialog = m.dialogs.queryParams
+		case copy_dialog:
+			dialog = m.dialogs.copy
 		case mfa_dialog:
 			dialog = m.dialogs.mfa
 		}
