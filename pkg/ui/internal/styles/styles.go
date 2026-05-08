@@ -16,6 +16,8 @@ var (
 	TableSelectedFg = lipgloss.Color("#E6E6E6")
 	TableDefaultFg  = lipgloss.Color("240")
 
+	SearchHighlight = lipgloss.Color("#317566")
+
 	SubtleColour  = lipgloss.Color("#B0B0B0")
 	SubtleColour2 = lipgloss.Color("#878787")
 	SubtleColour3 = lipgloss.Color("#5E5E5E")

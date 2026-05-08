@@ -32,8 +32,9 @@ func (f FilteredItems) items() []Item {
 // message should be routed to Update for processing.
 // TODO: move to messages package
 type FilterMatchesMsg struct {
-	ID    string
-	Items []FilteredItem
+	Prefix string // the prefix against which was filtered
+	ID     string
+	Items  []FilteredItem
 }
 
 // FilterFunc takes a term and a list of strings to search through

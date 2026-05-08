@@ -110,6 +110,8 @@ func newTableSelectionPane(ctx context.Context, config *appconfig.Config, opts .
 			Foreground(commonstyles.TableSelectedFg).
 			Background(commonstyles.TableSelectedBg).
 			Bold(false)
+		s.Highlight = s.Highlight.
+			Background(commonstyles.SearchHighlight)
 		t.SetStyles(s)
 
 		p.content = t
@@ -137,13 +139,15 @@ func newTableSelectionPane(ctx context.Context, config *appconfig.Config, opts .
 					p.content.ResetVirtualRows()
 					return p.MaybePreviewItem(true)
 				},
-				Results: func(results []search.FilteredItem) tea.Cmd {
+				Results: func(_ string, results []search.FilteredItem) tea.Cmd {
 					p.filtering = true
 					p.filteredTables = make([]int, len(results))
 					rows := p.content.Rows()
 					filtered := make([]table.Row, len(results))
 					for i, match := range results {
 						filtered[i] = rows[match.Index]
+						filtered[i].HlField = 0
+						filtered[i].HlChars = match.Matches
 						p.filteredTables[i] = match.Index
 					}
 					p.content.SetVirtualRows(filtered)

@@ -187,6 +187,8 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 			Foreground(commonstyles.TableSelectedFg).
 			Background(commonstyles.TableSelectedBg).
 			Bold(false)
+		s.Highlight = s.Highlight.
+			Background(commonstyles.SearchHighlight)
 		t.SetStyles(s)
 
 		p.content = t
@@ -205,9 +207,9 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 	{ // search box
 		p.search = search.NewSearchBox(
 			search.SearchCallbacks{
-				ToSearch: func(pr string) []string {
+				ToSearch: func(col string) []string {
 					cols := p.content.Columns()
-					idx := findColumnByTitle(cols, pr)
+					idx := findColumnByTitle(cols, col)
 					return extractColumnFromRows(p.content.Rows(), idx)
 				},
 				EmptyInput: func() tea.Cmd {
@@ -217,13 +219,16 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 					p.KeyMap.ColSort.SetEnabled(true)
 					return p.MaybePreviewItem(true)
 				},
-				Results: func(results []search.FilteredItem) tea.Cmd {
+				Results: func(col string, results []search.FilteredItem) tea.Cmd {
 					p.itemfiltering.enabled = true
 					p.itemfiltering.items = make([]int, len(results))
 					rows := p.content.Rows()
+					colIdx := findColumnByTitle(p.content.Columns(), col)
 					filtered := make([]table.Row, len(results))
 					for i, match := range results {
 						filtered[i] = rows[match.Index]
+						filtered[i].HlField = colIdx
+						filtered[i].HlChars = match.Matches
 						p.itemfiltering.items[i] = match.Index
 					}
 					p.content.SetVirtualRows(filtered)

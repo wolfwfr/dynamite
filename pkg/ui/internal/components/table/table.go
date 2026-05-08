@@ -49,9 +49,10 @@ func New(opts ...Option) *Model {
 // DefaultStyles returns a set of default style definitions for this table.
 func DefaultStyles() Styles {
 	return Styles{
-		Selected: lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("212")),
-		Header:   lipgloss.NewStyle().Bold(true).Padding(0, 1),
-		Cell:     lipgloss.NewStyle().Padding(0, 1),
+		Selected:  lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("212")),
+		Header:    lipgloss.NewStyle().Bold(true).Padding(0, 1),
+		Cell:      lipgloss.NewStyle().Padding(0, 1),
+		Highlight: lipgloss.NewStyle().Background(lipgloss.Color("#9E8E29")),
 	}
 }
 
@@ -454,10 +455,28 @@ func (m *Model) renderRow(r int) string {
 			continue
 		}
 
+		withHighlighting := rows[r].HlField == i && len(rows[r].HlChars) > 0
+
 		// determine rows raw & styled contents
 		value := rows[r].Raw[i]
-		if len(rows[r].Raw) == len(rows[r].Styled) && r != m.cursor {
+		// TODO: find way to apply background to selected row (r == m.cursor) with styled content
+		// TODO: find way to apply highlighting background to selected row (r == m.cursor) with styled content
+		if len(rows[r].Raw) == len(rows[r].Styled) && r != m.cursor && !withHighlighting {
 			value = rows[r].Styled[i]
+		}
+
+		// apply search-highlighting
+		// TODO: find way to apply highlighting background to selected row (r == m.cursor)
+		if withHighlighting && r != m.cursor {
+			s := strings.Builder{}
+			for i, rn := range []rune(value) {
+				if slices.Contains(rows[r].HlChars, i) {
+					s.WriteString(m.styles.Highlight.Render(string(rn)))
+				} else {
+					s.WriteRune(rn)
+				}
+			}
+			value = s.String()
 		}
 
 		style := lipgloss.NewStyle().Width(width).MaxWidth(width).Inline(true)

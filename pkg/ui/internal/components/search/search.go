@@ -23,7 +23,7 @@ var (
 type SearchCallbacks struct {
 	ToSearch       func(prefix string) []string
 	EmptyInput     func() tea.Cmd
-	Results        func([]FilteredItem) tea.Cmd
+	Results        func(prefix string, items []FilteredItem) tea.Cmd
 	Reset          func(searchHeight int) tea.Cmd
 	SearchBoxOpens func(searchHeight int) tea.Cmd
 }
@@ -152,7 +152,7 @@ func (s *SearchBox) Update(msg tea.Msg) tea.Cmd {
 		for i, match := range msg.Items {
 			filtered[i] = match.Item.Content
 		}
-		cmds = append(cmds, s.Callbacks.Results(msg.Items))
+		cmds = append(cmds, s.Callbacks.Results(msg.Prefix, msg.Items))
 	default:
 		s.input, cmd = s.input.Update(msg)
 		cmds = append(cmds, cmd)
@@ -176,6 +176,7 @@ func (s *SearchBox) emptyInput() bool {
 // returns a tea.Msg containing the items remaining post-filter.
 func (s *SearchBox) Search(q string) tea.Cmd {
 	query := q
+	var prefix string
 	var rawItems []string
 
 	// determine divider presence
@@ -186,7 +187,8 @@ func (s *SearchBox) Search(q string) tea.Cmd {
 
 	// apply divider when appliccable
 	if s.divider != "" {
-		rawItems = s.Callbacks.ToSearch(q[:idx])
+		prefix = q[:idx]
+		rawItems = s.Callbacks.ToSearch(prefix)
 		query = q[idx+1:]
 	} else {
 		rawItems = s.Callbacks.ToSearch("")
@@ -206,8 +208,9 @@ func (s *SearchBox) Search(q string) tea.Cmd {
 			filtered[i] = item
 		}
 		return FilterMatchesMsg{
-			ID:    s.id,
-			Items: filtered,
+			Prefix: prefix,
+			ID:     s.id,
+			Items:  filtered,
 		}
 	}
 }
