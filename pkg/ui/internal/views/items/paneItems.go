@@ -1045,10 +1045,8 @@ func (m *ItemSelectionPane) noContentMessage() string {
 }
 
 func (m *ItemSelectionPane) renderTableInfo() string {
-	width := m.window.width / 2
-	leftAligned := lipgloss.NewStyle().Width(width).Align(lipgloss.Left)
-	rightAligned := lipgloss.NewStyle().Width(width).Align(lipgloss.Right)
-
+	width := m.window.width
+	halfwidth := m.window.width / 2
 	// table name
 	name := u.IfNotNil(m.selectedTable.TableName, "")
 
@@ -1057,10 +1055,13 @@ func (m *ItemSelectionPane) renderTableInfo() string {
 	indexName := u.IfNotNil(m.tableIndex.activeIndex, "")
 
 	right := fmt.Sprintf("Count: %d/%d", len(m.content.VisualRows()), count)
-	right = ansi.Truncate(right, width, "…")
+	right = ansi.Truncate(right, halfwidth, "…")
 
 	left := fmt.Sprintf("Table: %s%s", name, u.Ternary(" / Index: "+indexName, "", indexName != ""))
-	left = ansi.Truncate(left, u.Ternary(width-2, width, strings.HasPrefix(right, "…")), "…")
+	left = ansi.Truncate(left, width-len(right)-15, "…")
+
+	leftAligned := lipgloss.NewStyle().Width(width - len(right)).Align(lipgloss.Left)
+	rightAligned := lipgloss.NewStyle().Width(len(right)).Align(lipgloss.Right)
 
 	return tableInfoBox.Render(lipgloss.JoinHorizontal(lipgloss.Top,
 		leftAligned.Render(left),
