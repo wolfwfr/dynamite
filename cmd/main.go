@@ -37,6 +37,9 @@ func init() {
 
 func main() {
 	cmd := &cli.Command{
+		Name:        "Dynamite",
+		Description: "TUI for Amazon DynamoDB queries",
+		Usage:       "Amazon DynamoDB query engine",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    aws_profile_key,
