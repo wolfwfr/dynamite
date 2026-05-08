@@ -149,20 +149,20 @@ func (m *Regions) newDelegate(s *regionListStyles) headed.ItemDelegate {
 	}
 
 	headerFmt := func(s string) string {
-		return fmt.Sprintf("\n%s\n%s", headed.HeaderPadding(s, 16), "_________________\n")
+		return fmt.Sprintf("\n%s\n%s", headed.HeaderPadding(s, 17), "_________________\n")
 	}
 
 	if len(m.starred) > 0 {
 		firstStarred := m.starred[0]
 		d.HeadedItems = append(d.HeadedItems, func(i headed.Item, _ int) string {
-			return u.Ternary(headerFmt(i.Name), "", i.Name == firstStarred)
+			return u.Ternary(headerFmt("*  Starred  *"), "", i.Name == firstStarred)
 		})
 	}
 
 	if len(m.unstarred) > 0 {
 		firstNormal := m.unstarred[0]
 		d.HeadedItems = append(d.HeadedItems, func(i headed.Item, _ int) string {
-			return u.Ternary(headerFmt(i.Name), "", i.Name == firstNormal)
+			return u.Ternary(headerFmt("Normal"), "", i.Name == firstNormal)
 		})
 	}
 
