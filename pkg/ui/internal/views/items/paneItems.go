@@ -1003,6 +1003,10 @@ func (m *ItemSelectionPane) copy() tea.Cmd {
 	}
 
 	row := m.content.SelectedRow().Raw
+	for i := range row {
+		// remove surrounding quotes if present, for string values
+		row[i] = strings.Trim(row[i], "\"")
+	}
 	init := func() tea.Msg {
 		return messages.InitColumnCopy{
 			TableARN:   u.IfNotNil(m.selectedTable.TableArn, ""),
