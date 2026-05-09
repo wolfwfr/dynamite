@@ -70,3 +70,9 @@ func WithKeyMap(km KeyMap) Option {
 		m.KeyMap = &km
 	}
 }
+
+func WithFieldDelegate(f FieldDelegate) Option {
+	return func(m *Model) {
+		m.fieldDelegate = f
+	}
+}

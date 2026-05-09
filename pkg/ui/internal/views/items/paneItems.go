@@ -114,8 +114,10 @@ type ItemSelectionPane struct {
 
 	// item filtering collects settings related to item filtering
 	itemfiltering struct {
-		items   []int // indices referring to items
-		enabled bool
+		matchedItems []int   // indices referring to items
+		matchedRunes [][]int //matches by index to itemfiltering.items
+		columnIndex  int
+		enabled      bool
 	}
 
 	// column visibility collects settings related to column visibillity
@@ -176,6 +178,7 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 		t := table.New(
 			table.WithFocused(true),
 			table.WithDynamicColumnWidth(false),
+			table.WithFieldDelegate(p.TableRowFieldDelegate()),
 		)
 		s := table.DefaultStyles()
 		s.Header = s.Header.
@@ -214,29 +217,32 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 				},
 				EmptyInput: func() tea.Cmd {
 					p.itemfiltering.enabled = false
-					p.itemfiltering.items = make([]int, 0)
+					p.itemfiltering.matchedItems = make([]int, 0)
 					p.content.ResetVirtualRows()
 					p.KeyMap.ColSort.SetEnabled(true)
 					return p.MaybePreviewItem(true)
 				},
 				Results: func(col string, results []search.FilteredItem) tea.Cmd {
 					p.itemfiltering.enabled = true
-					p.itemfiltering.items = make([]int, len(results))
+					p.itemfiltering.matchedItems = make([]int, len(results))
+					p.itemfiltering.matchedRunes = make([][]int, len(results))
 					rows := p.content.Rows()
 					colIdx := findColumnByTitle(p.content.Columns(), col)
+					p.itemfiltering.columnIndex = colIdx
 					filtered := make([]table.Row, len(results))
 					for i, match := range results {
 						filtered[i] = rows[match.Index]
 						filtered[i].HlField = colIdx
 						filtered[i].HlChars = match.Matches
-						p.itemfiltering.items[i] = match.Index
+						p.itemfiltering.matchedItems[i] = match.Index
+						p.itemfiltering.matchedRunes[i] = match.Matches
 					}
 					p.content.SetVirtualRows(filtered)
 					return nil
 				},
 				Reset: func(searchHeight int) tea.Cmd {
 					p.itemfiltering.enabled = false
-					p.itemfiltering.items = make([]int, 0)
+					p.itemfiltering.matchedItems = make([]int, 0)
 					p.content.ResetVirtualRows()
 					p.updateSize()
 					p.KeyMap.ColSort.SetEnabled(true)
@@ -392,6 +398,59 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 	return tea.Batch(cmds...)
 }
 
+// OPTIM: slows down tables when holding up/down
+func (m *ItemSelectionPane) TableRowFieldDelegate() func(row table.Row, col table.Column, colIdx, rowIdx, colWidth int, selected bool) string {
+	return func(row table.Row, col table.Column, colIdx, rowIdx, colWidth int, selected bool) string {
+		leftPadding := 1
+		rightPadding := 1
+		fullColWidth := colWidth + leftPadding + rightPadding
+
+		// obtain field in question
+		field := row.Fields[colIdx].(enrichedField)
+		if field.style == nil {
+			st := lipgloss.NewStyle().PaddingRight(fullColWidth)
+			if selected {
+				st = st.Background(commonstyles.TableSelectedBg) // TODO: configurable colour
+			}
+			return st.Render("")
+		}
+		style := *field.style
+
+		// add padding
+		style = style.SetRightPaddingLast(rightPadding)
+		style = style.SetLeftPaddingFirst(leftPadding)
+
+		// truncate row value to fit within specified column width
+		truncated := ansi.Truncate(field.value, colWidth, "…")
+		if len([]rune(truncated)) < len([]rune(field.value)) {
+			st, _ := style.GetAt(len([]rune(truncated)) - 1)
+			style = style.Override(len([]rune(truncated))-1, st.PaddingRight(rightPadding))
+		}
+		field.value = truncated
+
+		// apply background styling for selected row
+		if selected {
+			// fill up any remaining space
+			if len([]rune(field.value)) < fullColWidth {
+				st, _ := style.GetAt(len([]rune(field.value)) - 1)
+				style = style.Override(len([]rune(field.value))-1, st.PaddingRight(fullColWidth-len([]rune(field.value))))
+			}
+			style = style.SetBackgroundAll(commonstyles.TableSelectedBg) // TODO: configurable colour
+		}
+
+		// override background styling for search matches
+		if m.itemfiltering.enabled && m.itemfiltering.columnIndex == colIdx {
+			for _, idx := range m.itemfiltering.matchedRunes[rowIdx] {
+				runeStyle, _ := style.GetAt(idx)
+				style = style.Override(idx, runeStyle.Background(commonstyles.SearchHighlight)) // TODO: configurable colour
+			}
+		}
+
+		enforceWidth := lipgloss.NewStyle().Width(fullColWidth).MaxWidth(fullColWidth).Inline(true).Render
+		return enforceWidth(style.Render(field.value))
+	}
+}
+
 func (m *ItemSelectionPane) PageNext(init bool) tea.Cmd {
 	// don't page when at end of paging and not the initialising call
 	if (len(m.pageKey) == 0 && !init) || m.paging {
@@ -485,7 +544,7 @@ func (m *ItemSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
 		return nil
 	}
 	// render empty preview when no items or no filter results
-	if m.initialised && len(m.items.Raw) == 0 || m.itemfiltering.enabled && len(m.itemfiltering.items) == 0 {
+	if m.initialised && len(m.items.Raw) == 0 || m.itemfiltering.enabled && len(m.itemfiltering.matchedItems) == 0 {
 		if m.lastPreviewMsg != nil && m.lastPreviewMsg.StyledItem == "" { // prevent looping
 			return nil
 		}
@@ -497,8 +556,8 @@ func (m *ItemSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
 	}
 
 	idx := m.content.Cursor()
-	if len(m.itemfiltering.items) > 0 { // cursor refers to filtered items
-		idx = m.itemfiltering.items[idx]
+	if len(m.itemfiltering.matchedItems) > 0 { // cursor refers to filtered items
+		idx = m.itemfiltering.matchedItems[idx]
 	}
 	// if preview was already instructed to preview this item, skip
 	if idx == m.lastPreviewItem && !force {
@@ -751,7 +810,7 @@ func (m *ItemSelectionPane) resetContents() {
 	m.pageKey = nil
 	m.items = types.Items{}
 	m.keysComplete = []string{}
-	m.itemfiltering.items = []int{}
+	m.itemfiltering.matchedItems = []int{}
 	m.lastPreviewItem = 0
 	m.lastPreviewMsg = nil
 
@@ -1187,25 +1246,45 @@ func (m *ItemSelectionPane) getColumnSuffix(colTitle string) string {
 	return ""
 }
 
+type enrichedField struct {
+	value string
+	style *commonstyles.JSONLineStyling
+}
+
+// Value implements the matching table.Field interface function
+func (f enrichedField) Value() string {
+	return f.value
+}
+
 func parseRows(cols []string, tableKeys [][]types.KeyValue) []table.Row {
 	rows := make([]table.Row, len(tableKeys))
 	for i, k := range tableKeys {
 		raw := make([]string, len(cols))
 		styled := make([]string, len(cols))
+		fields := make([]table.Field, len(cols))
 		var x int
 		for j, key := range cols {
 			if key == k[x].Key { // matching key
 				raw[j] = k[x].Value
 				styled[j] = k[x].ValueStyling.Render(k[x].Value)
+				fields[j] = enrichedField{
+					value: k[x].Value,
+					style: &k[x].ValueStyling,
+				}
 				x = min(len(k)-1, x+1)
 			} else { // no matching key
 				raw[j] = ""
 				styled[j] = ""
+				fields[j] = enrichedField{
+					value: "",
+					style: nil,
+				}
 			}
 		}
 		rows[i] = table.Row{
 			Raw:    raw,
 			Styled: styled,
+			Fields: fields,
 		}
 	}
 	return rows

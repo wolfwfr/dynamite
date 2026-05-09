@@ -65,16 +65,18 @@ var (
 // styles for JSON
 // essentially a subset of lipgloss.Style
 type JSONStyle struct {
-	fgColor     color.Color
-	bgColor     color.Color
-	paddingLeft int
-	bold        bool
+	fgColor      color.Color
+	bgColor      color.Color
+	paddingLeft  int
+	paddingRight int
+	bold         bool
 }
 
 func (j JSONStyle) equals(o JSONStyle) bool {
 	return j.fgColor == o.fgColor &&
 		j.bgColor == o.bgColor &&
 		j.paddingLeft == o.paddingLeft &&
+		j.paddingRight == o.paddingRight &&
 		j.bold == o.bold
 }
 
@@ -87,6 +89,9 @@ func (j JSONStyle) FromLipgloss(st lipgloss.Style) JSONStyle {
 	}
 	if st.GetPaddingLeft() > 0 {
 		j.paddingLeft = st.GetPaddingLeft()
+	}
+	if st.GetPaddingRight() > 0 {
+		j.paddingRight = st.GetPaddingRight()
 	}
 	if st.GetBold() {
 		j.bold = st.GetBold()
@@ -106,10 +111,58 @@ func (j JSONStyle) toLipgloss() lipgloss.Style {
 	if j.paddingLeft != 0 {
 		style = style.PaddingLeft(j.paddingLeft)
 	}
+	if j.paddingRight != 0 {
+		style = style.PaddingRight(j.paddingRight)
+	}
 	if j.bold {
 		style = style.Bold(true)
 	}
 	return style
+}
+
+func (j JSONStyle) Foreground(c color.Color) JSONStyle {
+	j.fgColor = c
+	return j
+}
+
+func (j JSONStyle) Background(c color.Color) JSONStyle {
+	j.bgColor = c
+	return j
+}
+
+func (j JSONStyle) PaddingLeft(n int) JSONStyle {
+	j.paddingLeft = n
+	return j
+}
+
+func (j JSONStyle) PaddingRight(n int) JSONStyle {
+	j.paddingRight = n
+	return j
+}
+
+func (j JSONStyle) Bold(b bool) JSONStyle {
+	j.bold = b
+	return j
+}
+
+func (j JSONStyle) GetForeground() color.Color {
+	return j.fgColor
+}
+
+func (j JSONStyle) GetBackground() color.Color {
+	return j.bgColor
+}
+
+func (j JSONStyle) GetPaddingLeft() int {
+	return j.paddingLeft
+}
+
+func (j JSONStyle) GetPaddingRight() int {
+	return j.paddingRight
+}
+
+func (j JSONStyle) GetBold() bool {
+	return j.bold
 }
 
 // Per rune index styling for each line of a JSON object.
@@ -120,11 +173,32 @@ type JSONLineStyling struct {
 	styles map[int]JSONStyle
 }
 
+func (s JSONLineStyling) Len() int {
+	return len(s.styles)
+}
+
+func (s JSONLineStyling) GetAt(n int) (JSONStyle, bool) {
+	res, ok := s.styles[n]
+	return res, ok
+}
+
 // copy prevents making changes to the original's reference types (map)
 func (s JSONLineStyling) copy() JSONLineStyling {
 	cp := make(map[int]JSONStyle, len(s.styles))
 	maps.Copy(cp, s.styles)
 	s.styles = cp
+	return s
+}
+
+// Override overrides the given style when it existed at the given index. It
+// returns a copy of the JSONLineStyling, so with GetAt one can check whether
+// the override was successful.
+func (s JSONLineStyling) Override(n int, st JSONStyle) JSONLineStyling {
+	s = s.copy()
+	if _, ok := s.styles[n]; !ok {
+		return s
+	}
+	s.styles[n] = st
 	return s
 }
 
@@ -164,18 +238,43 @@ func (s JSONLineStyling) SetPaddingAll(n int) JSONLineStyling {
 	return s
 }
 
-// SetPaddingFirst adds padding only to the first rune in the line, essentially
-// prefixing the line with the padding, instead of adding padding between each
-// rune
-func (s JSONLineStyling) SetPaddingFirst(n int) JSONLineStyling {
+func (s JSONLineStyling) SetBackgroundAll(c color.Color) JSONLineStyling {
+	s = s.init()
+	s = s.copy()
+	for k, st := range s.styles {
+		st.bgColor = c
+		s.styles[k] = st
+	}
+	return s
+}
+
+// SetLeftPaddingFirst adds left-padding only to the first rune in the line,
+// essentially prefixing the line with the padding, instead of adding padding
+// between each rune
+func (s JSONLineStyling) SetLeftPaddingFirst(n int) JSONLineStyling {
 	s = s.init()
 	s = s.copy()
 	st, ok := s.styles[0]
-	if len(s.styles) == 0 || !ok {
+	if !ok {
 		return s
 	}
 	st.paddingLeft = n
 	s.styles[0] = st
+	return s
+}
+
+// SetRightPaddingLast adds right-padding only to the last rune in the line,
+// essentially suffixing the line with the padding, instead of adding padding
+// between each rune
+func (s JSONLineStyling) SetRightPaddingLast(n int) JSONLineStyling {
+	s = s.init()
+	s = s.copy()
+	st, ok := s.styles[s.next-1]
+	if !ok {
+		return s
+	}
+	st.paddingRight = n
+	s.styles[s.next-1] = st
 	return s
 }
 
@@ -250,7 +349,7 @@ func (s JSONLineStyling) Render(in string) string {
 	s = s.init()
 	b := strings.Builder{}
 
-	var styling string
+	var stylingThis string
 	runes := []rune(in)
 
 	for i, rn := range runes {
@@ -261,15 +360,15 @@ func (s JSONLineStyling) Render(in string) string {
 		}
 
 		bb := strings.Builder{}
-		bb.WriteString(styling)
+		bb.WriteString(stylingThis)
 		bb.WriteRune(rn)
-		styling = bb.String()
+		stylingThis = bb.String()
 
 		if i < len(runes)-1 && style.equals(s.styles[i+1]) {
 			continue
 		}
-		b.WriteString(style.toLipgloss().Render(styling))
-		styling = ""
+		b.WriteString(style.toLipgloss().Render(stylingThis))
+		stylingThis = ""
 	}
 	return b.String()
 }

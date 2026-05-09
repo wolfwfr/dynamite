@@ -118,7 +118,7 @@ func (p JSONParser) pJSON(elements map[string]types.AttributeValue, hashkey stri
 
 		// prepare table keys
 		if isRootLevel {
-			kv[i] = apitypes.KeyValue{Key: k, Value: flatten(content, ","), ValueStyling: flattenStyles(styledContent)}
+			kv[i] = apitypes.KeyValue{Key: k, Value: flatten(content, ","), ValueStyling: flattenStyles(styledContent).TrimEnd(1)}
 		}
 
 		// write comma & newline, unless last element
@@ -214,7 +214,7 @@ func stringableAsListJSON[S []E, E any](stls jsonParserStyles, items S, nestLeve
 		json.WriteString(listItem(j, ",", i == len(items)-1))
 		for i, st := range styledContent {
 			if i == 0 {
-				st = st.SetPaddingFirst(len(tabs(nestLevel + 1))) // only tab first line
+				st = st.SetLeftPaddingFirst(len(tabs(nestLevel + 1))) // only tab first line
 			}
 			styled = append(styled, st)
 		}

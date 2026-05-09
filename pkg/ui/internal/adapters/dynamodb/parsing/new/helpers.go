@@ -141,7 +141,3 @@ func flattenStyles(multilineStyling []styles.JSONLineStyling) styles.JSONLineSty
 	}
 	return res
 }
-
-func twice[T any](t T) (T, T) {
-	return t, t
-}

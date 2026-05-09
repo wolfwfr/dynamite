@@ -455,13 +455,20 @@ func (m *Model) renderRow(r int) string {
 			continue
 		}
 
+		if m.fieldDelegate != nil {
+			s = append(s, m.fieldDelegate(rows[r], m.cols[i], i, r, width, r == m.cursor))
+			continue
+		}
+
+		// proceed with default styling
+		// TODO: remove deprecated checks and keep it simple
 		withHighlighting := rows[r].HlField == i && len(rows[r].HlChars) > 0
 
 		// determine rows raw & styled contents
 		value := rows[r].Raw[i]
 		// TODO: find way to apply background to selected row (r == m.cursor) with styled content
 		// TODO: find way to apply highlighting background to selected row (r == m.cursor) with styled content
-		if len(rows[r].Raw) == len(rows[r].Styled) && r != m.cursor && !withHighlighting {
+		if len(rows[r].Raw) == len(rows[r].Styled) && !withHighlighting {
 			value = rows[r].Styled[i]
 		}
 
@@ -479,17 +486,23 @@ func (m *Model) renderRow(r int) string {
 			value = s.String()
 		}
 
-		style := lipgloss.NewStyle().Width(width).MaxWidth(width).Inline(true)
-		renderedCell := m.styles.Cell.Render(style.Render(ternary(value, ansi.Truncate(value, width, "…"), m.dynCols)))
+		enforceWidth := lipgloss.NewStyle().Width(width).MaxWidth(width).Inline(true).Render
+		renderedCell := m.styles.Cell.Render(enforceWidth(ternary(value, ansi.Truncate(value, width, "…"), m.dynCols)))
 
+		// enforceWidth := lipgloss.NewStyle().Width(width).MaxWidth(width).Inline(true).Render
+		// renderedCell := enforceWidth(ternary(value, ansi.Truncate(value, width, "…"), m.dynCols))
+
+		if r == m.cursor {
+			renderedCell = m.styles.Selected.Render(renderedCell)
+		}
 		s = append(s, renderedCell)
 	}
 
 	row := lipgloss.JoinHorizontal(lipgloss.Top, slices.Clip(s)...)
 
-	if r == m.cursor {
-		return m.styles.Selected.Render(row)
-	}
+	// if r == m.cursor {
+	// 	return m.styles.Selected.Render(row)
+	// }
 
 	return row
 }

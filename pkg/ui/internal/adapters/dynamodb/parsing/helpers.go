@@ -118,18 +118,6 @@ func flatten(in, token string) string {
 		lines[i] = strings.TrimSpace(l)
 	}
 	str := strings.Join(lines, "")
-	// str := strings.ReplaceAll(in, "\n", "")
-	// looking := true
-	// b := strings.Builder{}
-	// for _, r := range str {
-	// 	if r == '"' {
-	// 		looking = !looking
-	// 	}
-	// 	if !looking || r != ' ' {
-	// 		b.WriteRune(r)
-	// 	}
-	// }
-	// return strings.TrimSuffix(b.String(), token)
 	return strings.TrimSuffix(str, token)
 }
 
@@ -145,8 +133,4 @@ func flattenStyles(multilineStyling []styles.JSONLineStyling) styles.JSONLineSty
 		res = res.AppendLineStyle(st.UnsetPadding())
 	}
 	return res
-}
-
-func twice[T any](t T) (T, T) {
-	return t, t
 }
