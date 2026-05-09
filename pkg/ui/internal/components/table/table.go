@@ -489,9 +489,6 @@ func (m *Model) renderRow(r int) string {
 		enforceWidth := lipgloss.NewStyle().Width(width).MaxWidth(width).Inline(true).Render
 		renderedCell := m.styles.Cell.Render(enforceWidth(ternary(value, ansi.Truncate(value, width, "…"), m.dynCols)))
 
-		// enforceWidth := lipgloss.NewStyle().Width(width).MaxWidth(width).Inline(true).Render
-		// renderedCell := enforceWidth(ternary(value, ansi.Truncate(value, width, "…"), m.dynCols))
-
 		if r == m.cursor {
 			renderedCell = m.styles.Selected.Render(renderedCell)
 		}
@@ -499,10 +496,6 @@ func (m *Model) renderRow(r int) string {
 	}
 
 	row := lipgloss.JoinHorizontal(lipgloss.Top, slices.Clip(s)...)
-
-	// if r == m.cursor {
-	// 	return m.styles.Selected.Render(row)
-	// }
 
 	return row
 }

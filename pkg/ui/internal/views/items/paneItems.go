@@ -56,6 +56,7 @@ type ItemSelectionPane struct {
 	// top-level context
 	ctx context.Context
 
+	// spinner
 	spinner struct {
 		active bool
 		model  spinner.Model
@@ -94,13 +95,17 @@ type ItemSelectionPane struct {
 	// query & scan parameters
 	queryMode messages.ItemsQueryMode
 
+	// currently active dynamo-db index
 	tableIndex struct {
 		activeIndex    *string
 		indexItemCount int64
 	}
 
+	// limits for dynamo-db operations
 	scanLimit  int
 	queryLimit int
+
+	// currently active query parameters
 	// TODO: name collision with reset function
 	queryParameters struct {
 		hashKeyValue         string
@@ -110,6 +115,10 @@ type ItemSelectionPane struct {
 		rangeOrderDescending bool
 	}
 
+	// render-cache caches row-fields rendered by the table's field-delegate
+	renderCache map[string]string
+
+	// dynamo-db-items including JSON/YAML render & styling instructions
 	items types.Items
 
 	// item filtering collects settings related to item filtering
@@ -143,8 +152,10 @@ type ItemSelectionPane struct {
 	// exhaustively cover all keys in the currently paged set of items
 	keysComplete []string
 
+	// the currently active table
 	selectedTable types.DescribeTableResponse
 
+	// json/yaml format for preview
 	previewFormat previewFormat
 
 	// specifies whether the first page has been loaded
@@ -163,6 +174,7 @@ func withItemsPaneKeys(keys keymaps.AdditionalKeys) itemsPaneOption {
 func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ...itemsPaneOption) *ItemSelectionPane {
 	p := &ItemSelectionPane{
 		ctx:           ctx,
+		renderCache:   map[string]string{},
 		config:        config,
 		stdTO:         30 * time.Second,
 		KeyMap:        DefaultItemPaneKeyMap(),
@@ -292,6 +304,7 @@ func (m *ItemSelectionPane) softReset() tea.Cmd {
 	// cancel any lingering calls
 	m.pageCancel()
 
+	m.clearCache()
 	m.resetContents()
 	cmd := m.resetQueryParameters() // must come first to reinitialise items in state (which may be used for updating content in other functions)
 	m.resetKeyMap()
@@ -403,18 +416,26 @@ func (m *ItemSelectionPane) TableRowFieldDelegate() func(row table.Row, col tabl
 	return func(row table.Row, col table.Column, colIdx, rowIdx, colWidth int, selected bool) string {
 		leftPadding := 1
 		rightPadding := 1
-		fullColWidth := colWidth + leftPadding + rightPadding
+		fullWidth := colWidth + leftPadding + rightPadding
 
 		// obtain field in question
 		field := row.Fields[colIdx].(enrichedField)
+
+		// fill up with padding if empty
 		if field.style == nil {
-			st := lipgloss.NewStyle().PaddingRight(fullColWidth)
-			if selected {
-				st = st.Background(commonstyles.TableSelectedBg) // TODO: configurable colour
-			}
+			st := lipgloss.NewStyle().PaddingRight(fullWidth)
+			st = u.Ternary(st.Background(commonstyles.TableSelectedBg), st, selected) // TODO: configurable colour
 			return st.Render("")
 		}
+
 		style := *field.style
+
+		cachekey := fmt.Sprintf("%d-%d-%d", rowIdx, colIdx, colWidth)
+		cachCond := !selected && (!m.itemfiltering.enabled || m.itemfiltering.columnIndex != colIdx)
+		cc, ok := m.renderCache[cachekey]
+		if ok && cachCond {
+			return cc
+		}
 
 		// add padding
 		style = style.SetRightPaddingLast(rightPadding)
@@ -431,9 +452,9 @@ func (m *ItemSelectionPane) TableRowFieldDelegate() func(row table.Row, col tabl
 		// apply background styling for selected row
 		if selected {
 			// fill up any remaining space
-			if len([]rune(field.value)) < fullColWidth {
+			if len([]rune(field.value)) < fullWidth {
 				st, _ := style.GetAt(len([]rune(field.value)) - 1)
-				style = style.Override(len([]rune(field.value))-1, st.PaddingRight(fullColWidth-len([]rune(field.value))))
+				style = style.Override(len([]rune(field.value))-1, st.PaddingRight(fullWidth-len([]rune(field.value))))
 			}
 			style = style.SetBackgroundAll(commonstyles.TableSelectedBg) // TODO: configurable colour
 		}
@@ -450,8 +471,15 @@ func (m *ItemSelectionPane) TableRowFieldDelegate() func(row table.Row, col tabl
 			}
 		}
 
-		enforceWidth := lipgloss.NewStyle().Width(fullColWidth).MaxWidth(fullColWidth).Inline(true).Render
-		return enforceWidth(style.Render(field.value))
+		enforceWidth := lipgloss.NewStyle().Width(fullWidth).MaxWidth(fullWidth).Inline(true).Render
+		res := enforceWidth(style.Render(field.value))
+
+		// cache when appropriate
+		if cachCond {
+			m.renderCache[cachekey] = res
+		}
+
+		return res
 	}
 }
 
@@ -476,14 +504,6 @@ func (m *ItemSelectionPane) PageNext(init bool) tea.Cmd {
 	rang2 := m.queryParameters.rangeKeyValue2
 	rangOp := m.queryParameters.rangeKeyOperator
 	rangOr := m.queryParameters.rangeOrderDescending
-	// HACK: for some testing; remove
-	dynamodb.ScanTable(client, ctx, *table.TableName, types.ScanParameters{
-		KeyDetails:       table.AttributeDefinitions,
-		IndexName:        idx,
-		KeySchema:        keysFromIndex(idx, table),
-		Limit:            scanLimit,
-		LastEvaluatedKey: key,
-	})
 	pageCmd := func() tea.Msg {
 		defer cc()
 		switch mode {
@@ -573,7 +593,7 @@ func (m *ItemSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
 	switch m.previewFormat {
 	case JSONformat:
 		raw = m.items.JSON[idx]
-		styled = commonstyles.JSONObjectStyle(m.items.JSONStyledV2[idx]).Render(raw)
+		styled = commonstyles.JSONObjectStyle(m.items.JSONStyled[idx]).Render(raw)
 	case YAMLformat:
 		styled = m.items.YAMLStyled[idx]
 		raw = m.items.YAML[idx]
@@ -805,9 +825,14 @@ func (m *ItemSelectionPane) resetKeyMap() {
 	m.KeyMap.Scan.SetEnabled(false)
 }
 
+func (m *ItemSelectionPane) clearCache() {
+	m.renderCache = map[string]string{}
+}
+
 // reset contents resets any table modifications and resets the table contents
 // to empty. It also cancels and resets paging and resets preview tracking.
 func (m *ItemSelectionPane) resetContents() {
+	m.clearCache()
 	m.pageCancel()
 	m.initialised = false
 	m.paging = false
@@ -1164,7 +1189,7 @@ func (m *ItemSelectionPane) appendItems(newItems types.Items) {
 	m.items.JSON = mergeSlices(m.items.JSON, newItems.JSON)
 	// JSON-styled
 	// m.items.JSONStyled = mergeSlices(m.items.JSONStyled, newItems.JSONStyled)
-	m.items.JSONStyledV2 = mergeSlices(m.items.JSONStyledV2, newItems.JSONStyledV2)
+	m.items.JSONStyled = mergeSlices(m.items.JSONStyled, newItems.JSONStyled)
 	// YAML
 	m.items.YAML = mergeSlices(m.items.YAML, newItems.YAML)
 	// YAML-styled

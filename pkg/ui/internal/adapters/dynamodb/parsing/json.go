@@ -140,8 +140,6 @@ func (p JSONParser) pJSON(elements map[string]types.AttributeValue, hashkey stri
 		return spf("%s%s%s\n", tabs(nestLevel-1), token, comma)
 	}
 	raw.WriteString(suffix("}", ","))
-	// TODO: handle hasContent earlier to ensure '},' is not treated as new line
-	// if there was no content
 	styled = append(styled, styles.JSONLineStyling{}.AppendRuneStyleLG(tokenSt.PaddingLeft(len(tabs(nestLevel-1)))).AppendRuneStyleLG(tokenSt))
 
 	return raw.String(), styled, kv
