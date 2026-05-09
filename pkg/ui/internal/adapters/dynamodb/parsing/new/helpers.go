@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
 )
 
@@ -113,24 +114,18 @@ func getSortedKeys(hashkey string, rangekey *string, elements map[string]types.A
 // flatten takes a string and removes newlines and any spaces that are not
 // captured within a double-quoted string. It also removes a trailing comma.
 func flatten(in, token string) string {
-	lines := strings.Split(in, "\n")
-	for i, l := range lines {
-		lines[i] = strings.TrimSpace(l)
+	str := strings.ReplaceAll(in, "\n", "")
+	looking := true
+	b := strings.Builder{}
+	for _, r := range str {
+		if r == '"' {
+			looking = !looking
+		}
+		if !looking || r != ' ' {
+			b.WriteRune(r)
+		}
 	}
-	str := strings.Join(lines, "")
-	// str := strings.ReplaceAll(in, "\n", "")
-	// looking := true
-	// b := strings.Builder{}
-	// for _, r := range str {
-	// 	if r == '"' {
-	// 		looking = !looking
-	// 	}
-	// 	if !looking || r != ' ' {
-	// 		b.WriteRune(r)
-	// 	}
-	// }
-	// return strings.TrimSuffix(b.String(), token)
-	return strings.TrimSuffix(str, token)
+	return strings.TrimSuffix(b.String(), token)
 }
 
 func flattenStyles(multilineStyling []styles.JSONLineStyling) styles.JSONLineStyling {

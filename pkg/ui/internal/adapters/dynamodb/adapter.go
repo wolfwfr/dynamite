@@ -10,6 +10,7 @@ import (
 
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/adapters/dynamodb/parsing"
 	apitypes "github.com/wolfwfr/dynamite/pkg/ui/internal/adapters/dynamodb/types"
+	"github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
 
 	connector "github.com/wolfwfr/dynamite/pkg/aws/dynamodb"
 	cncrtypes "github.com/wolfwfr/dynamite/pkg/aws/dynamodb/types"
@@ -74,12 +75,13 @@ func ScanTable(client *dynamodb.Client, ctx context.Context, table string, param
 
 	res := &apitypes.ScanResponse{
 		Items: apitypes.Items{
-			JSON:       make([]string, 0, len(out.Items)),
-			JSONStyled: make([]string, 0, len(out.Items)),
-			YAML:       make([]string, 0, len(out.Items)),
-			YAMLStyled: make([]string, 0, len(out.Items)),
-			Raw:        out.Items,
-			TableKeys:  make([][]apitypes.KeyValue, 0, len(out.Items)),
+			JSON: make([]string, 0, len(out.Items)),
+			// JSONStyled:   make([]string, 0, len(out.Items)),
+			JSONStyledV2: make([][]styles.JSONLineStyling, 0, len(out.Items)),
+			YAML:         make([]string, 0, len(out.Items)),
+			YAMLStyled:   make([]string, 0, len(out.Items)),
+			Raw:          out.Items,
+			TableKeys:    make([][]apitypes.KeyValue, 0, len(out.Items)),
 		},
 		LastEvaluatedKey: out.LastEvaluatedKey,
 	}
@@ -90,8 +92,22 @@ func ScanTable(client *dynamodb.Client, ctx context.Context, table string, param
 	for _, item := range out.Items {
 		yaml, yamlStyled := parsing.NewYAMLParser().ParseItemToYAML(item, *hkey, rkey)
 		json, jsonStyled, keys := parsing.NewJSONParser().ParseToJSONWithKeys(item, *hkey, rkey)
+
+		// HACK: for testing
+		// panic(fmt.Sprintf("%s\n\n%s", keys[11].ValueStyling.Render(keys[11].Value), keys[11].Value))
+
+		// HACK: for testing
+		// rendered := strings.Builder{}
+		// jsonLines := strings.Split(json, "\n")
+		// for i := range jsonLines {
+		// 	rendered.WriteString(jsonStyled[i].Render(strings.TrimSpace(jsonLines[i])))
+		// 	rendered.WriteString("\n")
+		// }
+		// panic(fmt.Sprintf("%s\n\n%s", rendered.String(), json))
+
 		res.Items.JSON = append(res.Items.JSON, json)
-		res.Items.JSONStyled = append(res.Items.JSONStyled, jsonStyled)
+		// res.Items.JSONStyled = append(res.Items.JSONStyled, jsonStyled)
+		res.Items.JSONStyledV2 = append(res.Items.JSONStyledV2, jsonStyled)
 		res.Items.YAML = append(res.Items.YAML, yaml)
 		res.Items.YAMLStyled = append(res.Items.YAMLStyled, yamlStyled)
 		res.Items.TableKeys = append(res.Items.TableKeys, keys)
@@ -122,12 +138,13 @@ func QueryTable(client *dynamodb.Client, ctx context.Context, table string, para
 
 	res := &apitypes.QueryResponse{
 		Items: apitypes.Items{
-			JSON:       make([]string, 0, len(out.Items)),
-			JSONStyled: make([]string, 0, len(out.Items)),
-			YAML:       make([]string, 0, len(out.Items)),
-			YAMLStyled: make([]string, 0, len(out.Items)),
-			Raw:        out.Items,
-			TableKeys:  make([][]apitypes.KeyValue, 0, len(out.Items)),
+			JSON: make([]string, 0, len(out.Items)),
+			// JSONStyled:   make([]string, 0, len(out.Items)),
+			JSONStyledV2: make([][]styles.JSONLineStyling, 0, len(out.Items)),
+			YAML:         make([]string, 0, len(out.Items)),
+			YAMLStyled:   make([]string, 0, len(out.Items)),
+			Raw:          out.Items,
+			TableKeys:    make([][]apitypes.KeyValue, 0, len(out.Items)),
 		},
 		LastEvaluatedKey: out.LastEvaluatedKey,
 	}
@@ -139,7 +156,8 @@ func QueryTable(client *dynamodb.Client, ctx context.Context, table string, para
 		yaml, yamlStyled := parsing.NewYAMLParser().ParseItemToYAML(item, *hkey, rkey)
 		json, jsonStyled, keys := parsing.NewJSONParser().ParseToJSONWithKeys(item, *hkey, rkey)
 		res.Items.JSON = append(res.Items.JSON, json)
-		res.Items.JSONStyled = append(res.Items.JSONStyled, jsonStyled)
+		// res.Items.JSONStyled = append(res.Items.JSONStyled, jsonStyled)
+		res.Items.JSONStyledV2 = append(res.Items.JSONStyledV2, jsonStyled)
 		res.Items.YAML = append(res.Items.YAML, yaml)
 		res.Items.YAMLStyled = append(res.Items.YAMLStyled, yamlStyled)
 		res.Items.TableKeys = append(res.Items.TableKeys, keys)

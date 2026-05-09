@@ -4,6 +4,8 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+
+	"github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
 )
 
 type RangeKeyOperator string
@@ -19,9 +21,10 @@ const (
 )
 
 type KeyValue struct {
-	Key         string
-	Value       string
-	StyledValue string
+	Key   string
+	Value string
+	// StyledValue  string
+	ValueStyling styles.JSONLineStyling
 }
 
 type ( // LIST TABLES
@@ -59,12 +62,13 @@ type ( // DESCRIBE TABLE
 )
 
 type Items struct {
-	JSON       []string
-	JSONStyled []string
-	YAML       []string
-	YAMLStyled []string
-	Raw        []map[string]types.AttributeValue // TODO: review usefullness
-	TableKeys  [][]KeyValue                      // TODO: review: should this be part of items?
+	JSON []string
+	// JSONStyled   []string
+	JSONStyledV2 [][]styles.JSONLineStyling
+	YAML         []string
+	YAMLStyled   []string
+	Raw          []map[string]types.AttributeValue // TODO: review usefullness
+	TableKeys    [][]KeyValue                      // TODO: review: should this be part of items?
 }
 
 type ( // SCAN

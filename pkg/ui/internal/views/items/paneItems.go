@@ -413,6 +413,14 @@ func (m *ItemSelectionPane) PageNext(init bool) tea.Cmd {
 	rang2 := m.queryParameters.rangeKeyValue2
 	rangOp := m.queryParameters.rangeKeyOperator
 	rangOr := m.queryParameters.rangeOrderDescending
+	// HACK: for some testing; remove
+	dynamodb.ScanTable(client, ctx, *table.TableName, types.ScanParameters{
+		KeyDetails:       table.AttributeDefinitions,
+		IndexName:        idx,
+		KeySchema:        keysFromIndex(idx, table),
+		Limit:            scanLimit,
+		LastEvaluatedKey: key,
+	})
 	pageCmd := func() tea.Msg {
 		defer cc()
 		switch mode {
@@ -502,7 +510,7 @@ func (m *ItemSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
 	switch m.previewFormat {
 	case JSONformat:
 		raw = m.items.JSON[idx]
-		styled = m.items.JSONStyled[idx]
+		styled = commonstyles.JSONObjectStyle(m.items.JSONStyledV2[idx]).Render(raw)
 	case YAMLformat:
 		styled = m.items.YAMLStyled[idx]
 		raw = m.items.YAML[idx]
@@ -1092,7 +1100,8 @@ func (m *ItemSelectionPane) appendItems(newItems types.Items) {
 	// JSON
 	m.items.JSON = mergeSlices(m.items.JSON, newItems.JSON)
 	// JSON-styled
-	m.items.JSONStyled = mergeSlices(m.items.JSONStyled, newItems.JSONStyled)
+	// m.items.JSONStyled = mergeSlices(m.items.JSONStyled, newItems.JSONStyled)
+	m.items.JSONStyledV2 = mergeSlices(m.items.JSONStyledV2, newItems.JSONStyledV2)
 	// YAML
 	m.items.YAML = mergeSlices(m.items.YAML, newItems.YAML)
 	// YAML-styled
@@ -1187,7 +1196,7 @@ func parseRows(cols []string, tableKeys [][]types.KeyValue) []table.Row {
 		for j, key := range cols {
 			if key == k[x].Key { // matching key
 				raw[j] = k[x].Value
-				styled[j] = k[x].StyledValue
+				styled[j] = k[x].ValueStyling.Render(k[x].Value)
 				x = min(len(k)-1, x+1)
 			} else { // no matching key
 				raw[j] = ""
