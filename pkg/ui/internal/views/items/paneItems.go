@@ -442,7 +442,11 @@ func (m *ItemSelectionPane) TableRowFieldDelegate() func(row table.Row, col tabl
 		if m.itemfiltering.enabled && m.itemfiltering.columnIndex == colIdx {
 			for _, idx := range m.itemfiltering.matchedRunes[rowIdx] {
 				runeStyle, _ := style.GetAt(idx)
-				style = style.Override(idx, runeStyle.Background(commonstyles.SearchHighlight)) // TODO: configurable colour
+				c := commonstyles.SearchHighlight
+				if selected {
+					c = lipgloss.Blend1D(10, c, commonstyles.TableSelectedBg)[3]
+				}
+				style = style.Override(idx, runeStyle.Background(c)) // TODO: configurable colour
 			}
 		}
 
