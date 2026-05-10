@@ -374,9 +374,9 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 		case key.Matches(msg, m.KeyMap.ToggleFmt):
 			return m.ToggleJSONYAMLFormat()
 		case key.Matches(msg, m.KeyMap.Query):
-			return m.enableQueryMode()
+			return m.enableQueryMode(false)
 		case key.Matches(msg, m.KeyMap.Scan):
-			return m.enableScanMode()
+			return m.enableScanMode(false)
 		case key.Matches(msg, m.KeyMap.ScanParameters):
 			return m.ToggleScanParametersDialog()
 		case key.Matches(msg, m.KeyMap.QueryParameters):
@@ -743,6 +743,7 @@ func (m *ItemSelectionPane) sortRows(rows []table.Row) []table.Row {
 // item-selection-view is opened because a table has been selected. It will
 // default to scanning the first page of items.
 func (m *ItemSelectionPane) selectTable(tableName string, details types.DescribeTableResponse) tea.Cmd {
+	m.selectedTable = details
 	var cmd tea.Cmd
 	if session, remembered := m.sessions[*details.TableArn]; remembered {
 		// restore session parameters
@@ -759,21 +760,20 @@ func (m *ItemSelectionPane) selectTable(tableName string, details types.Describe
 		}
 		switch session.queryMode {
 		case messages.ScanMode:
-			cmd = m.enableScanMode()
+			cmd = m.enableScanMode(true)
 		case messages.QueryMode:
-			cmd = m.enableQueryMode()
+			cmd = m.enableQueryMode(true)
 		}
 	} else {
 		// defaults on newly opened table
-		m.queryMode = messages.ScanMode
 		m.tableIndex.activeIndex = nil
 		m.tableIndex.indexItemCount = *details.ItemCount
+		cmd = m.enableScanMode(true)
 	}
 	// resetting state
 	m.content.ResetVirtualRows()
-	m.selectedTable = details
 
-	return tea.Batch(m.PageNext(true), cmd)
+	return cmd
 }
 
 // compileCompleteKeys takes a table of key-value pairs, observes all keys and
@@ -1074,7 +1074,6 @@ func (m *ItemSelectionPane) ChangeScanIndex(msg messages.ScanIndexChanged) tea.C
 	}
 
 	m.resetContents()
-	m.enableScanMode()
 	m.clearCache()
 
 	m.queryMode = messages.ScanMode
@@ -1084,7 +1083,8 @@ func (m *ItemSelectionPane) ChangeScanIndex(msg messages.ScanIndexChanged) tea.C
 	if m.tableIndex.activeIndex != nil {
 		m.tableIndex.indexItemCount = indexCountFromTable(*m.tableIndex.activeIndex, m.selectedTable)
 	}
-	return m.PageNext(true)
+	// ensure scan mode is enabled and force new page
+	return m.enableScanMode(true)
 }
 
 func (m *ItemSelectionPane) ChangeQueryParameters(msg messages.QueryParametersChanged) tea.Cmd {
@@ -1093,10 +1093,6 @@ func (m *ItemSelectionPane) ChangeQueryParameters(msg messages.QueryParametersCh
 	}
 
 	// cancel paging, and refresh table contents
-	m.resetContents()
-	m.enableQueryMode()
-	m.clearCache()
-
 	m.tableIndex.activeIndex = u.Ternary(&msg.IndexName, nil, msg.IndexName != "")
 	m.tableIndex.indexItemCount = u.IfNotNil(m.selectedTable.ItemCount, 0)
 	if m.tableIndex.activeIndex != nil {
@@ -1108,7 +1104,10 @@ func (m *ItemSelectionPane) ChangeQueryParameters(msg messages.QueryParametersCh
 	m.queryParameters.rangeKeyOperator = msg.RangeKeyOperator
 	m.queryParameters.rangeOrderDescending = msg.RangeOrderDescending
 
-	return m.PageNext(true)
+	m.resetContents()
+	m.clearCache()
+	// ensure query mode is enabled and force new page
+	return m.enableQueryMode(true)
 }
 
 func (m *ItemSelectionPane) copy() tea.Cmd {

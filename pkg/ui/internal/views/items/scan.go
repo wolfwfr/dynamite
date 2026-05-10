@@ -9,8 +9,10 @@ import (
 	u "github.com/wolfwfr/dynamite/pkg/util"
 )
 
-func (m *ItemSelectionPane) enableScanMode() tea.Cmd {
-	if m.queryMode == messages.ScanMode {
+// enableScanMode immediately returns when already enabled and forc == false. It
+// calls pageNext with initialisation when enabling.
+func (m *ItemSelectionPane) enableScanMode(force bool) tea.Cmd {
+	if m.queryMode == messages.ScanMode && !force {
 		return nil
 	}
 

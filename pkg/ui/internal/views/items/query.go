@@ -10,8 +10,10 @@ import (
 	u "github.com/wolfwfr/dynamite/pkg/util"
 )
 
-func (m *ItemSelectionPane) enableQueryMode() tea.Cmd {
-	if m.queryMode == messages.QueryMode {
+// enableQueryMode immediately returns when already enabled & force == false. It
+// calls pageNext with initialisation when enabling.
+func (m *ItemSelectionPane) enableQueryMode(force bool) tea.Cmd {
+	if m.queryMode == messages.QueryMode && !force {
 		return nil
 	}
 
