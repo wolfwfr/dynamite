@@ -420,7 +420,7 @@ func (m *Model) FromValues(value, separator string, cb func(v string) Field) {
 
 func (m *Model) renderHeader() string {
 	s := make([]string, 0, len(m.cols))
-	for _, col := range m.cols {
+	for i, col := range m.cols {
 		if col.InVisible {
 			continue
 		}
@@ -428,6 +428,14 @@ func (m *Model) renderHeader() string {
 		if width <= 0 {
 			continue
 		}
+
+		// apply header-delegate if available
+		if m.headerDelegate != nil {
+			s = append(s, m.headerDelegate(col, i, width, m.styles.Header.GetPaddingLeft(), m.styles.Header.GetPaddingRight()))
+			continue
+		}
+
+		// proceed with default styling if not
 		style := lipgloss.NewStyle().Width(width).MaxWidth(width).Inline(true)
 		renderedCell := style.Render(fmt.Sprintf(
 			"%s%s",
@@ -453,7 +461,7 @@ func (m *Model) renderRow(r int) string {
 
 		// apply field-delegate if available
 		if m.fieldDelegate != nil {
-			s = append(s, m.fieldDelegate(rows[r], m.cols[i], i, r, width, r == m.cursor))
+			s = append(s, m.fieldDelegate(rows[r], m.cols[i], i, r, width, m.styles.Cell.GetPaddingLeft(), m.styles.Cell.GetPaddingRight(), r == m.cursor))
 			continue
 		}
 

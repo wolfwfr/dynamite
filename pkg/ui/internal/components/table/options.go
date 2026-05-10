@@ -71,8 +71,16 @@ func WithKeyMap(km KeyMap) Option {
 	}
 }
 
+// WithFieldDelegate sets the field delegate
 func WithFieldDelegate(f FieldDelegate) Option {
 	return func(m *Model) {
 		m.fieldDelegate = f
+	}
+}
+
+// WithHeaderDelegate sets the header delegate
+func WithHeaderDelegate(f HeaderDelegate) Option {
+	return func(m *Model) {
+		m.headerDelegate = f
 	}
 }

@@ -14,8 +14,9 @@ type Model struct {
 	Help   help.Model
 
 	// fieldDelegate, when set, is called to provide non-default styling for a row
-	// TODO: add or reuse delegate for columns
 	fieldDelegate FieldDelegate
+	// headerDelegate, when set, is called to provide non-default styling for the header
+	headerDelegate HeaderDelegate
 
 	dynCols bool
 
@@ -44,7 +45,8 @@ type Model struct {
 	end   int // exclusive
 }
 
-type FieldDelegate func(row Row, col Column, colIdx, rowIdx, colWidth int, selected bool) string
+type FieldDelegate func(row Row, col Column, colIdx, rowIdx, colWidth, padL, padR int, selected bool) string
+type HeaderDelegate func(col Column, colIdx, colWidth, padL, padR int) string
 
 // Row represents one line in the table.
 type Row []Field

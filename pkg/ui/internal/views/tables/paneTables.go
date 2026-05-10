@@ -347,10 +347,8 @@ func (f enrichedField) Value() string {
 	return f.value
 }
 
-func (m *tableSelectionPane) TableRowFieldDelegate(row table.Row, col table.Column, colIdx, rowIdx, colWidth int, selected bool) string {
-	leftPadding := 1
-	rightPadding := 1
-	fullWidth := colWidth + leftPadding + rightPadding
+func (m *tableSelectionPane) TableRowFieldDelegate(row table.Row, col table.Column, colIdx, rowIdx, colW, padL, padR int, selected bool) string {
+	fullWidth := colW + padL + padR
 
 	// obtain field in question
 	field := row[colIdx].(enrichedField)
@@ -367,8 +365,8 @@ func (m *tableSelectionPane) TableRowFieldDelegate(row table.Row, col table.Colu
 	style := commonstyles.LineStyle{}.AppendStringLG(field.value, lipgloss.NewStyle())
 
 	// add padding
-	style = style.SetRightPaddingLast(rightPadding)
-	style = style.SetLeftPaddingFirst(leftPadding)
+	style = style.SetRightPaddingLast(padR)
+	style = style.SetLeftPaddingFirst(padL)
 
 	// apply background styling for selected row
 	if selected {

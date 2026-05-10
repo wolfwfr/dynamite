@@ -3,6 +3,7 @@ package itemselection
 import (
 	"context"
 	"fmt"
+	"image/color"
 	"slices"
 	"strconv"
 	"strings"
@@ -50,6 +51,11 @@ type SessionData struct {
 		rangeOrderDescending bool
 	}
 	chosenIndex *string
+}
+
+type TableStyles struct {
+	SelectedBackground    color.Color
+	SearchMatchBackground color.Color
 }
 
 type ItemSelectionPane struct {
@@ -409,10 +415,8 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 	return tea.Batch(cmds...)
 }
 
-func (m *ItemSelectionPane) TableRowFieldDelegate(row table.Row, col table.Column, colIdx, rowIdx, colWidth int, selected bool) string {
-	leftPadding := 1
-	rightPadding := 1
-	fullWidth := colWidth + leftPadding + rightPadding
+func (m *ItemSelectionPane) TableRowFieldDelegate(row table.Row, col table.Column, colIdx, rowIdx, colW, padL, padR int, selected bool) string {
+	fullWidth := colW + padL + padR
 
 	// obtain field in question
 	field := row[colIdx].(enrichedField)
@@ -427,7 +431,7 @@ func (m *ItemSelectionPane) TableRowFieldDelegate(row table.Row, col table.Colum
 	style := *field.style
 
 	// attempt to obtain cached value to prevent rerendering
-	cachekey := fmt.Sprintf("%d-%d-%d", rowIdx, colIdx, colWidth)
+	cachekey := fmt.Sprintf("%d-%d-%d", rowIdx, colIdx, colW)
 	cachCond := !selected && (!m.itemfiltering.enabled || m.itemfiltering.columnIndex != colIdx)
 	cc, ok := m.renderCache[cachekey]
 	if ok && cachCond {
@@ -435,14 +439,14 @@ func (m *ItemSelectionPane) TableRowFieldDelegate(row table.Row, col table.Colum
 	}
 
 	// add padding
-	style = style.SetRightPaddingLast(rightPadding)
-	style = style.SetLeftPaddingFirst(leftPadding)
+	style = style.SetRightPaddingLast(padR)
+	style = style.SetLeftPaddingFirst(padL)
 
 	// truncate row value to fit within specified column width
-	truncated := ansi.Truncate(field.value, colWidth, "…")
+	truncated := ansi.Truncate(field.value, colW, "…")
 	if len([]rune(truncated)) < len([]rune(field.value)) {
 		st, _ := style.GetAt(len([]rune(truncated)) - 1)
-		style = style.Override(len([]rune(truncated))-1, st.PaddingRight(rightPadding))
+		style = style.Override(len([]rune(truncated))-1, st.PaddingRight(padR))
 	}
 	field.value = truncated
 
