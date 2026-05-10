@@ -121,16 +121,13 @@ func flatten(in, token string) string {
 	return strings.TrimSuffix(str, token)
 }
 
-func flattenStyles(multilineStyling []styles.JSONLineStyling) styles.JSONLineStyling {
+func flattenStyles(multilineStyling []styles.LineStyle) styles.LineStyle {
 	if len(multilineStyling) == 0 {
-		return styles.JSONLineStyling{}
+		return styles.LineStyle{}
 	}
 	if len(multilineStyling) == 1 {
 		return multilineStyling[0]
 	}
-	res := styles.JSONLineStyling{}
-	for _, st := range multilineStyling {
-		res = res.AppendLineStyle(st.UnsetPadding())
-	}
-	return res
+	res := styles.LineStyle{}.AppendLines(multilineStyling)
+	return res.UnsetPaddingAll()
 }

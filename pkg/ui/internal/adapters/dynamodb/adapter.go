@@ -76,7 +76,7 @@ func ScanTable(client *dynamodb.Client, ctx context.Context, table string, param
 	res := &apitypes.ScanResponse{
 		Items: apitypes.Items{
 			JSON:       make([]string, 0, len(out.Items)),
-			JSONStyled: make([][]styles.JSONLineStyling, 0, len(out.Items)),
+			JSONStyled: make([][]styles.LineStyle, 0, len(out.Items)),
 			YAML:       make([]string, 0, len(out.Items)),
 			YAMLStyled: make([]string, 0, len(out.Items)),
 			Raw:        out.Items,
@@ -125,7 +125,7 @@ func QueryTable(client *dynamodb.Client, ctx context.Context, table string, para
 	res := &apitypes.QueryResponse{
 		Items: apitypes.Items{
 			JSON:       make([]string, 0, len(out.Items)),
-			JSONStyled: make([][]styles.JSONLineStyling, 0, len(out.Items)),
+			JSONStyled: make([][]styles.LineStyle, 0, len(out.Items)),
 			YAML:       make([]string, 0, len(out.Items)),
 			YAMLStyled: make([]string, 0, len(out.Items)),
 			Raw:        out.Items,

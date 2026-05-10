@@ -24,7 +24,7 @@ type KeyValue struct {
 	Key   string
 	Value string
 	// StyledValue  string
-	ValueStyling styles.JSONLineStyling
+	ValueStyling styles.LineStyle
 }
 
 type ( // LIST TABLES
@@ -63,7 +63,7 @@ type ( // DESCRIBE TABLE
 
 type Items struct {
 	JSON       []string
-	JSONStyled [][]styles.JSONLineStyling
+	JSONStyled [][]styles.LineStyle
 	YAML       []string
 	YAMLStyled []string
 	Raw        []map[string]types.AttributeValue // TODO: review usefullness

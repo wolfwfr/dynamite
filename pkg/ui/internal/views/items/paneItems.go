@@ -411,7 +411,6 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 	return tea.Batch(cmds...)
 }
 
-// OPTIM: slows down tables when holding up/down
 func (m *ItemSelectionPane) TableRowFieldDelegate() func(row table.Row, col table.Column, colIdx, rowIdx, colWidth int, selected bool) string {
 	return func(row table.Row, col table.Column, colIdx, rowIdx, colWidth int, selected bool) string {
 		leftPadding := 1
@@ -430,6 +429,7 @@ func (m *ItemSelectionPane) TableRowFieldDelegate() func(row table.Row, col tabl
 
 		style := *field.style
 
+		// attempt to obtain cached value to prevent rerendering
 		cachekey := fmt.Sprintf("%d-%d-%d", rowIdx, colIdx, colWidth)
 		cachCond := !selected && (!m.itemfiltering.enabled || m.itemfiltering.columnIndex != colIdx)
 		cc, ok := m.renderCache[cachekey]
@@ -474,7 +474,7 @@ func (m *ItemSelectionPane) TableRowFieldDelegate() func(row table.Row, col tabl
 		enforceWidth := lipgloss.NewStyle().Width(fullWidth).MaxWidth(fullWidth).Inline(true).Render
 		res := enforceWidth(style.Render(field.value))
 
-		// cache when appropriate
+		// cache when appropriate for improved performance
 		if cachCond {
 			m.renderCache[cachekey] = res
 		}
@@ -593,7 +593,7 @@ func (m *ItemSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
 	switch m.previewFormat {
 	case JSONformat:
 		raw = m.items.JSON[idx]
-		styled = commonstyles.JSONObjectStyle(m.items.JSONStyled[idx]).Render(raw)
+		styled = commonstyles.ObjectStyle(m.items.JSONStyled[idx]).Render(raw)
 	case YAMLformat:
 		styled = m.items.YAMLStyled[idx]
 		raw = m.items.YAML[idx]
@@ -1277,7 +1277,7 @@ func (m *ItemSelectionPane) getColumnSuffix(colTitle string) string {
 
 type enrichedField struct {
 	value string
-	style *commonstyles.JSONLineStyling
+	style *commonstyles.LineStyle
 }
 
 // Value implements the matching table.Field interface function
