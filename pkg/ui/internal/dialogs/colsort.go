@@ -85,9 +85,10 @@ type sortingItem struct {
 	checked   bool
 	ascending bool
 	name      string
+	idx       int
 }
 
-func (i sortingItem) FilterValue() string { return "" }
+func (i sortingItem) FilterValue() string { return i.name }
 
 type sortingItemDelegate struct {
 	styles *sortingListStyles
@@ -129,7 +130,7 @@ func NewColumnSortingDialog(close key.Binding) *ColumnSorting {
 		},
 
 		defaultDialogHeight: 46,
-		defaultDialogWidth:  55,
+		defaultDialogWidth:  66,
 	}
 	c.dialog.width = c.defaultDialogWidth
 	c.dialog.height = c.defaultDialogHeight
@@ -141,7 +142,8 @@ func NewColumnSortingDialog(close key.Binding) *ColumnSorting {
 		l := list.New([]list.Item{}, sortingItemDelegate{}, c.dialog.width, c.dialog.height)
 		l.Title = "Column Order"
 		l.SetShowStatusBar(false)
-		l.SetFilteringEnabled(false)
+		l.SetFilteringEnabled(true)
+		l.SetShowFilter(false)
 		l.SetShowHelp(false)
 		l.SetShowTitle(false)
 
@@ -184,6 +186,10 @@ func (m *ColumnSorting) Init() tea.Cmd {
 func (m *ColumnSorting) Update(msg tea.Msg) tea.Cmd {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
+		if m.content.FilterState() == list.Filtering ||
+			m.content.IsFiltered() && key.Matches(msg, m.content.KeyMap.ClearFilter) {
+			break // only perform filtering
+		}
 		switch {
 		case key.Matches(msg, m.keyMap.close):
 			return m.toggleDialog()
@@ -202,7 +208,10 @@ func (m *ColumnSorting) Update(msg tea.Msg) tea.Cmd {
 	case messages.InitColumnSorting:
 		return m.SetState(msg)
 	}
-	return nil
+	// default
+	var cmd tea.Cmd
+	m.content, cmd = m.content.Update(msg)
+	return cmd
 }
 
 func (m *ColumnSorting) SetState(msg messages.InitColumnSorting) tea.Cmd {
@@ -220,6 +229,7 @@ func (m *ColumnSorting) updateContent() tea.Cmd {
 			checked:   m.state.AllColumns[i] == m.state.SortingOn,
 			name:      m.state.AllColumns[i],
 			ascending: m.state.Ascending,
+			idx:       i,
 		})
 	}
 	cmd := m.content.SetItems(items)
@@ -237,8 +247,8 @@ func (m *ColumnSorting) reset() tea.Cmd {
 }
 
 func (m *ColumnSorting) selectItem() tea.Cmd {
-	idx := m.content.Index()
 	sel := m.content.SelectedItem().(sortingItem)
+	idx := sel.idx
 	items := m.content.Items()
 	if idx > len(m.state.AllColumns) {
 		panic("dialog state not up to date")
@@ -282,6 +292,7 @@ func (m *ColumnSorting) UpdateMessage() tea.Cmd {
 }
 
 func (m *ColumnSorting) toggleDialog() tea.Cmd {
+	m.content.FilterInput.Reset()
 	return func() tea.Msg {
 		return messages.ToggleColumnSorting{}
 	}
@@ -316,11 +327,19 @@ func (m *ColumnSorting) updateSize() {
 }
 
 func (m *ColumnSorting) View() string {
+	toRender := []string{
+		m.styles.title.Render(m.content.Title),
+		m.styles.content.Render(m.content.View()),
+		lipgloss.NewStyle().Render(""), // placeholder for filter
+		m.styles.help.Render(m.JoinedHelp()),
+	}
+	if m.content.FilterState() != list.Unfiltered {
+		m.content.FilterInput.SetWidth(len(m.content.FilterInput.Value()) + 2) // ensure filter stays centered and stable during cursor blinking
+		toRender[2] = m.content.FilterInput.View()
+	}
 	return columnsDialogStyle.Render(
 		lipgloss.JoinVertical(lipgloss.Center,
-			m.styles.title.Render(m.content.Title),
-			m.styles.content.Render(m.content.View()),
-			m.styles.help.Render(m.JoinedHelp()),
+			toRender...,
 		),
 	)
 }
