@@ -262,11 +262,8 @@ func (m *tableSelectionPane) processPage(msg messages.TablePageReady, preview bo
 	// parse and set rows of the new tables
 	rows := make([]table.Row, len(newTables))
 	for i := range newTables {
-		rows[i] = table.Row{
-			Raw: []string{newTables[i]},
-			Fields: []table.Field{
-				enrichedField{value: newTables[i]},
-			},
+		rows[i] = []table.Field{
+			enrichedField{value: newTables[i]},
 		}
 	}
 	if init {
@@ -356,7 +353,7 @@ func (m *tableSelectionPane) TableRowFieldDelegate(row table.Row, col table.Colu
 	fullWidth := colWidth + leftPadding + rightPadding
 
 	// obtain field in question
-	field := row.Fields[colIdx].(enrichedField)
+	field := row[colIdx].(enrichedField)
 
 	enforceWidth := lipgloss.NewStyle().Width(fullWidth).MaxWidth(fullWidth).Inline(true).Render
 	padding := lipgloss.NewStyle().Padding(0, 1).Render
@@ -472,19 +469,19 @@ func (m *tableSelectionPane) selectTable() tea.Cmd {
 			NewView: messages.Item_selection,
 		}
 	}
-	sr := m.content.SelectedRow()
-	if sr == nil {
+	rowP := m.content.SelectedRow()
+	if rowP == nil {
 		return nil
 	}
-	r := sr.Raw
-	if len(r) == 0 {
+	row := *rowP
+	if len(row) == 0 {
 		return nil // nothing to select
 	}
-	if m.details == nil || (m.details.TableName != nil && *m.details.TableName != r[0]) {
+	if m.details == nil || (m.details.TableName != nil && *m.details.TableName != row[0].Value()) {
 		m.cleanSlate()
 		ctx, cc := context.WithTimeout(m.ctx, m.stdTO)
 		defer cc()
-		details, err := dynamodb.DescribeTable(m.config.Client, ctx, r[0])
+		details, err := dynamodb.DescribeTable(m.config.Client, ctx, row[0].Value())
 		if err != nil {
 			m.err = err
 			return nil
@@ -495,7 +492,7 @@ func (m *tableSelectionPane) selectTable() tea.Cmd {
 
 	selectTable := func() tea.Msg {
 		return messages.SelectTable{
-			TableName:    r[0],
+			TableName:    row[0].Value(),
 			TableDetails: *details,
 		}
 	}

@@ -47,20 +47,19 @@ type Model struct {
 type FieldDelegate func(row Row, col Column, colIdx, rowIdx, colWidth int, selected bool) string
 
 // Row represents one line in the table.
-type Row struct {
-	HlField int   // the field to highlight (index of row)
-	HlChars []int // the chars to highlight in field
-	Raw     []string
-	Styled  []string
-	Fields  []Field
-}
+type Row []Field
 
 type Field interface {
 	Value() string
 }
 
 func (r Row) String() string {
-	return strings.Join(r.Raw, " ")
+	res := strings.Builder{}
+	for _, f := range r {
+		res.WriteString(f.Value())
+		res.WriteString(" ")
+	}
+	return res.String()
 }
 
 type Rows []Row

@@ -161,7 +161,7 @@ func (m *Model) UpdateContent() (updateHeader bool) {
 		for j := range m.cols {
 			mx := len(m.cols[j].Title) + len(m.cols[j].Suffix)
 			for i := m.start; i < m.end; i++ {
-				mx = max(mx, len(m.VisualRows()[i].Raw[j]))
+				mx = max(mx, len(m.VisualRows()[i][j].Value()))
 			}
 			colChanged = colChanged || mx != m.cols[j].Width // once true, stays true
 			m.cols[j].DynamicWidth = mx
@@ -405,15 +405,12 @@ func (m *Model) GotoRight() {
 // default for getting all the rows and the given separator for the fields on
 // each row.
 // This does not apply styling
-func (m *Model) FromValues(value, separator string) {
+func (m *Model) FromValues(value, separator string, cb func(v string) Field) {
 	rows := []Row{} //nolint:prealloc
 	for _, line := range strings.Split(value, "\n") {
-		r := Row{
-			Raw:    []string{},
-			Styled: []string{},
-		}
-		for _, field := range strings.Split(line, separator) {
-			r.Raw = append(r.Raw, field)
+		r := Row{}
+		for _, fieldValue := range strings.Split(line, separator) {
+			r = append(r, cb(fieldValue))
 		}
 		rows = append(rows, r)
 	}
@@ -445,7 +442,7 @@ func (m *Model) renderHeader() string {
 func (m *Model) renderRow(r int) string {
 	s := make([]string, 0, len(m.cols))
 	rows := m.VisualRows()
-	for i := range rows[r].Raw {
+	for i := range rows[r] {
 		if m.cols[i].InVisible {
 			continue
 		}
@@ -462,12 +459,7 @@ func (m *Model) renderRow(r int) string {
 
 		// proceed with default styling if not
 
-		value := rows[r].Raw[i]
-		// value := rows[r].Fields[i].Value() // TODO: deprecate anything but Fields
-		if len(rows[r].Raw) == len(rows[r].Styled) && r != m.cursor {
-			value = rows[r].Styled[i]
-		}
-
+		value := rows[r][i].Value()
 		enforceWidth := lipgloss.NewStyle().Width(width).MaxWidth(width).Inline(true).Render
 		renderedCell := m.styles.Cell.Render(enforceWidth(ternary(value, ansi.Truncate(value, width, "…"), m.dynCols)))
 

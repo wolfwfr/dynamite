@@ -415,7 +415,7 @@ func (m *ItemSelectionPane) TableRowFieldDelegate(row table.Row, col table.Colum
 	fullWidth := colWidth + leftPadding + rightPadding
 
 	// obtain field in question
-	field := row.Fields[colIdx].(enrichedField)
+	field := row[colIdx].(enrichedField)
 
 	// fill up with padding if empty
 	if field.style == nil {
@@ -679,8 +679,8 @@ func (m *ItemSelectionPane) sortRows(rows []table.Row) []table.Row {
 	// determine field-type
 	var field string
 	for _, r := range rows {
-		if r.Raw[idx] != "" {
-			field = r.Raw[idx]
+		if r[idx].Value() != "" {
+			field = r[idx].Value()
 			break
 		}
 	}
@@ -693,23 +693,23 @@ func (m *ItemSelectionPane) sortRows(rows []table.Row) []table.Row {
 	// NOTE: assumes that float fields always contain decimal point
 	case errFloat == nil:
 		sortFunc = func(a, b table.Row) int {
-			aI, _ := strconv.ParseFloat(a.Raw[idx], 64)
-			bI, _ := strconv.ParseFloat(b.Raw[idx], 64)
+			aI, _ := strconv.ParseFloat(a[idx].Value(), 64)
+			bI, _ := strconv.ParseFloat(b[idx].Value(), 64)
 			check := ternary(aI < bI, aI > bI, m.columnSorting.Ascending)
 			return ternary(-1, 1, check)
 		}
 	case errInt == nil:
 		sortFunc = func(a, b table.Row) int {
-			aI, _ := strconv.ParseInt(a.Raw[idx], 10, 64)
-			bI, _ := strconv.ParseInt(b.Raw[idx], 10, 64)
+			aI, _ := strconv.ParseInt(a[idx].Value(), 10, 64)
+			bI, _ := strconv.ParseInt(b[idx].Value(), 10, 64)
 			check := ternary(aI < bI, aI > bI, m.columnSorting.Ascending)
 			return ternary(-1, 1, check)
 		}
 	default:
 		sortFunc = func(a, b table.Row) int {
-			s := []string{a.Raw[idx], b.Raw[idx]}
+			s := []string{a[idx].Value(), b[idx].Value()}
 			slices.Sort(s)
-			check := ternary(s[0] == a.Raw[idx], s[1] == a.Raw[idx], m.columnSorting.Ascending)
+			check := ternary(s[0] == a[idx].Value(), s[1] == a[idx].Value(), m.columnSorting.Ascending)
 			return ternary(-1, 1, check)
 		}
 	}
@@ -1103,16 +1103,21 @@ func (m *ItemSelectionPane) copy() tea.Cmd {
 		colStr[i] = c.Title
 	}
 
-	row := m.content.SelectedRow().Raw
+	rowP := m.content.SelectedRow()
+	if rowP == nil {
+		return nil
+	}
+	row := *rowP
+	values := make([]string, len(row))
 	for i := range row {
 		// remove surrounding quotes if present, for string values
-		row[i] = strings.Trim(row[i], "\"")
+		values[i] = strings.Trim(row[i].Value(), "\"")
 	}
 	init := func() tea.Msg {
 		return messages.InitColumnCopy{
 			TableARN:   u.IfNotNil(m.selectedTable.TableArn, ""),
 			AllColumns: colStr,
-			ColValues:  row,
+			ColValues:  values,
 		}
 	}
 	return tea.Batch(copyDialog, init)
@@ -1306,11 +1311,7 @@ func parseRows(cols []string, tableKeys [][]types.KeyValue) []table.Row {
 				}
 			}
 		}
-		rows[i] = table.Row{
-			Raw:    raw,
-			Styled: styled,
-			Fields: fields,
-		}
+		rows[i] = fields
 	}
 	return rows
 }
@@ -1347,7 +1348,7 @@ func extractColumnFromRows(rows []table.Row, idx int) []string {
 	}
 	items := make([]string, len(rows))
 	for i, r := range rows {
-		items[i] = r.Raw[idx]
+		items[i] = r[idx].Value()
 	}
 	return items
 }
