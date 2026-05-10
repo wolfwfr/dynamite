@@ -3,6 +3,7 @@ package tableselection
 import (
 	"context"
 	"fmt"
+	"image/color"
 	"slices"
 	"strings"
 	"time"
@@ -25,10 +26,21 @@ import (
 	u "github.com/wolfwfr/dynamite/pkg/util"
 )
 
+type TableStyles struct {
+	SelectedBackground    color.Color
+	SearchMatchBackground color.Color
+}
+
 type tableSelectionPane struct {
 	// top-level context
 	ctx context.Context
 
+	// styles
+	styles struct {
+		Table TableStyles
+	}
+
+	// spinner
 	spinner struct {
 		active bool
 		model  spinner.Model
@@ -66,16 +78,24 @@ type tableSelectionPane struct {
 	// Additional Keys
 	AddKeyMap keymaps.AdditionalKeys
 
+	// the underlying table
 	content *table.Model
 
-	tables         []string
+	// the table-names retrieved from dynamodb
+	tables []string
+
+	// filtering parameters
 	tablefiltering struct {
 		matchedTables []int   // indices referring to tables
 		matchedRunes  [][]int //matches by index to tablefiltering.mathedTables
 		enabled       bool
 	}
+
+	// index to most recently received table details
 	lastTableDetails int // index
-	details          *apitypes.DescribeTableResponse
+
+	// table details
+	details *apitypes.DescribeTableResponse
 }
 
 type tablePaneOption func(p *tableSelectionPane)
@@ -114,11 +134,15 @@ func newTableSelectionPane(ctx context.Context, config *appconfig.Config, opts .
 			Foreground(commonstyles.TableSelectedFg).
 			Background(commonstyles.TableSelectedBg).
 			Bold(false)
-		s.Highlight = s.Highlight.
-			Background(commonstyles.SearchHighlight)
 		t.SetStyles(s)
 
+		st := TableStyles{
+			SelectedBackground:    commonstyles.TableSelectedBg,
+			SearchMatchBackground: commonstyles.SearchHighlight,
+		}
+
 		p.content = t
+		p.styles.Table = st
 	}
 
 	{ // spinner
@@ -377,18 +401,18 @@ func (m *tableSelectionPane) TableRowFieldDelegate(row table.Row, col table.Colu
 			st, _ := style.GetAt(len([]rune(field.value)) - 1)
 			style = style.Override(len([]rune(field.value))-1, st.PaddingRight(fullWidth-len([]rune(field.value))))
 		}
-		style = style.SetBackgroundAll(commonstyles.TableSelectedBg) // TODO: configurable colour
+		style = style.SetBackgroundAll(m.styles.Table.SelectedBackground)
 	}
 
 	// override background styling for search matches
 	if m.tablefiltering.enabled {
 		for _, idx := range m.tablefiltering.matchedRunes[rowIdx] {
 			runeStyle, _ := style.GetAt(idx)
-			c := commonstyles.SearchHighlight
+			c := m.styles.Table.SearchMatchBackground
 			if selected {
-				c = lipgloss.Blend1D(10, c, commonstyles.TableSelectedBg)[3]
+				c = lipgloss.Blend1D(10, c, m.styles.Table.SelectedBackground)[3]
 			}
-			style = style.Override(idx, runeStyle.Background(c)) // TODO: configurable colour
+			style = style.Override(idx, runeStyle.Background(c))
 		}
 	}
 

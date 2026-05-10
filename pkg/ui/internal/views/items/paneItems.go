@@ -1,5 +1,6 @@
 package itemselection
 
+// TODO: private/public field consistency (entire project)
 import (
 	"context"
 	"fmt"
@@ -62,6 +63,11 @@ type ItemSelectionPane struct {
 	// top-level context
 	ctx context.Context
 
+	// styles
+	styles struct {
+		Table TableStyles
+	}
+
 	// spinner
 	spinner struct {
 		active bool
@@ -93,6 +99,7 @@ type ItemSelectionPane struct {
 	// Additional Keys
 	AddKeyMap keymaps.AdditionalKeys
 
+	// the underlying table
 	content *table.Model
 
 	// sessions (per table ARN)
@@ -208,11 +215,15 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 			Foreground(commonstyles.TableSelectedFg).
 			Background(commonstyles.TableSelectedBg).
 			Bold(false)
-		s.Highlight = s.Highlight.
-			Background(commonstyles.SearchHighlight)
 		t.SetStyles(s)
 
+		st := TableStyles{
+			SelectedBackground:    commonstyles.TableSelectedBg,
+			SearchMatchBackground: commonstyles.SearchHighlight,
+		}
+
 		p.content = t
+		p.styles.Table = st
 	}
 
 	{ // spinner
@@ -426,7 +437,7 @@ func (m *ItemSelectionPane) TableRowFieldDelegate(row table.Row, col table.Colum
 	// fill up with padding if empty
 	if field.style == nil {
 		st := lipgloss.NewStyle().PaddingRight(fullWidth)
-		st = u.Ternary(st.Background(commonstyles.TableSelectedBg), st, selected) // TODO: configurable colour
+		st = u.Ternary(st.Background(m.styles.Table.SelectedBackground), st, selected)
 		return st.Render("")
 	}
 
@@ -459,18 +470,18 @@ func (m *ItemSelectionPane) TableRowFieldDelegate(row table.Row, col table.Colum
 			st, _ := style.GetAt(len([]rune(field.value)) - 1)
 			style = style.Override(len([]rune(field.value))-1, st.PaddingRight(fullWidth-len([]rune(field.value))))
 		}
-		style = style.SetBackgroundAll(commonstyles.TableSelectedBg) // TODO: configurable colour
+		style = style.SetBackgroundAll(m.styles.Table.SelectedBackground)
 	}
 
 	// override background styling for search matches
 	if m.itemfiltering.enabled && m.itemfiltering.columnIndex == colIdx {
 		for _, idx := range m.itemfiltering.matchedRunes[rowIdx] {
 			runeStyle, _ := style.GetAt(idx)
-			c := commonstyles.SearchHighlight
+			c := m.styles.Table.SearchMatchBackground
 			if selected {
-				c = lipgloss.Blend1D(10, c, commonstyles.TableSelectedBg)[3]
+				c = lipgloss.Blend1D(10, c, m.styles.Table.SelectedBackground)[3]
 			}
-			style = style.Override(idx, runeStyle.Background(c)) // TODO: configurable colour
+			style = style.Override(idx, runeStyle.Background(c))
 		}
 	}
 

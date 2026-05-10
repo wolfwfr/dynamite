@@ -94,6 +94,4 @@ type Styles struct {
 	Cell lipgloss.Style
 	// only affects default styling, remains unused when using a delegate
 	Selected lipgloss.Style
-	// Deprecated
-	Highlight lipgloss.Style
 }
