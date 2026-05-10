@@ -1,10 +1,5 @@
 <div align="center">
-    ____                              _ __     
-   / __ \__  ______  ____ _____ ___  (_) /____ 
-  / / / / / / / __ \/ __ `/ __ `__ \/ / __/ _ \
- / /_/ / /_/ / / / / /_/ / / / / / / / /_/  __/
-/_____/\__, /_/ /_/\__,_/_/ /_/ /_/_/\__/\___/ 
-      /____/                                   
+    <img width="380" height="112" alt="Dynamite" src="https://github.com/user-attachments/assets/f7d94c24-9362-4f81-97e3-62f3bba8e40b" />
   <h1>🧨🧨🧨</h1>
 </div>
 
@@ -32,28 +27,25 @@ _  /_/ /_  /_/ /_  / / / /_/ /_  / / / / /  / / /_ /  __/
   </p>
 </div>
 
-<div align="center">
-🚧#################################🚧
-#                                   #
-#              NOTICE               #
-#                                   #
-#    This is a work in progress!    #
-#    Breaking changes may occur!    #
-#                                   #
-🚧#################################🚧
-</div>
+<br/>
 
-<div align="center">
-🤖#################################🤖
-#                                   #
-#            AI NOTICE              #
-#                                   #
-#   At least up until the first     #
-#   release, this project will be   #
-#      exclusively hand-coded       #
-#                                   #
-🤖#################################🤖
-</div>
+## 🚧 WORK IN PROGRESS 🚧
+
+> [!Warning]
+> This is a work in progress!
+> 
+> Breaking changes may occur!
+
+<br/>
+
+## 🤖 AI NOTICE 🤖
+
+> [!NOTE]
+> At least up until the first release,
+> 
+> this project will be exclusively hand-coded.
+
+<br/>
 
 ## ❔ Why
 
@@ -62,7 +54,9 @@ needed quality of life features such as the ability to toggle columns on or off,
 easily copying items or fields, and sorting by a given field.
 
 I couldn't find one that felt exactly right to me, so I decided to build one
-myself.
+myself.  
+
+<br/>
 
 ## 📦 Installation
 
@@ -86,6 +80,8 @@ go build -o dynamite ./cmd/
 ./dynamite
 ```
 
+<br/>
+
 ## ✨ Features
 
 Among others, Dynamite offers:
@@ -100,9 +96,11 @@ Among others, Dynamite offers:
 - **Scan/Query**: Scan and Query your table, select index, order, and set keys
 - **ZOOM**: Don't need the second pane? Zoom in and only display what you need
 
+<br/>
+
 ## 🛣 Roadmap
 
-This is a work in progress and the following is required for a first release:
+☝️ This is a work in progress and the following is required for a first release:
 
 - **Code polish**: the code and its style require some polishing
 - **Testing**: Improve and extend unit testing
@@ -111,7 +109,7 @@ This is a work in progress and the following is required for a first release:
   liking
 - **README Polish**: expand the README with images and video among others
 
-Other features I have in mind are:
+✌️ Other features I have in mind are:
 
 - **DynamoDB Filter**: implement integration with scan/query filter options
 - **CLI Extension**: use CLI flags to hop straight into a table of choice or
@@ -120,11 +118,15 @@ launch a query.
 - **Transforms**: transform column values, e.g. unix timestamps to human
 readable
 
+<br/>
+
 ## ✋ Non Goals
 
 - **ADMIN mode**: Although I'm considering it, I'm currently flagging write
 operations as a non-goal
 - **Full API compatibility**: Full integration with all of the aws-sdk-go-v2
+
+<br/>
 
 ## 🫴 Alternatives
 
