@@ -17,9 +17,10 @@ import (
 type Item struct {
 	Checked bool
 	Name    string
+	Meta    map[string]any
 }
 
-func (i Item) FilterValue() string { return "" }
+func (i Item) FilterValue() string { return i.Name }
 
 type Styles struct {
 	Item         lipgloss.Style

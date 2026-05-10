@@ -92,7 +92,7 @@ func NewColumnVisibilityDialog(close key.Binding) *Columns {
 			),
 		},
 		defaultDialogHeight: 46,
-		defaultDialogWidth:  55,
+		defaultDialogWidth:  66,
 	}
 	c.dialog.width = c.defaultDialogWidth
 	c.dialog.height = c.defaultDialogHeight
@@ -102,9 +102,10 @@ func NewColumnVisibilityDialog(close key.Binding) *Columns {
 
 	{ // list
 		l := list.New([]list.Item{}, checkbox.ItemDelegate{}, c.dialog.width, c.dialog.height)
-		l.Title = "Column Visibility"
+		l.Title = "Column Visibility " // space for even length (helps with keeping centered alignment stable)
 		l.SetShowStatusBar(false)
-		l.SetFilteringEnabled(false)
+		l.SetFilteringEnabled(true)
+		l.SetShowFilter(false)
 		l.SetShowHelp(false)
 		l.SetShowTitle(false)
 
@@ -147,6 +148,10 @@ func (m *Columns) Init() tea.Cmd {
 func (m *Columns) Update(msg tea.Msg) tea.Cmd {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
+		if m.content.FilterState() == list.Filtering ||
+			m.content.IsFiltered() && key.Matches(msg, m.content.KeyMap.ClearFilter) {
+			break // only perform filtering
+		}
 		switch {
 		case key.Matches(msg, m.keyMap.close):
 			return m.toggleDialog()
@@ -167,7 +172,11 @@ func (m *Columns) Update(msg tea.Msg) tea.Cmd {
 	case messages.InitColumnVisibility:
 		return m.SetState(msg)
 	}
-	return nil
+
+	// default
+	var cmd tea.Cmd
+	m.content, cmd = m.content.Update(msg)
+	return cmd
 }
 
 func (m *Columns) SetState(msg messages.InitColumnVisibility) tea.Cmd {
@@ -197,6 +206,9 @@ func (m *Columns) updateContent() tea.Cmd {
 		items = append(items, checkbox.Item{
 			Checked: m.state.Visible[i],
 			Name:    m.state.AllColumns[i],
+			Meta: map[string]any{
+				"idx": i,
+			},
 		})
 	}
 	cmd := m.content.SetItems(items)
@@ -205,16 +217,16 @@ func (m *Columns) updateContent() tea.Cmd {
 }
 
 func (m *Columns) selectItem() tea.Cmd {
-	idx := m.content.Index()
-	itm := m.content.SelectedItem()
+	itm, ok := m.content.SelectedItem().(checkbox.Item)
+	if !ok {
+		return nil
+	}
+	idx := itm.Meta["idx"].(int)
 	if idx > len(m.state.AllColumns) {
 		panic("dialog state not up to date")
 	}
 	m.state.Visible[idx] = !m.state.Visible[idx]
-	if typedItem, ok := itm.(checkbox.Item); ok {
-		typedItem.Checked = m.state.Visible[idx]
-		itm = typedItem
-	}
+	itm.Checked = m.state.Visible[idx]
 	listUpdate := m.content.SetItem(idx, itm) // cmd for filtering
 	columnUpdate := m.UpdateMessage()
 	return tea.Batch(listUpdate, columnUpdate)
@@ -231,6 +243,7 @@ func (m *Columns) UpdateMessage() tea.Cmd {
 }
 
 func (m *Columns) toggleDialog() tea.Cmd {
+	m.content.FilterInput.Reset()
 	return func() tea.Msg {
 		return messages.ToggleColumnVisibility{}
 	}
@@ -264,11 +277,19 @@ func (m *Columns) updateSize() {
 }
 
 func (m *Columns) View() string {
+	toRender := []string{
+		m.styles.title.Render(m.content.Title),
+		m.styles.content.Render(m.content.View()),
+		lipgloss.NewStyle().Render(""), // placeholder for filter
+		m.styles.help.Render(m.JoinedHelp()),
+	}
+	if m.content.FilterState() != list.Unfiltered {
+		m.content.FilterInput.SetWidth(len(m.content.FilterInput.Value()) + 2) // ensure filter stays centered and stable during cursor blinking
+		toRender[2] = m.content.FilterInput.View()
+	}
 	return columnsDialogStyle.Render(
 		lipgloss.JoinVertical(lipgloss.Center,
-			m.styles.title.Render(m.content.Title),
-			m.styles.content.Render(m.content.View()),
-			m.styles.help.Render(m.JoinedHelp()),
+			toRender...,
 		),
 	)
 }
