@@ -45,13 +45,16 @@ const (
 type SessionData struct {
 	queryMode   messages.ItemsQueryMode
 	queryParams struct {
+		index                *string
 		hashKeyValue         string
 		rangeKeyValue1       *string
 		rangeKeyValue2       *string
 		rangeKeyOperator     messages.QueryOperator
 		rangeOrderDescending bool
 	}
-	chosenIndex *string
+	scanParams struct {
+		index *string
+	}
 }
 
 type TableStyles struct {
@@ -108,19 +111,25 @@ type ItemSelectionPane struct {
 	// query & scan parameters
 	queryMode messages.ItemsQueryMode
 
+	// limits for dynamo-db operations
+	scanLimit  int
+	queryLimit int
+
 	// currently active dynamo-db index
 	tableIndex struct {
 		activeIndex    *string
 		indexItemCount int64
 	}
 
-	// limits for dynamo-db operations
-	scanLimit  int
-	queryLimit int
+	// currently active scan parameters
+	scanParameters struct {
+		index *string
+	}
 
 	// currently active query parameters
 	// TODO: name collision with reset function
 	queryParameters struct {
+		index                *string
 		hashKeyValue         string
 		rangeKeyValue1       *string
 		rangeKeyValue2       *string
@@ -747,22 +756,25 @@ func (m *ItemSelectionPane) selectTable(tableName string, details types.Describe
 	var cmd tea.Cmd
 	if session, remembered := m.sessions[*details.TableArn]; remembered {
 		// restore session parameters
-		m.tableIndex.activeIndex = session.chosenIndex
+		m.scanParameters.index = session.scanParams.index
+		m.queryParameters.index = session.queryParams.index
 		m.queryParameters.hashKeyValue = session.queryParams.hashKeyValue
 		m.queryParameters.rangeKeyValue1 = session.queryParams.rangeKeyValue1
 		m.queryParameters.rangeKeyValue2 = session.queryParams.rangeKeyValue2
 		m.queryParameters.rangeKeyOperator = session.queryParams.rangeKeyOperator
 		m.queryParameters.rangeOrderDescending = session.queryParams.rangeOrderDescending
-		if session.chosenIndex == nil {
-			m.tableIndex.indexItemCount = *details.ItemCount
-		} else {
-			m.tableIndex.indexItemCount = indexCountFromTable(*session.chosenIndex, details)
-		}
 		switch session.queryMode {
 		case messages.ScanMode:
+			m.tableIndex.activeIndex = session.scanParams.index
 			cmd = m.enableScanMode(true)
 		case messages.QueryMode:
+			m.tableIndex.activeIndex = session.queryParams.index
 			cmd = m.enableQueryMode(true)
+		}
+		if m.tableIndex.activeIndex == nil {
+			m.tableIndex.indexItemCount = *details.ItemCount
+		} else {
+			m.tableIndex.indexItemCount = indexCountFromTable(*m.tableIndex.activeIndex, details)
 		}
 	} else {
 		// defaults on newly opened table
@@ -876,6 +888,8 @@ func (m *ItemSelectionPane) resetQueryParameters() tea.Cmd {
 	m.queryMode = messages.ScanMode
 	m.tableIndex.activeIndex = nil
 	m.tableIndex.indexItemCount = -1
+	m.scanParameters.index = nil
+	m.queryParameters.index = nil
 	m.queryParameters.hashKeyValue = ""
 	m.queryParameters.rangeKeyOperator = messages.Noop
 	m.queryParameters.rangeKeyValue1 = nil
@@ -920,14 +934,15 @@ func (m *ItemSelectionPane) escape() tea.Cmd {
 	// store session data
 	if arn := m.selectedTable.TableArn; arn != nil {
 		d := SessionData{
-			queryMode:   m.queryMode,
-			chosenIndex: m.tableIndex.activeIndex,
+			queryMode: m.queryMode,
 		}
+		d.queryParams.index = m.queryParameters.index
 		d.queryParams.hashKeyValue = m.queryParameters.hashKeyValue
 		d.queryParams.rangeKeyValue1 = m.queryParameters.rangeKeyValue1
 		d.queryParams.rangeKeyValue2 = m.queryParameters.rangeKeyValue2
 		d.queryParams.rangeKeyOperator = m.queryParameters.rangeKeyOperator
 		d.queryParams.rangeOrderDescending = m.queryParameters.rangeOrderDescending
+		d.scanParams.index = m.scanParameters.index
 		m.sessions[*arn] = d
 	}
 
@@ -1075,10 +1090,15 @@ func (m *ItemSelectionPane) ChangeScanIndex(msg messages.ScanIndexChanged) tea.C
 
 	m.resetContents()
 	m.clearCache()
+	m.clearCache()
 
 	m.queryMode = messages.ScanMode
 
-	m.tableIndex.activeIndex = u.Ternary(&msg.IndexName, nil, msg.IndexName != "")
+	idx := u.Ternary(&msg.IndexName, nil, msg.IndexName != "")
+
+	m.scanParameters.index = idx
+	m.tableIndex.activeIndex = idx
+
 	m.tableIndex.indexItemCount = u.IfNotNil(m.selectedTable.ItemCount, 0)
 	if m.tableIndex.activeIndex != nil {
 		m.tableIndex.indexItemCount = indexCountFromTable(*m.tableIndex.activeIndex, m.selectedTable)
@@ -1093,6 +1113,14 @@ func (m *ItemSelectionPane) ChangeQueryParameters(msg messages.QueryParametersCh
 	}
 
 	// cancel paging, and refresh table contents
+	m.resetContents()
+	m.clearCache()
+
+	idx := u.Ternary(&msg.IndexName, nil, msg.IndexName != "")
+
+	m.queryParameters.index = idx
+	m.tableIndex.activeIndex = idx
+
 	m.tableIndex.activeIndex = u.Ternary(&msg.IndexName, nil, msg.IndexName != "")
 	m.tableIndex.indexItemCount = u.IfNotNil(m.selectedTable.ItemCount, 0)
 	if m.tableIndex.activeIndex != nil {

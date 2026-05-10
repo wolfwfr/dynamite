@@ -20,6 +20,7 @@ func (m *ItemSelectionPane) enableScanMode(force bool) tea.Cmd {
 	m.clearCache()
 
 	m.queryMode = messages.ScanMode
+	m.tableIndex.activeIndex = m.scanParameters.index
 	m.KeyMap.Query.SetEnabled(true)
 	m.KeyMap.QueryParameters.SetEnabled(false)
 	m.KeyMap.Scan.SetEnabled(false)
