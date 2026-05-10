@@ -237,6 +237,18 @@ func (m *ScanDialog) updateContent() tea.Cmd {
 			indexType: table,
 		}},
 	})
+	for i, g := range m.state.GSI {
+		items = append(items, headed.Item{
+			Name: g.Name,
+			Meta: map[string]any{metaKey: indexItemMeta{
+				indexType:  lsi,
+				sliceIndex: i,
+			}},
+		})
+		if g.Name == m.selected {
+			idx = len(items) - 1
+		}
+	}
 	for i, l := range m.state.LSI {
 		items = append(items, headed.Item{
 			Name: l.Name,
