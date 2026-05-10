@@ -16,6 +16,7 @@ func (m *ItemSelectionPane) enableQueryMode() tea.Cmd {
 	}
 
 	m.resetContents()
+	m.clearCache()
 
 	m.queryMode = messages.QueryMode
 	m.KeyMap.Scan.SetEnabled(true)

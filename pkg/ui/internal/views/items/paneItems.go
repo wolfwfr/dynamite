@@ -1075,6 +1075,7 @@ func (m *ItemSelectionPane) ChangeScanIndex(msg messages.ScanIndexChanged) tea.C
 
 	m.resetContents()
 	m.enableScanMode()
+	m.clearCache()
 
 	m.queryMode = messages.ScanMode
 
@@ -1094,6 +1095,7 @@ func (m *ItemSelectionPane) ChangeQueryParameters(msg messages.QueryParametersCh
 	// cancel paging, and refresh table contents
 	m.resetContents()
 	m.enableQueryMode()
+	m.clearCache()
 
 	m.tableIndex.activeIndex = u.Ternary(&msg.IndexName, nil, msg.IndexName != "")
 	m.tableIndex.indexItemCount = u.IfNotNil(m.selectedTable.ItemCount, 0)
