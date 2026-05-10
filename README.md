@@ -63,7 +63,11 @@ myself.
 Install the package using go:
 
 ```bash
-go install github.com/wolfwfr/dynamite/cmd@latest
+# install
+go install github.com/wolfwfr/dynamite/cmd/dynamite@latest
+
+# execute
+./dynamite
 ```
 
 Or build it from source:
@@ -74,7 +78,7 @@ git clone github.com/wolfwfr/dynamite.git
 cd dynamite
 
 # build
-go build -o dynamite ./cmd/
+go build -o dynamite ./cmd/dynamite/
 
 # execute
 ./dynamite
