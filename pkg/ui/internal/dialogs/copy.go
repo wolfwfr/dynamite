@@ -10,6 +10,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/atotto/clipboard"
+
 	regular "github.com/wolfwfr/dynamite/pkg/ui/internal/components/regular_list"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	commonstyles "github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
@@ -88,7 +89,7 @@ func NewCopyDialog(close key.Binding) *CopyDialog {
 		},
 
 		defaultDialogHeight: 46,
-		defaultDialogWidth:  55,
+		defaultDialogWidth:  66,
 	}
 	c.dialog.width = c.defaultDialogWidth
 	c.dialog.height = c.defaultDialogHeight
@@ -98,9 +99,10 @@ func NewCopyDialog(close key.Binding) *CopyDialog {
 
 	{ // list
 		l := list.New([]list.Item{}, regular.ItemDelegate{}, c.dialog.width, c.dialog.height)
-		l.Title = "Copy Column Value"
+		l.Title = "Copy Column Value " // space for even length (helps with keeping centered alignment stable)
 		l.SetShowStatusBar(false)
-		l.SetFilteringEnabled(false)
+		l.SetFilteringEnabled(true)
+		l.SetShowFilter(false)
 		l.SetShowHelp(false)
 		l.SetShowTitle(false)
 
@@ -143,6 +145,10 @@ func (m *CopyDialog) Init() tea.Cmd {
 func (m *CopyDialog) Update(msg tea.Msg) tea.Cmd {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
+		if m.content.FilterState() == list.Filtering ||
+			m.content.IsFiltered() && key.Matches(msg, m.content.KeyMap.ClearFilter) {
+			break // only perform filtering
+		}
 		switch {
 		case key.Matches(msg, m.keyMap.close):
 			return m.toggleDialog
@@ -159,7 +165,11 @@ func (m *CopyDialog) Update(msg tea.Msg) tea.Cmd {
 	case messages.InitColumnCopy:
 		return m.SetState(msg)
 	}
-	return nil
+
+	// default
+	var cmd tea.Cmd
+	m.content, cmd = m.content.Update(msg)
+	return cmd
 }
 
 func (m *CopyDialog) SetState(msg messages.InitColumnCopy) tea.Cmd {
@@ -172,7 +182,10 @@ func (m *CopyDialog) SetState(msg messages.InitColumnCopy) tea.Cmd {
 func (m *CopyDialog) updateContent() tea.Cmd {
 	items := make([]list.Item, 0, len(m.state.AllColumns))
 	for i := range m.state.AllColumns {
-		items = append(items, regular.ListItem(m.state.AllColumns[i]))
+		items = append(items, regular.ListItem{
+			Value: m.state.AllColumns[i],
+			Meta:  map[string]any{"colval": m.state.ColValues[i]},
+		})
 	}
 	cmd := m.content.SetItems(items)
 	m.updateSize()
@@ -185,13 +198,21 @@ func (m *CopyDialog) selectItem() tea.Cmd {
 		panic("dialog state not up to date")
 	}
 
-	if err := clipboard.WriteAll(m.state.ColValues[idx]); err != nil {
-		return func() tea.Msg {
-			return messages.ToggleNotificationDialog{Error: fmt.Errorf("failed to copy: %w", err)}
-		}
+	v, ok := m.content.SelectedItem().(regular.ListItem).Meta["colval"]
+	if !ok {
+		return notifyError(fmt.Errorf("could not identify column value"))
+	}
+	if err := clipboard.WriteAll(v.(string)); err != nil {
+		return notifyError(fmt.Errorf("failed to copy: %w", err))
 	}
 
 	return tea.Batch(m.toggleDialog, m.notifySuccess)
+}
+
+func notifyError(err error) tea.Cmd {
+	return func() tea.Msg {
+		return messages.ToggleNotificationDialog{Error: err}
+	}
 }
 
 func (m *CopyDialog) notifySuccess() tea.Msg {
@@ -199,6 +220,7 @@ func (m *CopyDialog) notifySuccess() tea.Msg {
 }
 
 func (m *CopyDialog) toggleDialog() tea.Msg {
+	m.content.FilterInput.Reset()
 	return messages.ToggleColumnCopy{}
 }
 
@@ -218,7 +240,7 @@ func (m *CopyDialog) updateSize() {
 	// determine the width of the list within the dialog
 	width := m.defaultDialogWidth
 	for _, itm := range items {
-		width = max(width, len(itm.(regular.ListItem)))
+		width = max(width, len(itm.(regular.ListItem).Value))
 	}
 	// set width of the list within the dialog
 	m.content.SetWidth(width)
@@ -227,15 +249,22 @@ func (m *CopyDialog) updateSize() {
 	m.styles.dialog = m.styles.dialog.
 		Height(m.content.Height() + 2).
 		Width(width + 2)
-
 }
 
 func (m *CopyDialog) View() string {
+	toRender := []string{
+		m.styles.title.Render(m.content.Title),
+		m.styles.content.Render(m.content.View()),
+		lipgloss.NewStyle().Render(""), // placeholder for filter
+		m.styles.help.Render(m.JoinedHelp()),
+	}
+	if m.content.FilterState() != list.Unfiltered {
+		m.content.FilterInput.SetWidth(len(m.content.FilterInput.Value()) + 2) // ensure filter stays centered and stable during cursor blinking
+		toRender[2] = m.content.FilterInput.View()
+	}
 	return m.styles.dialog.Render(
 		lipgloss.JoinVertical(lipgloss.Center,
-			m.styles.title.Render(m.content.Title),
-			m.styles.content.Render(m.content.View()),
-			m.styles.help.Render(m.JoinedHelp()),
+			toRender...,
 		),
 	)
 }

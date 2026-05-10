@@ -17,9 +17,12 @@ type Styles struct {
 	SelectedItem lipgloss.Style
 }
 
-type ListItem string
+type ListItem struct {
+	Value string
+	Meta  map[string]any
+}
 
-func (i ListItem) FilterValue() string { return "" }
+func (i ListItem) FilterValue() string { return i.Value }
 
 type ItemDelegate struct {
 	Styles *Styles
@@ -34,7 +37,7 @@ func (d ItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 		return
 	}
 
-	str := string(i)
+	str := i.Value
 
 	fn := d.Styles.Item.Render
 	if index == m.Index() {

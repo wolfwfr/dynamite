@@ -448,7 +448,8 @@ func (m *Queryialog) MoveFocus(i int) tea.Cmd {
 	}
 
 	// range-input-2 only applies when 'between' operator is selected
-	if m.focus == queryRangeKeyInput2 && messages.QueryOperator(m.content.operatorSelection.SelectedItem().(regular.ListItem)) != messages.Between {
+	selected := m.content.operatorSelection.SelectedItem().(regular.ListItem)
+	if m.focus == queryRangeKeyInput2 && messages.QueryOperator(selected.Value) != messages.Between {
 		m.focus += queryDialogFocus(i)
 	}
 
@@ -575,18 +576,18 @@ func (m *Queryialog) InitContent() tea.Cmd {
 
 	{ // set query operators
 		operators := make([]list.Item, 6, 7)
-		operators[0] = regular.ListItem(messages.Equals)
-		operators[1] = regular.ListItem(messages.Greater)
-		operators[2] = regular.ListItem(messages.GreaterEqual)
-		operators[3] = regular.ListItem(messages.Less)
-		operators[4] = regular.ListItem(messages.LessEqual)
-		operators[5] = regular.ListItem(messages.Between)
+		operators[0] = regular.ListItem{Value: string(messages.Equals)}
+		operators[1] = regular.ListItem{Value: string(messages.Greater)}
+		operators[2] = regular.ListItem{Value: string(messages.GreaterEqual)}
+		operators[3] = regular.ListItem{Value: string(messages.Less)}
+		operators[4] = regular.ListItem{Value: string(messages.LessEqual)}
+		operators[5] = regular.ListItem{Value: string(messages.Between)}
 		if m.state.resolved.RangeKeyType != "N" {
-			operators = append(operators, regular.ListItem(messages.BeginsWith))
+			operators = append(operators, regular.ListItem{Value: string(messages.BeginsWith)})
 		}
 		var idx int
 		for i, item := range operators {
-			if messages.QueryOperator(item.(regular.ListItem)) == m.state.init.rangeKeyOperator {
+			if messages.QueryOperator(item.(regular.ListItem).Value) == m.state.init.rangeKeyOperator {
 				idx = i
 				break
 			}
@@ -597,8 +598,8 @@ func (m *Queryialog) InitContent() tea.Cmd {
 
 	{ // set range order options
 		orderOptions := []list.Item{
-			regular.ListItem(rangeAscending),
-			regular.ListItem(rangeDescending),
+			regular.ListItem{Value: string(rangeAscending)},
+			regular.ListItem{Value: string(rangeDescending)},
 		}
 		idx := u.Ternary(1, 0, m.state.init.orderDescending)
 		m.content.rangeOrderSelection.Select(idx)
@@ -618,14 +619,14 @@ func (m *Queryialog) InitContent() tea.Cmd {
 // updateContent updates the content based on the resolved state.
 func (m *Queryialog) updateContent() tea.Cmd {
 	operators := make([]list.Item, 6, 7)
-	operators[0] = regular.ListItem(messages.Equals)
-	operators[1] = regular.ListItem(messages.Greater)
-	operators[2] = regular.ListItem(messages.GreaterEqual)
-	operators[3] = regular.ListItem(messages.Less)
-	operators[4] = regular.ListItem(messages.LessEqual)
-	operators[5] = regular.ListItem(messages.Between)
+	operators[0] = regular.ListItem{Value: string(messages.Equals)}
+	operators[1] = regular.ListItem{Value: string(messages.Greater)}
+	operators[2] = regular.ListItem{Value: string(messages.GreaterEqual)}
+	operators[3] = regular.ListItem{Value: string(messages.Less)}
+	operators[4] = regular.ListItem{Value: string(messages.LessEqual)}
+	operators[5] = regular.ListItem{Value: string(messages.Between)}
 	if m.state.resolved.RangeKeyType != "N" {
-		operators = append(operators, regular.ListItem(messages.BeginsWith))
+		operators = append(operators, regular.ListItem{Value: string(messages.BeginsWith)})
 	}
 
 	if m.content.operatorSelection.Index() > len(operators)-1 {
@@ -639,8 +640,8 @@ func (m *Queryialog) applyParameters() tea.Cmd {
 	hashKeySelection := m.content.hashKeyInput.Value()
 	rangeKeySelection := m.content.rangeKeyInput1.Value()
 	rangeKeySelection2 := m.content.rangeKeyInput2.Value()
-	rangeKeyOpSelection := messages.QueryOperator(m.content.operatorSelection.SelectedItem().(regular.ListItem))
-	orderDescending := string(m.content.rangeOrderSelection.SelectedItem().(regular.ListItem)) == string(rangeDescending)
+	rangeKeyOpSelection := messages.QueryOperator(m.content.operatorSelection.SelectedItem().(regular.ListItem).Value)
+	orderDescending := m.content.rangeOrderSelection.SelectedItem().(regular.ListItem).Value == string(rangeDescending)
 
 	if true &&
 		indexSelection == m.state.init.selectedIndex &&
@@ -663,8 +664,8 @@ func (m *Queryialog) queryParametersUpdate() tea.Cmd {
 	rangeKeyV2 := m.content.rangeKeyInput2.Value()
 	m.state.init.rangeKeyValue = u.Ternary(&rangeKeyV, nil, rangeKeyV != "")
 	m.state.init.rangeKeyValue2 = u.Ternary(&rangeKeyV2, nil, rangeKeyV2 != "")
-	m.state.init.rangeKeyOperator = messages.QueryOperator(m.content.operatorSelection.SelectedItem().(regular.ListItem))
-	m.state.init.orderDescending = string(m.content.rangeOrderSelection.SelectedItem().(regular.ListItem)) == string(rangeDescending)
+	m.state.init.rangeKeyOperator = messages.QueryOperator(m.content.operatorSelection.SelectedItem().(regular.ListItem).Value)
+	m.state.init.orderDescending = m.content.rangeOrderSelection.SelectedItem().(regular.ListItem).Value == string(rangeDescending)
 
 	return func() tea.Msg {
 		return messages.QueryParametersChanged{
@@ -819,17 +820,17 @@ func (m *Queryialog) renderJoinedRangeKeyFields() string {
 	rangeKeyInputStyle1 := u.Ternary(m.styles.wideBoxFocused, m.styles.wideBox, m.focus == queryRangeKeyInput1)
 	rangeKeyInputStyle2 := u.Ternary(m.styles.wideBoxFocused, m.styles.wideBox, m.focus == queryRangeKeyInput2)
 	rangeOrderStyle := u.Ternary(m.styles.narrowBoxFocused, m.styles.narrowBox, m.focus == queryOrderSelection)
-	op := m.content.operatorSelection.SelectedItem().(regular.ListItem)
-	or := m.content.rangeOrderSelection.SelectedItem().(regular.ListItem)
+	op := m.content.operatorSelection.SelectedItem().(regular.ListItem).Value
+	or := m.content.rangeOrderSelection.SelectedItem().(regular.ListItem).Value
 
 	rendering := []string{
 		m.styles.rangeKeyInputTitle.Render(fmt.Sprintf("Range Key (%s): %s", m.state.resolved.RangeKeyType, *m.state.resolved.RangeKey)),
-		rangeKeyOperatorStyle.Render(string(op)),
+		rangeKeyOperatorStyle.Render(op),
 		rangeKeyInputStyle1.Render(m.content.rangeKeyInput1.View()),
 		m.styles.rangeKeyOrderTitle.Render("Range Order"),
-		rangeOrderStyle.Render(string(or)),
+		rangeOrderStyle.Render(or),
 	}
-	if messages.QueryOperator(m.content.operatorSelection.SelectedItem().(regular.ListItem)) == messages.Between {
+	if messages.QueryOperator(m.content.operatorSelection.SelectedItem().(regular.ListItem).Value) == messages.Between {
 		rendering = slices.Insert(rendering, 3, rangeKeyInputStyle2.Render(m.content.rangeKeyInput2.View()))
 	}
 	return lipgloss.JoinVertical(lipgloss.Left, rendering...)
