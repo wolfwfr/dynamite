@@ -86,6 +86,50 @@ go build -o dynamite ./cmd/dynamite/
 
 <br/>
 
+## 🔨 Getting Started
+
+### Help
+
+For help, simply run:
+```bash
+dynamite --help
+```
+
+### Execute
+
+Install `Dynamite`.
+Then execute with the valid AWS credentials:
+
+> [!NOTE]
+>
+> `Dynamite` can only perform read-operations.
+
+<br/>
+
+**With AWS Credentials in Environment**
+```bash
+# AWS_SESSION_TOKEN=*******
+# AWS_PROFILE=******
+dynamite
+```
+
+**With an AWS Profile Flag**
+```bash
+dynamite --aws_profile="my-profile"
+```
+
+### TUI
+
+- **Navigate** with arrow-keys or vim-bindings
+- **Quit** with `ctrl+c` at any point
+- **Get Help** with `?`
+- **Tab** between panes to shift focus for navigation or scrolling
+- **Select** a table with enter
+- **Search** with `/`
+- **Escape** search, dialogs, or the item-view with `Esc`
+
+<br/>
+
 ## ✨ Features
 
 Among others, Dynamite offers:
