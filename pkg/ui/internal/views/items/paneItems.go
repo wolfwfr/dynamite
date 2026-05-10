@@ -236,6 +236,7 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 				EmptyInput: func() tea.Cmd {
 					p.itemfiltering.enabled = false
 					p.itemfiltering.matchedItems = make([]int, 0)
+					p.itemfiltering.matchedRunes = make([][]int, 0)
 					p.content.ResetVirtualRows()
 					p.KeyMap.ColSort.SetEnabled(true)
 					return p.MaybePreviewItem(true)
@@ -259,6 +260,7 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 				Reset: func(searchHeight int) tea.Cmd {
 					p.itemfiltering.enabled = false
 					p.itemfiltering.matchedItems = make([]int, 0)
+					p.itemfiltering.matchedRunes = make([][]int, 0)
 					p.content.ResetVirtualRows()
 					p.updateSize()
 					p.KeyMap.ColSort.SetEnabled(true)
@@ -272,7 +274,7 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 			},
 		)
 		p.search.SetDivider("=")
-		p.search.SetPlaceHolder("'<column_name>=<search_input>'")
+		p.search.SetPlaceHolder("<column_name>=<search_input>")
 	}
 
 	for _, o := range opts {

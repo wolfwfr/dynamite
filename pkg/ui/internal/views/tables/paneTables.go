@@ -140,6 +140,7 @@ func newTableSelectionPane(ctx context.Context, config *appconfig.Config, opts .
 				EmptyInput: func() tea.Cmd {
 					p.tablefiltering.enabled = false
 					p.tablefiltering.matchedTables = make([]int, 0)
+					p.tablefiltering.matchedRunes = make([][]int, 0)
 					p.content.ResetVirtualRows()
 					return p.MaybePreviewItem(true)
 				},
@@ -160,6 +161,7 @@ func newTableSelectionPane(ctx context.Context, config *appconfig.Config, opts .
 				Reset: func(searchHeight int) tea.Cmd {
 					p.tablefiltering.enabled = false
 					p.tablefiltering.matchedTables = make([]int, 0)
+					p.tablefiltering.matchedRunes = make([][]int, 0)
 					p.content.ResetVirtualRows()
 					p.updateSize()
 					return p.MaybePreviewItem(true)
