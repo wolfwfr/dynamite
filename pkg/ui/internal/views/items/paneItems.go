@@ -850,8 +850,17 @@ func (m *ItemSelectionPane) resetKeyMap() {
 	m.KeyMap.Scan.SetEnabled(false)
 }
 
+// clearCache completely removes any cached state
+// Note that clearing of cache does not automatically imply that the table's
+// rendered rows will be updated anew. Use refreshCache if this is your goal.
 func (m *ItemSelectionPane) clearCache() {
 	m.renderCache = map[string]string{}
+}
+
+// refreshCache clears the cache and then forces a rerender of rows
+func (m *ItemSelectionPane) refreshCache() {
+	m.clearCache()
+	m.content.UpdateContent()
 }
 
 // reset contents resets any table modifications and resets the table contents
@@ -871,7 +880,7 @@ func (m *ItemSelectionPane) resetContents() {
 	m.content.ResetVirtualRows()
 	m.content.SetContent([]table.Column{}, []table.Row{})
 	m.content.SetCursor(0)
-	m.clearCache()
+	m.refreshCache()
 }
 
 // resetQueryParameters resets any parameters required for sanning or querying a
@@ -926,6 +935,7 @@ func (m *ItemSelectionPane) resetColumnSorting() {
 
 	// set content
 	m.content.SetContent(cols, rows)
+	m.refreshCache()
 }
 
 func (m *ItemSelectionPane) escape() tea.Cmd {
@@ -1057,6 +1067,9 @@ func (m *ItemSelectionPane) UpdateColumnSorting(msg messages.ColumnSortingUpdate
 	// update table rows
 	m.content.SetRows(rows)
 
+	// clear cache & force rerender of rows
+	m.refreshCache()
+
 	return nil
 }
 
@@ -1091,7 +1104,6 @@ func (m *ItemSelectionPane) ChangeScanIndex(msg messages.ScanIndexChanged) tea.C
 
 	m.resetContents()
 	m.clearCache()
-	m.clearCache()
 
 	m.queryMode = messages.ScanMode
 
@@ -1115,7 +1127,6 @@ func (m *ItemSelectionPane) ChangeQueryParameters(msg messages.QueryParametersCh
 
 	// cancel paging, and refresh table contents
 	m.resetContents()
-	m.clearCache()
 
 	idx := u.Ternary(&msg.IndexName, nil, msg.IndexName != "")
 
