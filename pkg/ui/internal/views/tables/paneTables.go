@@ -315,6 +315,11 @@ func (m *tableSelectionPane) Update(msg tea.Msg) tea.Cmd {
 	case messages.TableDetails:
 		m.details = msg.Details
 		return nil
+	case messages.SwitchView:
+		if msg.NewView != messages.Table_selection {
+			return nil
+		}
+		return m.MaybePreviewItem(true)
 	case messages.TablePageReady:
 		return m.processPage(msg, len(m.tables) == 0)
 	case spinner.TickMsg:
