@@ -857,7 +857,7 @@ func (m *ItemSelectionPane) clearCache() {
 // reset contents resets any table modifications and resets the table contents
 // to empty. It also cancels and resets paging and resets preview tracking.
 func (m *ItemSelectionPane) resetContents() {
-	m.clearCache()
+	m.err = nil
 	m.pageCancel()
 	m.initialised = false
 	m.paging = false
@@ -871,6 +871,7 @@ func (m *ItemSelectionPane) resetContents() {
 	m.content.ResetVirtualRows()
 	m.content.SetContent([]table.Column{}, []table.Row{})
 	m.content.SetCursor(0)
+	m.clearCache()
 }
 
 // resetQueryParameters resets any parameters required for sanning or querying a
