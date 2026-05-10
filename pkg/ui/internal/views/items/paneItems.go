@@ -310,12 +310,12 @@ func (m *ItemSelectionPane) softReset() tea.Cmd {
 	// cancel any lingering calls
 	m.pageCancel()
 
-	m.clearCache()
 	m.resetContents()
 	cmd := m.resetQueryParameters() // must come first to reinitialise items in state (which may be used for updating content in other functions)
 	m.resetKeyMap()
 	m.resetColumnVisibility()
 	m.resetColumnSorting()
+	m.clearCache() // clear cache last!
 	return cmd
 }
 
