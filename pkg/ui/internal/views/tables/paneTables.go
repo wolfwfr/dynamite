@@ -68,9 +68,12 @@ type tableSelectionPane struct {
 
 	content *table.Model
 
-	tables           []string
-	filteredTables   []int // indices referring to tables
-	filtering        bool
+	tables         []string
+	tablefiltering struct {
+		matchedTables []int   // indices referring to tables
+		matchedRunes  [][]int //matches by index to tablefiltering.mathedTables
+		enabled       bool
+	}
 	lastTableDetails int // index
 	details          *apitypes.DescribeTableResponse
 }
@@ -99,6 +102,7 @@ func newTableSelectionPane(ctx context.Context, config *appconfig.Config, opts .
 		t := table.New(
 			table.WithColumns([]table.Column{{Title: "table-name", Width: 64}}),
 			table.WithFocused(true),
+			table.WithFieldDelegate(p.TableRowFieldDelegate),
 		)
 		s := table.DefaultStyles()
 		s.Header = s.Header.
@@ -134,28 +138,28 @@ func newTableSelectionPane(ctx context.Context, config *appconfig.Config, opts .
 					return table.Rows(p.content.Rows()).ToStrings()
 				},
 				EmptyInput: func() tea.Cmd {
-					p.filtering = false
-					p.filteredTables = make([]int, 0)
+					p.tablefiltering.enabled = false
+					p.tablefiltering.matchedTables = make([]int, 0)
 					p.content.ResetVirtualRows()
 					return p.MaybePreviewItem(true)
 				},
 				Results: func(_ string, results []search.FilteredItem) tea.Cmd {
-					p.filtering = true
-					p.filteredTables = make([]int, len(results))
+					p.tablefiltering.enabled = true
+					p.tablefiltering.matchedTables = make([]int, len(results))
+					p.tablefiltering.matchedRunes = make([][]int, len(results))
 					rows := p.content.Rows()
 					filtered := make([]table.Row, len(results))
 					for i, match := range results {
 						filtered[i] = rows[match.Index]
-						filtered[i].HlField = 0
-						filtered[i].HlChars = match.Matches
-						p.filteredTables[i] = match.Index
+						p.tablefiltering.matchedTables[i] = match.Index
+						p.tablefiltering.matchedRunes[i] = match.Matches
 					}
 					p.content.SetVirtualRows(filtered)
 					return nil
 				},
 				Reset: func(searchHeight int) tea.Cmd {
-					p.filtering = false
-					p.filteredTables = make([]int, 0)
+					p.tablefiltering.enabled = false
+					p.tablefiltering.matchedTables = make([]int, 0)
 					p.content.ResetVirtualRows()
 					p.updateSize()
 					return p.MaybePreviewItem(true)
@@ -260,6 +264,9 @@ func (m *tableSelectionPane) processPage(msg messages.TablePageReady, preview bo
 	for i := range newTables {
 		rows[i] = table.Row{
 			Raw: []string{newTables[i]},
+			Fields: []table.Field{
+				enrichedField{value: newTables[i]},
+			},
 		}
 	}
 	if init {
@@ -334,6 +341,63 @@ func (m *tableSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 	return tea.Batch(cmds...)
 }
 
+type enrichedField struct {
+	value string
+}
+
+// Value implements the matching table.Field interface function
+func (f enrichedField) Value() string {
+	return f.value
+}
+
+func (m *tableSelectionPane) TableRowFieldDelegate(row table.Row, col table.Column, colIdx, rowIdx, colWidth int, selected bool) string {
+	leftPadding := 1
+	rightPadding := 1
+	fullWidth := colWidth + leftPadding + rightPadding
+
+	// obtain field in question
+	field := row.Fields[colIdx].(enrichedField)
+
+	enforceWidth := lipgloss.NewStyle().Width(fullWidth).MaxWidth(fullWidth).Inline(true).Render
+	padding := lipgloss.NewStyle().Padding(0, 1).Render
+
+	// no special styling if not selected or no filtering is applied
+	if !selected && (!m.tablefiltering.enabled) {
+		return padding(enforceWidth(field.value))
+	}
+
+	// empty style to start with
+	style := commonstyles.LineStyle{}.AppendStringLG(field.value, lipgloss.NewStyle())
+
+	// add padding
+	style = style.SetRightPaddingLast(rightPadding)
+	style = style.SetLeftPaddingFirst(leftPadding)
+
+	// apply background styling for selected row
+	if selected {
+		// fill up any remaining space
+		if len([]rune(field.value)) < fullWidth {
+			st, _ := style.GetAt(len([]rune(field.value)) - 1)
+			style = style.Override(len([]rune(field.value))-1, st.PaddingRight(fullWidth-len([]rune(field.value))))
+		}
+		style = style.SetBackgroundAll(commonstyles.TableSelectedBg) // TODO: configurable colour
+	}
+
+	// override background styling for search matches
+	if m.tablefiltering.enabled {
+		for _, idx := range m.tablefiltering.matchedRunes[rowIdx] {
+			runeStyle, _ := style.GetAt(idx)
+			c := commonstyles.SearchHighlight
+			if selected {
+				c = lipgloss.Blend1D(10, c, commonstyles.TableSelectedBg)[3]
+			}
+			style = style.Override(idx, runeStyle.Background(c)) // TODO: configurable colour
+		}
+	}
+
+	return enforceWidth(style.Render(field.value))
+}
+
 func (m *tableSelectionPane) copy() tea.Cmd {
 	r := m.content.VisualRows()
 	c := max(0, m.content.Cursor())
@@ -351,7 +415,7 @@ func (m *tableSelectionPane) copy() tea.Cmd {
 
 // force is used on new pane initialization because lastPreviewItem could be 0
 func (m *tableSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
-	if len(m.tables) == 0 || (m.filtering && len(m.filteredTables) == 0) {
+	if len(m.tables) == 0 || (m.tablefiltering.enabled && len(m.tablefiltering.matchedTables) == 0) {
 		return func() tea.Msg {
 			return messages.TableDetails{
 				Details: nil,
@@ -360,8 +424,8 @@ func (m *tableSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
 	}
 
 	idx := m.content.Cursor()
-	if len(m.filteredTables) > 0 { // cursor refers to filtered items
-		idx = m.filteredTables[idx]
+	if len(m.tablefiltering.matchedTables) > 0 { // cursor refers to filtered items
+		idx = m.tablefiltering.matchedTables[idx]
 	}
 	if idx == m.lastTableDetails && !force {
 		return nil

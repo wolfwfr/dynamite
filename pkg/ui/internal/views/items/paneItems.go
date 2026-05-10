@@ -124,7 +124,7 @@ type ItemSelectionPane struct {
 	// item filtering collects settings related to item filtering
 	itemfiltering struct {
 		matchedItems []int   // indices referring to items
-		matchedRunes [][]int //matches by index to itemfiltering.items
+		matchedRunes [][]int //matches by index to itemfiltering.matchedItems
 		columnIndex  int
 		enabled      bool
 	}
@@ -190,7 +190,7 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 		t := table.New(
 			table.WithFocused(true),
 			table.WithDynamicColumnWidth(false),
-			table.WithFieldDelegate(p.TableRowFieldDelegate()),
+			table.WithFieldDelegate(p.TableRowFieldDelegate),
 		)
 		s := table.DefaultStyles()
 		s.Header = s.Header.
@@ -244,8 +244,6 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 					filtered := make([]table.Row, len(results))
 					for i, match := range results {
 						filtered[i] = rows[match.Index]
-						filtered[i].HlField = colIdx
-						filtered[i].HlChars = match.Matches
 						p.itemfiltering.matchedItems[i] = match.Index
 						p.itemfiltering.matchedRunes[i] = match.Matches
 					}
@@ -411,76 +409,74 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 	return tea.Batch(cmds...)
 }
 
-func (m *ItemSelectionPane) TableRowFieldDelegate() func(row table.Row, col table.Column, colIdx, rowIdx, colWidth int, selected bool) string {
-	return func(row table.Row, col table.Column, colIdx, rowIdx, colWidth int, selected bool) string {
-		leftPadding := 1
-		rightPadding := 1
-		fullWidth := colWidth + leftPadding + rightPadding
+func (m *ItemSelectionPane) TableRowFieldDelegate(row table.Row, col table.Column, colIdx, rowIdx, colWidth int, selected bool) string {
+	leftPadding := 1
+	rightPadding := 1
+	fullWidth := colWidth + leftPadding + rightPadding
 
-		// obtain field in question
-		field := row.Fields[colIdx].(enrichedField)
+	// obtain field in question
+	field := row.Fields[colIdx].(enrichedField)
 
-		// fill up with padding if empty
-		if field.style == nil {
-			st := lipgloss.NewStyle().PaddingRight(fullWidth)
-			st = u.Ternary(st.Background(commonstyles.TableSelectedBg), st, selected) // TODO: configurable colour
-			return st.Render("")
-		}
-
-		style := *field.style
-
-		// attempt to obtain cached value to prevent rerendering
-		cachekey := fmt.Sprintf("%d-%d-%d", rowIdx, colIdx, colWidth)
-		cachCond := !selected && (!m.itemfiltering.enabled || m.itemfiltering.columnIndex != colIdx)
-		cc, ok := m.renderCache[cachekey]
-		if ok && cachCond {
-			return cc
-		}
-
-		// add padding
-		style = style.SetRightPaddingLast(rightPadding)
-		style = style.SetLeftPaddingFirst(leftPadding)
-
-		// truncate row value to fit within specified column width
-		truncated := ansi.Truncate(field.value, colWidth, "…")
-		if len([]rune(truncated)) < len([]rune(field.value)) {
-			st, _ := style.GetAt(len([]rune(truncated)) - 1)
-			style = style.Override(len([]rune(truncated))-1, st.PaddingRight(rightPadding))
-		}
-		field.value = truncated
-
-		// apply background styling for selected row
-		if selected {
-			// fill up any remaining space
-			if len([]rune(field.value)) < fullWidth {
-				st, _ := style.GetAt(len([]rune(field.value)) - 1)
-				style = style.Override(len([]rune(field.value))-1, st.PaddingRight(fullWidth-len([]rune(field.value))))
-			}
-			style = style.SetBackgroundAll(commonstyles.TableSelectedBg) // TODO: configurable colour
-		}
-
-		// override background styling for search matches
-		if m.itemfiltering.enabled && m.itemfiltering.columnIndex == colIdx {
-			for _, idx := range m.itemfiltering.matchedRunes[rowIdx] {
-				runeStyle, _ := style.GetAt(idx)
-				c := commonstyles.SearchHighlight
-				if selected {
-					c = lipgloss.Blend1D(10, c, commonstyles.TableSelectedBg)[3]
-				}
-				style = style.Override(idx, runeStyle.Background(c)) // TODO: configurable colour
-			}
-		}
-
-		enforceWidth := lipgloss.NewStyle().Width(fullWidth).MaxWidth(fullWidth).Inline(true).Render
-		res := enforceWidth(style.Render(field.value))
-
-		// cache when appropriate for improved performance
-		if cachCond {
-			m.renderCache[cachekey] = res
-		}
-
-		return res
+	// fill up with padding if empty
+	if field.style == nil {
+		st := lipgloss.NewStyle().PaddingRight(fullWidth)
+		st = u.Ternary(st.Background(commonstyles.TableSelectedBg), st, selected) // TODO: configurable colour
+		return st.Render("")
 	}
+
+	style := *field.style
+
+	// attempt to obtain cached value to prevent rerendering
+	cachekey := fmt.Sprintf("%d-%d-%d", rowIdx, colIdx, colWidth)
+	cachCond := !selected && (!m.itemfiltering.enabled || m.itemfiltering.columnIndex != colIdx)
+	cc, ok := m.renderCache[cachekey]
+	if ok && cachCond {
+		return cc
+	}
+
+	// add padding
+	style = style.SetRightPaddingLast(rightPadding)
+	style = style.SetLeftPaddingFirst(leftPadding)
+
+	// truncate row value to fit within specified column width
+	truncated := ansi.Truncate(field.value, colWidth, "…")
+	if len([]rune(truncated)) < len([]rune(field.value)) {
+		st, _ := style.GetAt(len([]rune(truncated)) - 1)
+		style = style.Override(len([]rune(truncated))-1, st.PaddingRight(rightPadding))
+	}
+	field.value = truncated
+
+	// apply background styling for selected row
+	if selected {
+		// fill up any remaining space
+		if len([]rune(field.value)) < fullWidth {
+			st, _ := style.GetAt(len([]rune(field.value)) - 1)
+			style = style.Override(len([]rune(field.value))-1, st.PaddingRight(fullWidth-len([]rune(field.value))))
+		}
+		style = style.SetBackgroundAll(commonstyles.TableSelectedBg) // TODO: configurable colour
+	}
+
+	// override background styling for search matches
+	if m.itemfiltering.enabled && m.itemfiltering.columnIndex == colIdx {
+		for _, idx := range m.itemfiltering.matchedRunes[rowIdx] {
+			runeStyle, _ := style.GetAt(idx)
+			c := commonstyles.SearchHighlight
+			if selected {
+				c = lipgloss.Blend1D(10, c, commonstyles.TableSelectedBg)[3]
+			}
+			style = style.Override(idx, runeStyle.Background(c)) // TODO: configurable colour
+		}
+	}
+
+	enforceWidth := lipgloss.NewStyle().Width(fullWidth).MaxWidth(fullWidth).Inline(true).Render
+	res := enforceWidth(style.Render(field.value))
+
+	// cache when appropriate for improved performance
+	if cachCond {
+		m.renderCache[cachekey] = res
+	}
+
+	return res
 }
 
 func (m *ItemSelectionPane) PageNext(init bool) tea.Cmd {

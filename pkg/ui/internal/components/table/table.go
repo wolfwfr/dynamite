@@ -442,7 +442,6 @@ func (m *Model) renderHeader() string {
 	return lipgloss.JoinHorizontal(lipgloss.Top, slices.Clip(s)...)
 }
 
-// TODO: render filter match chars with underline or background when appliccable
 func (m *Model) renderRow(r int) string {
 	s := make([]string, 0, len(m.cols))
 	rows := m.VisualRows()
@@ -455,47 +454,31 @@ func (m *Model) renderRow(r int) string {
 			continue
 		}
 
+		// apply field-delegate if available
 		if m.fieldDelegate != nil {
 			s = append(s, m.fieldDelegate(rows[r], m.cols[i], i, r, width, r == m.cursor))
 			continue
 		}
 
-		// proceed with default styling
-		// TODO: remove deprecated checks and keep it simple
-		withHighlighting := rows[r].HlField == i && len(rows[r].HlChars) > 0
+		// proceed with default styling if not
 
-		// determine rows raw & styled contents
 		value := rows[r].Raw[i]
-		// TODO: find way to apply background to selected row (r == m.cursor) with styled content
-		// TODO: find way to apply highlighting background to selected row (r == m.cursor) with styled content
-		if len(rows[r].Raw) == len(rows[r].Styled) && !withHighlighting {
+		// value := rows[r].Fields[i].Value() // TODO: deprecate anything but Fields
+		if len(rows[r].Raw) == len(rows[r].Styled) && r != m.cursor {
 			value = rows[r].Styled[i]
-		}
-
-		// apply search-highlighting
-		// TODO: find way to apply highlighting background to selected row (r == m.cursor)
-		if withHighlighting && r != m.cursor {
-			s := strings.Builder{}
-			for i, rn := range []rune(value) {
-				if slices.Contains(rows[r].HlChars, i) {
-					s.WriteString(m.styles.Highlight.Render(string(rn)))
-				} else {
-					s.WriteRune(rn)
-				}
-			}
-			value = s.String()
 		}
 
 		enforceWidth := lipgloss.NewStyle().Width(width).MaxWidth(width).Inline(true).Render
 		renderedCell := m.styles.Cell.Render(enforceWidth(ternary(value, ansi.Truncate(value, width, "…"), m.dynCols)))
 
-		if r == m.cursor {
-			renderedCell = m.styles.Selected.Render(renderedCell)
-		}
 		s = append(s, renderedCell)
 	}
 
 	row := lipgloss.JoinHorizontal(lipgloss.Top, slices.Clip(s)...)
+
+	if r == m.cursor {
+		return m.styles.Selected.Render(row)
+	}
 
 	return row
 }
