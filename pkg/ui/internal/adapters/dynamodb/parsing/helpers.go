@@ -131,3 +131,8 @@ func flattenStyles(multilineStyling []styles.LineStyle) styles.LineStyle {
 	res := styles.LineStyle{}.AppendLines(multilineStyling)
 	return res.UnsetPaddingAll()
 }
+
+// small helper for parsing single lines in a list
+func parseListHelper(s string, l styles.LineStyle) (string, styles.ObjectStyle) {
+	return s, styles.ObjectStyle{l}
+}

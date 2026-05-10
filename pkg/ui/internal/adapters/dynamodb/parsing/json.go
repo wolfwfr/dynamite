@@ -190,7 +190,7 @@ func stringableAsListJSON[S []E, E any](stls jsonParserStyles, items S, nestLeve
 	}
 
 	json := strings.Builder{}
-	styled := []styles.LineStyle{}
+	styled := styles.ObjectStyle{}
 
 	json.WriteString("[\n")
 	styled = append(styled, styles.LineStyle{}.AppendRuneLG(tokenSt))
@@ -225,11 +225,6 @@ func stringableAsListJSON[S []E, E any](stls jsonParserStyles, items S, nestLeve
 
 func emptyBrackets(brackets string, tokenStyle lipgloss.Style) (string, styles.ObjectStyle) {
 	return spf("%s,\n", brackets), styles.ObjectStyle{styles.LineStyle{}.AppendStringLG(brackets, tokenStyle).AppendRuneLG(tokenStyle)}
-}
-
-// small helper for parsing single lines in a list
-func parseListHelper(s string, l styles.LineStyle) (string, styles.ObjectStyle) {
-	return s, styles.ObjectStyle{l}
 }
 
 func pJSONBool(bl bool, tokenStyle, contentStyle lipgloss.Style) (string, styles.LineStyle) {

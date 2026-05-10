@@ -63,9 +63,9 @@ type ( // DESCRIBE TABLE
 
 type Items struct {
 	JSON       []string
-	JSONStyled [][]styles.LineStyle
+	JSONStyled []styles.ObjectStyle
 	YAML       []string
-	YAMLStyled []string
+	YAMLStyled []styles.ObjectStyle
 	Raw        []map[string]types.AttributeValue // TODO: review usefullness
 	TableKeys  [][]KeyValue                      // TODO: review: should this be part of items?
 }

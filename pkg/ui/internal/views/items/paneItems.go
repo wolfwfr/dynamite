@@ -595,10 +595,10 @@ func (m *ItemSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
 	switch m.previewFormat {
 	case JSONformat:
 		raw = m.items.JSON[idx]
-		styled = commonstyles.ObjectStyle(m.items.JSONStyled[idx]).Render(raw)
+		styled = m.items.JSONStyled[idx].Render(raw)
 	case YAMLformat:
-		styled = m.items.YAMLStyled[idx]
 		raw = m.items.YAML[idx]
+		styled = m.items.YAMLStyled[idx].Render(raw)
 	}
 	return func() tea.Msg {
 		return messages.PreviewItem{

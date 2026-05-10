@@ -76,9 +76,9 @@ func ScanTable(client *dynamodb.Client, ctx context.Context, table string, param
 	res := &apitypes.ScanResponse{
 		Items: apitypes.Items{
 			JSON:       make([]string, 0, len(out.Items)),
-			JSONStyled: make([][]styles.LineStyle, 0, len(out.Items)),
+			JSONStyled: make([]styles.ObjectStyle, 0, len(out.Items)),
 			YAML:       make([]string, 0, len(out.Items)),
-			YAMLStyled: make([]string, 0, len(out.Items)),
+			YAMLStyled: make([]styles.ObjectStyle, 0, len(out.Items)),
 			Raw:        out.Items,
 			TableKeys:  make([][]apitypes.KeyValue, 0, len(out.Items)),
 		},
@@ -125,9 +125,9 @@ func QueryTable(client *dynamodb.Client, ctx context.Context, table string, para
 	res := &apitypes.QueryResponse{
 		Items: apitypes.Items{
 			JSON:       make([]string, 0, len(out.Items)),
-			JSONStyled: make([][]styles.LineStyle, 0, len(out.Items)),
+			JSONStyled: make([]styles.ObjectStyle, 0, len(out.Items)),
 			YAML:       make([]string, 0, len(out.Items)),
-			YAMLStyled: make([]string, 0, len(out.Items)),
+			YAMLStyled: make([]styles.ObjectStyle, 0, len(out.Items)),
 			Raw:        out.Items,
 			TableKeys:  make([][]apitypes.KeyValue, 0, len(out.Items)),
 		},
@@ -138,12 +138,11 @@ func QueryTable(client *dynamodb.Client, ctx context.Context, table string, para
 
 	// TODO: reconsider parsing to both JSON & YAML all the time
 	for _, item := range out.Items {
-		yaml, yamlStyled := parsing.NewYAMLParser().ParseItemToYAML(item, *hkey, rkey)
+		yaml, _ := parsing.NewYAMLParser().ParseItemToYAML(item, *hkey, rkey)
 		json, jsonStyled, keys := parsing.NewJSONParser().ParseToJSONWithKeys(item, *hkey, rkey)
 		res.Items.JSON = append(res.Items.JSON, json)
 		res.Items.JSONStyled = append(res.Items.JSONStyled, jsonStyled)
 		res.Items.YAML = append(res.Items.YAML, yaml)
-		res.Items.YAMLStyled = append(res.Items.YAMLStyled, yamlStyled)
 		res.Items.TableKeys = append(res.Items.TableKeys, keys)
 	}
 	return res, nil
