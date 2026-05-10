@@ -67,7 +67,7 @@ Install the package using go:
 go install github.com/wolfwfr/dynamite/cmd/dynamite@latest
 
 # execute
-./dynamite
+dynamite
 ```
 
 Or build it from source:
