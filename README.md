@@ -74,7 +74,7 @@ Or build it from source:
 
 ```bash
 # obtain
-git clone github.com/wolfwfr/dynamite.git
+git clone git@github.com/wolfwfr/dynamite.git
 cd dynamite
 
 # build
