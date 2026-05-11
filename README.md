@@ -43,18 +43,15 @@ _  /_/ /_  /_/ /_  / / / /_/ /_  / / / / /  / / /_ /  __/
 > [!NOTE]
 > At least up until the first release,
 > 
-> this project will be exclusively hand-coded.
+> this project will be exclusively hand-crafted.
 
 <br/>
 
 ## ❔ Why
 
-I wanted a TUI for quickly finding and browsing Amazon Dynamo-DB items. It
-needed quality of life features such as the ability to toggle columns on or off,
-easily copying items or fields, and sorting by a given field.
+I wanted a TUI for quickly finding and browsing Amazon Dynamo-DB items. It needed quality of life features such as the ability to toggle columns on or off, easily copying items or fields, and sorting by a given field.
 
-I couldn't find one that felt exactly right to me, so I decided to build one
-myself.  
+I couldn't find one that felt exactly right to me, so I decided to build one myself.  
 
 <br/>
 
@@ -153,18 +150,15 @@ Among others, Dynamite offers:
 - **Code polish**: the code and its style require some polishing
 - **Testing**: Improve and extend unit testing
 - **Compatibility**: Test in different terminals & at different resolution scales
-- **Theme Configuration**: use the config file to configure the colours to your
-  liking
+- **Theme Configuration**: use the config file to configure the colours to your liking
 - **README Polish**: expand the README with images and video among others
 
 ✌️ Other features I have in mind are:
 
 - **DynamoDB Filter**: implement integration with scan/query filter options
-- **CLI Extension**: use CLI flags to hop straight into a table of choice or
-launch a query.
+- **CLI Extension**: use CLI flags to hop straight into a table of choice or launch a query.
 - **Pane Configurability**: configure width distribution of the 2 panes
-- **Transforms**: transform column values, e.g. unix timestamps to human
-readable
+- **Transforms**: transform column values, e.g. unix timestamps to human readable
 
 <br/>
 
@@ -172,12 +166,11 @@ readable
 
 - **ADMIN mode**: Although I'm considering it, I'm currently flagging write
 operations as a non-goal
-- **Full API compatibility**: Full integration with all of the aws-sdk-go-v2
+- **Full API compatibility**: Full integration with all of the aws-sdk-go-v2 dynamo-db related functions
 
 <br/>
 
 ## 🫴 Alternatives
 
 - **[Sacha](https://github.com/Sachamama/sacha)** another 2-pane TUI that also integrates with S3, EC2, Lambda, and more!
-- **[ddv](https://github.com/lusingander/ddv)** a blazingly fast dynamo-DB
-viewer for the terminal, written in Rust
+- **[ddv](https://github.com/lusingander/ddv)** a blazing fast dynamo-DB viewer for the terminal, written in Rust
