@@ -29,6 +29,11 @@ _  /_/ /_  /_/ /_  / / / /_/ /_  / / / / /  / / /_ /  __/
 
 <br/>
 
+<img width="3452" height="1769" alt="dynamite-screenshots-composition-1" src="https://github.com/user-attachments/assets/a07c1665-f7b5-4f49-8c89-04211870fab2" />
+
+
+<br/>
+
 ## 🚧 WORK IN PROGRESS 🚧
 
 > [!Warning]
