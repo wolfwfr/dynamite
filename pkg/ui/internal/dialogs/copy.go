@@ -220,7 +220,8 @@ func (m *CopyDialog) notifySuccess() tea.Msg {
 }
 
 func (m *CopyDialog) toggleDialog() tea.Msg {
-	m.content.FilterInput.Reset()
+	m.content.FilterInput.Reset()             // reset filter input value
+	m.content.SetFilterState(list.Unfiltered) // set filter to inactive (hide & unfocus)
 	return messages.ToggleColumnCopy{}
 }
 

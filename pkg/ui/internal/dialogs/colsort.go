@@ -292,7 +292,8 @@ func (m *ColumnSorting) UpdateMessage() tea.Cmd {
 }
 
 func (m *ColumnSorting) toggleDialog() tea.Cmd {
-	m.content.FilterInput.Reset()
+	m.content.FilterInput.Reset()             // reset filter input value
+	m.content.SetFilterState(list.Unfiltered) // set filter to inactive (hide & unfocus)
 	return func() tea.Msg {
 		return messages.ToggleColumnSorting{}
 	}
