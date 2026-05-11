@@ -126,9 +126,10 @@ dynamite --aws_profile="my-profile"
 - **Quit** with `ctrl+c` at any point
 - **Get Help** with `?`
 - **Tab** between panes to shift focus for navigation or scrolling
-- **Select** a table with enter
+- **Select** a table with `Enter`
 - **Search** with `/`
 - **Escape** search, dialogs, or the item-view with `Esc`
+- **Much more**: see the help menu (with `?`)
 
 <br/>
 
