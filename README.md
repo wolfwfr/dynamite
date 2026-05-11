@@ -141,7 +141,7 @@ Among others, Dynamite offers:
 - **Region Selection**: select and switch AWS region within the TUI
 - **Fuzzy Finding**: quicly search and find what you need
 - **Visibility Toggle**: only display the columns you're interested in
-- **easy sorting**: quickly sort your results by any field (S, B, N)
+- **Easy Sorting**: quickly sort your results by any field (S, B, N)
 - **Flexible Formatting**: Display your items as JSON or YAML
 - **Quick Copy**: Copy table name, item field or the item JSON/YAML immediately
 - **Scan/Query**: Scan and Query your table, select index, order, and set keys
@@ -153,7 +153,7 @@ Among others, Dynamite offers:
 
 ☝️ This is a work in progress and the following is required for a first release:
 
-- **Code polish**: the code and its style require some polishing
+- **Code Polish**: the code and its style require some polishing
 - **Testing**: Improve and extend unit testing
 - **Compatibility**: Test in different terminals & at different resolution scales
 - **Theme Configuration**: use the config file to configure the colours to your liking
@@ -170,9 +170,9 @@ Among others, Dynamite offers:
 
 ## ✋ Non Goals
 
-- **ADMIN mode**: Although I'm considering it, I'm currently flagging write
+- **ADMIN Mode**: Although I'm considering it, I'm currently flagging write
 operations as a non-goal
-- **Full API compatibility**: Full integration with all of the aws-sdk-go-v2 dynamo-db related functions
+- **Full API Compatibility**: Full integration with all of the aws-sdk-go-v2 dynamo-db related functions
 
 <br/>
 
