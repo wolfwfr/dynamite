@@ -75,7 +75,7 @@ type Model struct {
 		open             bool
 		help             *dialogs.Help
 		region           *dialogs.Regions
-		columnVisibility *dialogs.Columns
+		columnVisibility *dialogs.ColumnVis
 		columnSorting    *dialogs.ColumnSorting
 		scanParams       *dialogs.ScanDialog
 		queryParams      *dialogs.Queryialog

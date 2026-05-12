@@ -9,9 +9,8 @@ import (
 	checkbox "github.com/wolfwfr/dynamite/pkg/ui/internal/components/checkbox_list"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	commonstyles "github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
+	u "github.com/wolfwfr/dynamite/pkg/util"
 )
-
-var columnsDialogStyle = commonstyles.DialogStyle
 
 type columnsKeyMap struct {
 	close      key.Binding
@@ -26,6 +25,7 @@ func (h columnsKeyMap) ShortHelp() []key.Binding {
 
 type columnsListStyles struct {
 	checkbox.Styles
+	dialog   lipgloss.Style
 	title    lipgloss.Style
 	content  lipgloss.Style
 	help     lipgloss.Style
@@ -38,6 +38,7 @@ func newColumnStyles(darkBG bool) columnsListStyles {
 	s.Item = lipgloss.NewStyle().PaddingLeft(4)
 	s.SelectedItem = lipgloss.NewStyle().PaddingLeft(2).Foreground(commonstyles.DialogFocusColour)
 
+	s.dialog = commonstyles.DialogStyle
 	s.title = lipgloss.NewStyle().Padding(1, 0, 2, 0)
 	s.content = lipgloss.NewStyle().PaddingTop(1).PaddingBottom(2)
 	s.help = list.DefaultStyles(darkBG).HelpStyle.Padding(1, 2, 0, 2)
@@ -45,9 +46,9 @@ func newColumnStyles(darkBG bool) columnsListStyles {
 	return s
 }
 
-// the Columns dialog enables the user to enable and disable visibility of
+// the ColumnVis dialog enables the user to enable and disable visibility of
 // individual columns
-type Columns struct {
+type ColumnVis struct {
 	keyMap columnsKeyMap
 
 	defaultDialogHeight int
@@ -74,8 +75,8 @@ type Columns struct {
 	content list.Model
 }
 
-func NewColumnVisibilityDialog(close key.Binding) *Columns {
-	c := &Columns{
+func NewColumnVisibilityDialog(close key.Binding) *ColumnVis {
+	c := &ColumnVis{
 		keyMap: columnsKeyMap{
 			close: close,
 			enter: key.NewBinding(
@@ -126,7 +127,7 @@ func NewColumnVisibilityDialog(close key.Binding) *Columns {
 	return c
 }
 
-func (m *Columns) updateStyles(isDark bool) {
+func (m *ColumnVis) updateStyles(isDark bool) {
 	s := newColumnStyles(isDark)
 	m.content.Styles.Title = s.title
 	m.content.Styles.HelpStyle = s.help
@@ -135,17 +136,17 @@ func (m *Columns) updateStyles(isDark bool) {
 	m.content.SetDelegate(m.newDelegate(&s))
 }
 
-func (m *Columns) newDelegate(s *columnsListStyles) checkbox.ItemDelegate {
+func (m *ColumnVis) newDelegate(s *columnsListStyles) checkbox.ItemDelegate {
 	return checkbox.ItemDelegate{
 		Styles: &s.Styles,
 	}
 }
 
-func (m *Columns) Init() tea.Cmd {
+func (m *ColumnVis) Init() tea.Cmd {
 	return nil
 }
 
-func (m *Columns) Update(msg tea.Msg) tea.Cmd {
+func (m *ColumnVis) Update(msg tea.Msg) tea.Cmd {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
 		if m.content.FilterState() == list.Filtering ||
@@ -161,10 +162,6 @@ func (m *Columns) Update(msg tea.Msg) tea.Cmd {
 			return m.EnableAll()
 		case key.Matches(msg, m.keyMap.disableAll):
 			return m.DisableAll()
-		default:
-			var cmd tea.Cmd
-			m.content, cmd = m.content.Update(msg)
-			return cmd
 		}
 	case tea.WindowSizeMsg:
 		m.applySize(msg.Height, msg.Width)
@@ -176,31 +173,32 @@ func (m *Columns) Update(msg tea.Msg) tea.Cmd {
 	// default
 	var cmd tea.Cmd
 	m.content, cmd = m.content.Update(msg)
+	m.updateSize()
 	return cmd
 }
 
-func (m *Columns) SetState(msg messages.InitColumnVisibility) tea.Cmd {
+func (m *ColumnVis) SetState(msg messages.InitColumnVisibility) tea.Cmd {
 	m.state.TableARN = msg.TableARN
 	m.state.AllColumns = msg.AllColumns
 	m.state.Visible = msg.Visible
 	return m.updateContent()
 }
 
-func (m *Columns) EnableAll() tea.Cmd {
+func (m *ColumnVis) EnableAll() tea.Cmd {
 	for i := range m.state.Visible {
 		m.state.Visible[i] = true
 	}
 	return tea.Batch(m.updateContent(), m.UpdateMessage())
 }
 
-func (m *Columns) DisableAll() tea.Cmd {
+func (m *ColumnVis) DisableAll() tea.Cmd {
 	for i := range m.state.Visible {
 		m.state.Visible[i] = false
 	}
 	return tea.Batch(m.updateContent(), m.UpdateMessage())
 }
 
-func (m *Columns) updateContent() tea.Cmd {
+func (m *ColumnVis) updateContent() tea.Cmd {
 	items := make([]list.Item, 0, len(m.state.AllColumns))
 	for i := range m.state.AllColumns {
 		items = append(items, checkbox.Item{
@@ -216,7 +214,7 @@ func (m *Columns) updateContent() tea.Cmd {
 	return cmd
 }
 
-func (m *Columns) selectItem() tea.Cmd {
+func (m *ColumnVis) selectItem() tea.Cmd {
 	itm, ok := m.content.SelectedItem().(checkbox.Item)
 	if !ok {
 		return nil
@@ -232,7 +230,7 @@ func (m *Columns) selectItem() tea.Cmd {
 	return tea.Batch(listUpdate, columnUpdate)
 }
 
-func (m *Columns) UpdateMessage() tea.Cmd {
+func (m *ColumnVis) UpdateMessage() tea.Cmd {
 	return func() tea.Msg {
 		msg := messages.ColumnVisibilityUpdate{}
 		msg.TableARN = m.state.TableARN
@@ -242,7 +240,7 @@ func (m *Columns) UpdateMessage() tea.Cmd {
 	}
 }
 
-func (m *Columns) toggleDialog() tea.Cmd {
+func (m *ColumnVis) toggleDialog() tea.Cmd {
 	m.content.FilterInput.Reset()             // reset filter input value
 	m.content.SetFilterState(list.Unfiltered) // set filter to inactive (hide & unfocus)
 	return func() tea.Msg {
@@ -250,52 +248,96 @@ func (m *Columns) toggleDialog() tea.Cmd {
 	}
 }
 
-func (m *Columns) applySize(height, width int) {
+func (m *ColumnVis) applySize(height, width int) {
 	m.window.width = width
 	m.window.height = height
 	m.updateSize()
 }
 
-func (m *Columns) updateSize() {
-	items := m.content.Items()
+func (m *ColumnVis) updateSize() {
+	m.dialog.height = min(m.defaultDialogHeight, m.window.height)
+	m.dialog.width = min(m.defaultDialogWidth, m.window.width)
 
-	// set height of the list within the dialog
-	padding := 4
-	m.content.SetHeight(min(len(m.content.Items())+padding, m.window.height))
+	var (
+		titleH   = lipgloss.Height(m.renderTitle())
+		contentH = 0
+		filterH  = lipgloss.Height(m.renderFilter())
+		helpH    = lipgloss.Height(m.renderHelp())
 
-	// determine the width of the list within the dialog
-	width := m.defaultDialogWidth
-	for _, itm := range items {
-		width = max(width, len(itm.(checkbox.Item).Name))
+		bordersW = m.styles.dialog.GetBorderLeftSize() + m.styles.dialog.GetBorderRightSize()
+		bordersH = m.styles.dialog.GetBorderBottomSize() + m.styles.dialog.GetBorderTopSize()
+
+		contentPH = m.styles.content.GetPaddingBottom() + m.styles.content.GetPaddingTop()
+		contentPW = m.styles.content.GetPaddingLeft() + m.styles.content.GetPaddingRight()
+		helpPW    = m.styles.help.GetPaddingLeft() + m.styles.help.GetPaddingRight()
+	)
+
+	{ // update list height
+		maxContentH := m.dialog.height
+		maxContentH -= (bordersH + titleH + filterH + helpH + contentPH)
+
+		// leave room for inline paginator + paginator padding
+		paginatorH := 2
+
+		// set height of the list within the dialog
+		contentH = min(maxContentH, len(m.content.Items())+paginatorH)
+		m.content.SetHeight(contentH)
 	}
-	// set width of the list within the dialog
-	m.content.SetWidth(width)
 
-	// set height & width of dialog itself
-	columnsDialogStyle = columnsDialogStyle.
-		Height(m.content.Height() + 2).
-		Width(width + 2)
+	{ // update list width
+		contentW := bordersW + max(contentPW, helpPW) // help is now coupled to content (see render)
+
+		// determine the width of the list within the dialog
+		items := m.content.Items()
+		for _, itm := range items {
+			m.dialog.width = u.Clamp(m.dialog.width, len(itm.(checkbox.Item).Name)+contentW, m.window.width)
+		}
+
+		// set width of the list within the dialog
+		// TODO: help menu goes funky when at width between 55 and 57, uncertain why
+		m.content.SetWidth(m.dialog.width - contentW)
+	}
+
+	m.dialog.height = min(bordersH+titleH+contentH+contentPH+filterH+helpH, m.window.height)
+
+	// update dialog style size
+	m.styles.dialog = m.styles.dialog.
+		Height(m.dialog.height).
+		Width(m.dialog.width)
 }
 
-func (m *Columns) View() string {
-	toRender := []string{
-		m.styles.title.Render(m.content.Title),
-		m.styles.content.Render(m.content.View()),
-		lipgloss.NewStyle().Render(""), // placeholder for filter
-		m.styles.help.Render(m.JoinedHelp()),
-	}
-	if m.content.FilterState() != list.Unfiltered {
-		m.content.FilterInput.SetWidth(len(m.content.FilterInput.Value()) + 2) // ensure filter stays centered and stable during cursor blinking
-		toRender[2] = m.content.FilterInput.View()
-	}
-	return columnsDialogStyle.Render(
+func (m *ColumnVis) View() string {
+	return m.styles.dialog.Render(
 		lipgloss.JoinVertical(lipgloss.Center,
-			toRender...,
+			m.renderTitle(),
+			m.renderContent(),
+			m.renderFilter(),
+			m.renderHelp(),
 		),
 	)
 }
 
-func (m *Columns) JoinedHelp() string {
+func (m *ColumnVis) renderContent() string {
+	return m.styles.content.Render(m.content.View())
+}
+
+func (m *ColumnVis) renderFilter() string {
+	if m.content.FilterState() != list.Unfiltered {
+		m.content.FilterInput.SetWidth(len(m.content.FilterInput.Value()) + 2) // ensure filter stays centered and stable during cursor blinking
+		return m.content.FilterInput.View()
+	}
+	return lipgloss.NewStyle().Render("") // placeholder for filter
+}
+
+func (m *ColumnVis) renderTitle() string {
+	return m.styles.title.Render(m.content.Title)
+}
+
+func (m *ColumnVis) renderHelp() string {
+	return m.styles.help.Render(m.JoinedHelp())
+}
+
+func (m *ColumnVis) JoinedHelp() string {
 	if !m.content.Help.ShowAll {
 		helpV := m.content.Help.ShortHelpView
 		helpLine := m.styles.helpLine
