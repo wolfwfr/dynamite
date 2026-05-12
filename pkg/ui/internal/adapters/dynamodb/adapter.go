@@ -138,11 +138,12 @@ func QueryTable(client *dynamodb.Client, ctx context.Context, table string, para
 
 	// TODO: reconsider parsing to both JSON & YAML all the time
 	for _, item := range out.Items {
-		yaml, _ := parsing.NewYAMLParser().ParseItemToYAML(item, *hkey, rkey)
+		yaml, yamlStyled := parsing.NewYAMLParser().ParseItemToYAML(item, *hkey, rkey)
 		json, jsonStyled, keys := parsing.NewJSONParser().ParseToJSONWithKeys(item, *hkey, rkey)
 		res.Items.JSON = append(res.Items.JSON, json)
 		res.Items.JSONStyled = append(res.Items.JSONStyled, jsonStyled)
 		res.Items.YAML = append(res.Items.YAML, yaml)
+		res.Items.YAMLStyled = append(res.Items.YAMLStyled, yamlStyled)
 		res.Items.TableKeys = append(res.Items.TableKeys, keys)
 	}
 	return res, nil
