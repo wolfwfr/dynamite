@@ -1220,7 +1220,8 @@ func (m *ItemSelectionPane) noContentMessage() string {
 
 func (m *ItemSelectionPane) renderTableInfo() string {
 	width := m.window.width
-	halfwidth := m.window.width / 2
+	leftHalf := width / 2
+	rightHalf := width - leftHalf
 	// table name
 	name := u.IfNotNil(m.selectedTable.TableName, "")
 
@@ -1230,15 +1231,16 @@ func (m *ItemSelectionPane) renderTableInfo() string {
 
 	rowcount := int64(len(m.content.VisualRows()))
 	right := fmt.Sprintf("Count: %d/%d", rowcount, max(count, rowcount))
-	right = ansi.Truncate(right, halfwidth, "…")
+	right = ansi.Truncate(right, rightHalf, "…")
 
+	minGap := 15
 	left := fmt.Sprintf("Table: %s%s", name, u.Ternary(" / Index: "+indexName, "", indexName != ""))
-	left = ansi.Truncate(left, width-len(right)-15, "…")
+	left = ansi.Truncate(left, width-len(right)-minGap, "…")
 
 	leftAligned := lipgloss.NewStyle().Width(width - len(right)).Align(lipgloss.Left)
 	rightAligned := lipgloss.NewStyle().Width(len(right)).Align(lipgloss.Right)
 
-	return tableInfoBox.Render(lipgloss.JoinHorizontal(lipgloss.Top,
+	return tableInfoBox.Inline(true).Render(lipgloss.JoinHorizontal(lipgloss.Top,
 		leftAligned.Render(left),
 		rightAligned.Render(right),
 	))
