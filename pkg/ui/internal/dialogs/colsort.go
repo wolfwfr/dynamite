@@ -15,8 +15,6 @@ import (
 	u "github.com/wolfwfr/dynamite/pkg/util"
 )
 
-var columnSortingDialogStyle = commonstyles.DialogStyle
-
 type columnSortingKeyMap struct {
 	close key.Binding
 	enter key.Binding
@@ -60,22 +58,22 @@ type ColumnSorting struct {
 }
 
 type sortingListStyles struct {
+	dialog       lipgloss.Style
 	title        lipgloss.Style
 	content      lipgloss.Style
 	item         lipgloss.Style
 	selectedItem lipgloss.Style
-	header       lipgloss.Style
 	help         lipgloss.Style
 	helpLine     lipgloss.Style
 }
 
 func newColumnSortingStyles(darkBG bool) sortingListStyles {
 	var s sortingListStyles
+	s.dialog = commonstyles.DialogStyle
 	s.title = lipgloss.NewStyle().Padding(1, 0, 2, 0)
 	s.content = lipgloss.NewStyle().Padding(1, 0, 2, 0)
 	s.item = lipgloss.NewStyle().PaddingLeft(4)
 	s.selectedItem = lipgloss.NewStyle().PaddingLeft(2).Foreground(commonstyles.DialogFocusColour)
-	s.header = lipgloss.NewStyle().Foreground(commonstyles.SubtleColour)
 	s.help = list.DefaultStyles(darkBG).HelpStyle.Padding(1, 2, 0, 2)
 	s.helpLine = lipgloss.NewStyle().PaddingBottom(1)
 	return s
@@ -197,10 +195,6 @@ func (m *ColumnSorting) Update(msg tea.Msg) tea.Cmd {
 			return m.selectItem()
 		case key.Matches(msg, m.keyMap.reset):
 			return m.reset()
-		default:
-			var cmd tea.Cmd
-			m.content, cmd = m.content.Update(msg)
-			return cmd
 		}
 	case tea.WindowSizeMsg:
 		m.applySize(msg.Height, msg.Width)
@@ -211,6 +205,7 @@ func (m *ColumnSorting) Update(msg tea.Msg) tea.Cmd {
 	// default
 	var cmd tea.Cmd
 	m.content, cmd = m.content.Update(msg)
+	m.updateSize()
 	return cmd
 }
 
@@ -306,43 +301,86 @@ func (m *ColumnSorting) applySize(height, width int) {
 }
 
 func (m *ColumnSorting) updateSize() {
-	items := m.content.Items()
+	m.dialog.height = min(m.defaultDialogHeight, m.window.height)
+	m.dialog.width = min(m.defaultDialogWidth, m.window.width)
 
-	// set height of the list within the dialog
-	padding := 4
-	m.content.SetHeight(min(len(m.content.Items())+padding, m.window.height))
+	var (
+		titleH   = lipgloss.Height(m.renderTitle())
+		contentH = 0
+		filterH  = lipgloss.Height(m.renderFilter())
+		helpH    = lipgloss.Height(m.renderHelp())
 
-	// determine the width of the list within the dialog
-	width := m.defaultDialogWidth
-	for _, itm := range items {
-		width = max(width, len(itm.(sortingItem).name))
+		bordersW = m.styles.dialog.GetBorderLeftSize() + m.styles.dialog.GetBorderRightSize()
+		bordersH = m.styles.dialog.GetBorderBottomSize() + m.styles.dialog.GetBorderTopSize()
+
+		contentPH = m.styles.content.GetPaddingBottom() + m.styles.content.GetPaddingTop()
+		contentPW = m.styles.content.GetPaddingLeft() + m.styles.content.GetPaddingRight()
+		helpPW    = m.styles.help.GetPaddingLeft() + m.styles.help.GetPaddingRight()
+	)
+
+	{ // update list height
+		maxContentH := m.dialog.height
+		maxContentH -= (bordersH + titleH + filterH + helpH + contentPH)
+
+		// leave room for inline paginator + paginator padding
+		paginatorH := 2
+
+		// set height of the list within the dialog
+		contentH = min(maxContentH, len(m.content.Items())+paginatorH)
+		m.content.SetHeight(contentH)
 	}
-	// set width of the list within the dialog
-	m.content.SetWidth(width)
 
-	// set height & width of dialog itself
-	columnSortingDialogStyle = columnSortingDialogStyle.
-		Height(m.content.Height() + 2).
-		Width(width + 2)
+	{ // update list width
+		contentW := bordersW + max(contentPW, helpPW) // help is now coupled to content (see render)
 
+		// determine the width of the list within the dialog
+		items := m.content.Items()
+		for _, itm := range items {
+			m.dialog.width = u.Clamp(m.dialog.width, len(itm.(sortingItem).name)+contentW, m.window.width)
+		}
+
+		// set width of the list within the dialog
+		// TODO: help menu goes funky when too narrow, uncertain why
+		m.content.SetWidth(m.dialog.width - contentW)
+	}
+
+	m.dialog.height = min(bordersH+titleH+contentH+contentPH+filterH+helpH, m.window.height)
+
+	// update dialog style size
+	m.styles.dialog = m.styles.dialog.
+		Height(m.dialog.height).
+		Width(m.dialog.width)
 }
 
 func (m *ColumnSorting) View() string {
-	toRender := []string{
-		m.styles.title.Render(m.content.Title),
-		m.styles.content.Render(m.content.View()),
-		lipgloss.NewStyle().Render(""), // placeholder for filter
-		m.styles.help.Render(m.JoinedHelp()),
-	}
-	if m.content.FilterState() != list.Unfiltered {
-		m.content.FilterInput.SetWidth(len(m.content.FilterInput.Value()) + 2) // ensure filter stays centered and stable during cursor blinking
-		toRender[2] = m.content.FilterInput.View()
-	}
-	return columnsDialogStyle.Render(
+	return m.styles.dialog.Render(
 		lipgloss.JoinVertical(lipgloss.Center,
-			toRender...,
+			m.renderTitle(),
+			m.renderContent(),
+			m.renderFilter(),
+			m.renderHelp(),
 		),
 	)
+}
+
+func (m *ColumnSorting) renderContent() string {
+	return m.styles.content.Render(m.content.View())
+}
+
+func (m *ColumnSorting) renderFilter() string {
+	if m.content.FilterState() != list.Unfiltered {
+		m.content.FilterInput.SetWidth(len(m.content.FilterInput.Value()) + 2) // ensure filter stays centered and stable during cursor blinking
+		return m.content.FilterInput.View()
+	}
+	return lipgloss.NewStyle().Render("") // placeholder for filter
+}
+
+func (m *ColumnSorting) renderTitle() string {
+	return m.styles.title.Render(m.content.Title)
+}
+
+func (m *ColumnSorting) renderHelp() string {
+	return m.styles.help.Render(m.JoinedHelp())
 }
 
 func (m *ColumnSorting) JoinedHelp() string {
