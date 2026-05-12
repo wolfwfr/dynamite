@@ -1228,7 +1228,8 @@ func (m *ItemSelectionPane) renderTableInfo() string {
 	count := m.tableIndex.indexItemCount
 	indexName := u.IfNotNil(m.tableIndex.activeIndex, "")
 
-	right := fmt.Sprintf("Count: %d/%d", len(m.content.VisualRows()), count)
+	rowcount := int64(len(m.content.VisualRows()))
+	right := fmt.Sprintf("Count: %d/%d", rowcount, max(count, rowcount))
 	right = ansi.Truncate(right, halfwidth, "…")
 
 	left := fmt.Sprintf("Table: %s%s", name, u.Ternary(" / Index: "+indexName, "", indexName != ""))
