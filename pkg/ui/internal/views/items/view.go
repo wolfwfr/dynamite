@@ -12,6 +12,7 @@ import (
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/util/keymaps"
+	u "github.com/wolfwfr/dynamite/pkg/util"
 )
 
 type paneID int
@@ -20,6 +21,12 @@ const (
 	itemsPaneID paneID = iota
 	detailsPaneID
 )
+
+type paneProperties struct {
+	height int
+	width  int
+	style  lipgloss.Style
+}
 
 type ItemSelection struct {
 	// shared config
@@ -30,6 +37,9 @@ type ItemSelection struct {
 		width  int
 		height int
 	}
+
+	// pane-properties
+	panes map[paneID]paneProperties
 
 	// panes
 	itemsPane   *ItemSelectionPane
@@ -47,15 +57,16 @@ type ItemSelection struct {
 }
 
 var (
-	borderStyle  = styles.BorderStyle
-	focusedStyle = styles.FocusedBorderStyle
+	unfocusedBorderStyle = styles.BorderStyle
+	focusedBorderStyle   = styles.FocusedBorderStyle
 )
 
 func (m *ItemSelection) renderBorder(paneID paneID, content string) string {
+	st := m.panes[paneID].style
 	if m.focused == paneID {
-		return focusedStyle.Render(content)
+		return focusedBorderStyle.Inherit(st).Render(content)
 	}
-	return borderStyle.Render(content)
+	return unfocusedBorderStyle.Inherit(st).Render(content)
 }
 
 type Option func(t *ItemSelection)
@@ -70,6 +81,7 @@ func NewItemSelectionView(ctx context.Context, config *appconfig.Config, opts ..
 	i := &ItemSelection{
 		config: config,
 		KeyMap: DefaultItemViewKeyMap(),
+		panes:  make(map[paneID]paneProperties),
 	}
 	for _, o := range opts {
 		o(i)
@@ -161,17 +173,51 @@ func (m *ItemSelection) moveFocus() {
 }
 
 func (m *ItemSelection) applySize() {
-	w := ternary(m.window.width, m.window.width/2, m.zoomEnabled)
-	borderStyle = borderStyle.
-		Height(m.window.height - 2).
-		Width(w)
+	var (
+		borderH     = 2
+		borderW     = 2
+		homeGutterH = 1
+		// width       = u.Ternary(m.window.width, m.window.width/2, m.zoomEnabled)
+		itemswidth  = u.Ternary(m.window.width, m.window.width/2, m.zoomEnabled && m.zoomtarget == itemsPaneID)
+		detailwidth = u.Ternary(m.window.width, m.window.width/2, m.zoomEnabled && m.zoomtarget == detailsPaneID)
+		paddingR    = 1
+	)
 
-	focusedStyle = focusedStyle.
-		Height(m.window.height - 2).
-		Width(w)
+	// ensure full screen width is utilised,
+	detailwidth = max(detailwidth, m.window.width-itemswidth)
 
-	m.itemsPane.applySize(m.window.height-2-3, w-4)
-	m.detailsPane.applySize(m.window.height-2-3, w-4)
+	tb := m.panes[itemsPaneID]
+	dt := m.panes[detailsPaneID]
+
+	//heights
+	tb.height = m.window.height - homeGutterH - borderH
+	dt.height = m.window.height - homeGutterH - borderH
+
+	// widths
+	tb.width = itemswidth - borderW - paddingR
+	dt.width = detailwidth - borderW - paddingR
+
+	// styles
+	tb.style = lipgloss.NewStyle().
+		Inherit(tb.style).
+		Height(m.window.height - homeGutterH).
+		MaxHeight(m.window.height - homeGutterH).
+		PaddingRight(paddingR).
+		Width(itemswidth)
+	dt.style = lipgloss.NewStyle().
+		Inherit(dt.style).
+		Height(m.window.height - homeGutterH).
+		MaxHeight(m.window.height - homeGutterH).
+		PaddingRight(paddingR).
+		Width(detailwidth)
+
+	// update
+	m.panes[itemsPaneID] = tb
+	m.panes[detailsPaneID] = dt
+
+	// forward
+	m.itemsPane.applySize(tb.height, tb.width)
+	m.detailsPane.applySize(dt.height, dt.width)
 }
 
 func (m *ItemSelection) View() string {

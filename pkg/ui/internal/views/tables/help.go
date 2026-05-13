@@ -6,10 +6,10 @@ import "charm.land/bubbles/v2/key"
 func (m *TableSelection) ShortHelp() []key.Binding {
 	ah := appendShortHelp
 	switch m.focused {
-	case tablePaneID:
-		return ah(ah(m.tablePane.ShortHelp(), m.KeyMap.ShortHelp()), m.tablePane.AddKeyMap.Bindings())
-	case detailsPaneID:
-		return ah(ah(m.detailsPane.ShortHelp(), m.KeyMap.ShortHelp()), m.detailsPane.AddKeyMap.Bindings())
+	case tablesPaneID:
+		return ah(ah(m.tablesPane.ShortHelp(), m.KeyMap.ShortHelp()), m.tablesPane.AddKeyMap.Bindings())
+	case detailPaneID:
+		return ah(ah(m.detailPane.ShortHelp(), m.KeyMap.ShortHelp()), m.detailPane.AddKeyMap.Bindings())
 	}
 	return nil
 }
@@ -29,10 +29,10 @@ func (m *detailsPane) ShortHelp() []key.Binding {
 // VIEW
 func (m *TableSelection) FullHelp() [][]key.Binding {
 	switch m.focused {
-	case tablePaneID:
-		return appendFullHelp(m.tablePane.FullHelp(), m.KeyMap.FullHelp())
-	case detailsPaneID:
-		return appendFullHelp(m.detailsPane.FullHelp(), m.KeyMap.FullHelp())
+	case tablesPaneID:
+		return appendFullHelp(m.tablesPane.FullHelp(), m.KeyMap.FullHelp())
+	case detailPaneID:
+		return appendFullHelp(m.detailPane.FullHelp(), m.KeyMap.FullHelp())
 	}
 	return nil
 }

@@ -953,10 +953,11 @@ func (m *ItemSelectionPane) updateSize() {
 	h, w := m.window.height, m.window.width
 
 	searchBoxH := ternary(m.search.GetHeight(), 0, m.search.IsEnabled())
-	tableInfoH := tableInfoBox.GetHeight()
+	tableInfoH := lipgloss.Height(m.renderTableInfo())
 	m.window.height = h
 	m.window.width = w
-	m.content.SetHeight(h - searchBoxH - tableInfoH - ternary(1, 0, m.spinner.active))
+	// TODO: fix the '1'; content prints one empty row beyond its allowed height
+	m.content.SetHeight(h - 1 - searchBoxH - tableInfoH - ternary(1, 0, m.spinner.active))
 	m.content.SetWidth(w)
 	m.search.SetWidth(w)
 	m.queryLimit = h
