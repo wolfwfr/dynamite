@@ -18,9 +18,6 @@ import (
 	u "github.com/wolfwfr/dynamite/pkg/util"
 )
 
-var queryDialogStyle = commonstyles.DialogStyle
-var queryOperatorDialogStyle = commonstyles.DialogStyle.Border(lipgloss.RoundedBorder()).Padding(3, 3, 0, 0)
-
 type queryKeyMap struct {
 	tab   key.Binding
 	shtab key.Binding
@@ -113,14 +110,20 @@ type Queryialog struct {
 		rangeKeyInput1      textinput.Model
 		rangeKeyInput2      textinput.Model
 	}
+
+	// collapseHeaders is set to true when the full index list including headers
+	// does not fit in the available height
+	collapseHeaders bool
 }
 
 type queryListStyles struct {
 	headed.Styles
-	title    lipgloss.Style
-	content  lipgloss.Style
-	help     lipgloss.Style
-	helpLine lipgloss.Style
+	dialog         lipgloss.Style
+	title          lipgloss.Style
+	content        lipgloss.Style
+	help           lipgloss.Style
+	helpLine       lipgloss.Style
+	operatordialog lipgloss.Style
 
 	// box at width of content
 	narrowBox        lipgloss.Style
@@ -135,8 +138,19 @@ type queryListStyles struct {
 	rangeKeyInputTitle lipgloss.Style
 	rangeKeyOrderTitle lipgloss.Style
 
+	// button
 	applyButton        lipgloss.Style
 	applyButtonFocused lipgloss.Style
+
+	// index-header formats
+	tableFullHeader  string
+	gsiFullHeader    string
+	lsiFullHeader    string
+	tableShortHeader string
+	gsiShortHeader   string
+	lsiShortHeader   string
+
+	headerFmt func(s string) string
 }
 
 func newQueryStyles(darkBG bool) queryListStyles {
@@ -146,6 +160,8 @@ func newQueryStyles(darkBG bool) queryListStyles {
 	s.SelectedItem = lipgloss.NewStyle().PaddingLeft(2).Foreground(commonstyles.DialogFocusColour)
 	s.Header = lipgloss.NewStyle().Foreground(commonstyles.SubtleColour)
 
+	s.dialog = commonstyles.DialogStyle
+	s.operatordialog = commonstyles.DialogStyle.Border(lipgloss.RoundedBorder()).Padding(3, 3, 0, 0)
 	s.title = lipgloss.NewStyle().Padding(1, 0, 2, 0)
 	s.content = lipgloss.NewStyle().PaddingTop(1).PaddingBottom(2)
 	s.help = list.DefaultStyles(darkBG).HelpStyle.Padding(1, 2, 0, 2)
@@ -167,6 +183,17 @@ func newQueryStyles(darkBG bool) queryListStyles {
 	// query button
 	s.applyButton = lipgloss.NewStyle().Border(lipgloss.DoubleBorder()).BorderForeground(commonstyles.DialogUnfocusColour).Padding(0, 2, 0, 2).Margin(1, 0, 1, 0)
 	s.applyButtonFocused = lipgloss.NewStyle().Border(lipgloss.DoubleBorder()).BorderForeground(commonstyles.DialogFocusColour).Padding(0, 2, 0, 2).Margin(1, 0, 1, 0)
+
+	s.tableFullHeader = "Table Index"
+	s.gsiFullHeader = "Global Secondary Indices"
+	s.lsiFullHeader = "Local Secondary Indices"
+	s.tableShortHeader = " (table)"
+	s.gsiShortHeader = " (GSI)"
+	s.lsiShortHeader = " (LSI)"
+
+	s.headerFmt = func(s string) string {
+		return fmt.Sprintf("\n\n%s\n%s", headed.HeaderPadding(s, 30), "______________________________\n")
+	}
 
 	return s
 }
@@ -194,6 +221,9 @@ func NewQueryDialog(close key.Binding) *Queryialog {
 
 		help: help.New(),
 	}
+
+	d.styles = newQueryStyles(true)
+
 	d.dialog.width = d.defaultDialogWidth
 	d.dialog.height = d.defaultDialogHeight
 
@@ -246,8 +276,8 @@ func NewQueryDialog(close key.Binding) *Queryialog {
 		d.content.rangeKeyInput2 = rangeKeyInput
 	}
 
-	d.updateStyles(true) // default to dark styles.
 	d.updateSize()
+	d.updateStyles(true) // default to dark styles.
 
 	return d
 }
@@ -295,30 +325,48 @@ func (m *Queryialog) ShortHelp() []key.Binding {
 }
 
 func (m *Queryialog) newIndexDelegate(s *queryListStyles) headed.ItemDelegate {
-	headerFmt := func(s string) string {
-		return fmt.Sprintf("\n\n%s\n%s", headed.HeaderPadding(s, 30), "______________________________\n")
-	}
+	headerFmt := m.styles.headerFmt
 
 	s.Styles.SelectedItem = u.Ternary(s.Styles.SelectedItem, s.Styles.Item.PaddingLeft(2), m.focus == queryIndexSelection)
 
 	d := headed.ItemDelegate{
-		Styles: &s.Styles,
+		Styles:   &s.Styles,
+		Collapse: m.collapseHeaders,
 		HeadedItems: []headed.HeaderDelegate{
-			func(i headed.Item, ix int) string { return u.Ternary(headerFmt("Table Index"), "", ix == 0) },
+			func(i headed.Item, ix int) string { return u.Ternary(headerFmt(m.styles.tableFullHeader), "", ix == 0) },
 		},
+	}
+	if m.collapseHeaders {
+		d.HeadedItems[0] = func(i headed.Item, ix int) string { return u.Ternary(m.styles.tableShortHeader, "", ix == 0) }
 	}
 
 	if len(m.state.table.GSI) > 0 {
 		firstGSI := m.state.table.GSI[0].Name
-		d.HeadedItems = append(d.HeadedItems, func(i headed.Item, _ int) string {
-			return u.Ternary(headerFmt("Global Secondary Indices"), "", i.Name == firstGSI)
-		})
+		f := func(i headed.Item, _ int) string {
+			return u.Ternary(headerFmt(m.styles.gsiFullHeader), "", i.Name == firstGSI)
+		}
+		if m.collapseHeaders {
+			f = func(i headed.Item, _ int) string {
+				return u.Ternary(m.styles.gsiShortHeader, "", u.ContainsBy(m.state.table.GSI, func(e messages.GlobalSecondaryIndex) bool {
+					return e.Name == i.Name
+				}))
+			}
+		}
+		d.HeadedItems = append(d.HeadedItems, f)
 	}
 	if len(m.state.table.LSI) > 0 {
 		firstLSI := m.state.table.LSI[0].Name
-		d.HeadedItems = append(d.HeadedItems, func(i headed.Item, _ int) string {
-			return u.Ternary(headerFmt("Local Secondary Indices"), "", i.Name == firstLSI)
-		})
+		f := func(i headed.Item, _ int) string {
+			return u.Ternary(headerFmt(m.styles.lsiFullHeader), "", i.Name == firstLSI)
+		}
+		if m.collapseHeaders {
+			f = func(i headed.Item, _ int) string {
+				return u.Ternary(m.styles.lsiShortHeader, "", u.ContainsBy(m.state.table.LSI, func(e messages.LocalSecondaryIndex) bool {
+					return e.Name == i.Name
+				}))
+			}
+		}
+		d.HeadedItems = append(d.HeadedItems, f)
 	}
 
 	return d
@@ -346,6 +394,9 @@ func (m *Queryialog) updateStyles(isDark bool) {
 	s.hashKeyInputTitle = s.hashKeyInputTitle.Width(subwidth)
 	s.rangeKeyInputTitle = s.rangeKeyInputTitle.Width(subwidth)
 	s.rangeKeyOrderTitle = s.rangeKeyOrderTitle.Width(subwidth)
+
+	// dialog-style is actively resized; retain
+	s.dialog = m.styles.dialog
 
 	m.styles = s
 
@@ -379,7 +430,6 @@ func (m *Queryialog) Update(msg tea.Msg) tea.Cmd {
 	default:
 		return m.handleNavigation(msg)
 	}
-	return nil
 }
 
 func (m *Queryialog) handleNavigation(msg tea.Msg) tea.Cmd {
@@ -473,6 +523,7 @@ func (m *Queryialog) MoveFocus(i int) tea.Cmd {
 		m.keyMap.enter.SetEnabled(true)
 		// nothing to do
 	}
+	m.updateSize()
 	m.updateStyles(true)
 	return nil
 }
@@ -525,6 +576,7 @@ func (m *Queryialog) SetState(msg messages.InitQueryParameters) tea.Cmd {
 	m.state.init.orderDescending = msg.RangeOrderDescending
 
 	// update list item delegates
+	m.updateSize()
 	m.updateStyles(true)
 
 	// initialise the contents
@@ -697,11 +749,10 @@ func (m *Queryialog) updateSize() {
 	items := m.content.indexSelection.Items()
 
 	// set height of the index list
-	padding := 4
-	m.content.indexSelection.SetHeight(min(len(m.content.indexSelection.Items())+padding, m.window.height))
+	m.updateIndexListSize()
 
 	// set height of the operator list
-	padding = 3
+	padding := 3
 	m.content.operatorSelection.SetHeight(min(len(m.content.operatorSelection.Items())+padding, m.window.height))
 
 	// set height of range order options list
@@ -728,37 +779,78 @@ func (m *Queryialog) updateSize() {
 	m.updateStyles(true)
 
 	// set height & width of dialog itself
-	queryDialogStyle = queryDialogStyle.
+	m.styles.dialog = m.styles.dialog.
 		Height(m.dialog.height).
 		Width(m.dialog.width)
 }
 
-func (m *Queryialog) View() string {
-	title := m.styles.title.Render(m.content.indexSelection.Title)
-	indexSelection := m.styles.content.Render(m.content.indexSelection.View())
+func (m *Queryialog) updateIndexListSize() {
+	var (
+		// dialog
+		maxDialogHeight = m.defaultDialogHeight
 
+		// dialog elements
+		titleH   = lipgloss.Height(m.renderTitle())
+		contentH = 0
+		filterH  = lipgloss.Height(m.renderFilter())
+		applyH   = lipgloss.Height(m.renderApplyButton())
+		helpH    = lipgloss.Height(m.renderHelp())
+
+		// borders
+		bordersH = getBorderHeight(m.styles.dialog)
+
+		// padding
+		contentPH = getPadHeight(m.styles.content)
+	)
+
+	{ // update list height
+		var (
+			maxContentH       = maxDialogHeight - (titleH + bordersH + filterH + contentPH + applyH + helpH)
+			paginatorH        = lipgloss.Height(m.content.indexSelection.Styles.PaginationStyle.Render(m.content.indexSelection.Paginator.View())) + 1 // margin is set dynamically in list, cannot access; ergo '+1'
+			gsilen            = len(m.state.table.GSI)
+			lsilen            = len(m.state.table.LSI)
+			numHeaders        = u.Ternary(1, u.Ternary(2, 3, gsilen > 0 && lsilen == 0), gsilen+lsilen == 0)
+			headerH           = lipgloss.Height(m.styles.Header.Render(m.styles.headerFmt("test-header")))
+			totalHeaderH      = numHeaders * headerH
+			collapsedContentH = len(m.content.indexSelection.Items()) + paginatorH
+			idealContentH     = collapsedContentH + totalHeaderH
+			listAwareH        = idealContentH - totalHeaderH // delagate specifies each item height equals '1', list is not aware of header-height and shouldn't be
+		)
+
+		m.collapseHeaders = maxContentH < idealContentH
+		contentH = u.Ternary(min(maxContentH, collapsedContentH), listAwareH, m.collapseHeaders)
+		m.content.indexSelection.SetHeight(contentH)
+	}
+}
+
+func (m *Queryialog) View() string {
 	hashKeyInput := m.renderHashKey()
 
 	help := m.renderHelp()
 
 	apply := m.renderApplyButton()
-	rendering := []string{
+	keyFieldsRendering := []string{
 		hashKeyInput,
 	}
+
+	content := lipgloss.JoinVertical(lipgloss.Center,
+		m.renderContent(),
+		m.renderFilter(),
+	)
 
 	// only render range-key parameters when range-key applies
 	if m.state.resolved.RangeKey != nil {
 		rangeKeyFields := m.renderJoinedRangeKeyFields()
-		rendering = slices.Insert(rendering, 1, rangeKeyFields)
+		keyFieldsRendering = slices.Insert(keyFieldsRendering, 1, rangeKeyFields)
 	}
-	mainDialog := queryDialogStyle.Render(
+	mainDialog := m.styles.dialog.Render(
 		lipgloss.JoinVertical(lipgloss.Center,
-			title,
+			m.renderTitle(),
 			lipgloss.JoinHorizontal(lipgloss.Top,
-				lipgloss.NewStyle().PaddingRight(8).Render(indexSelection),
+				lipgloss.NewStyle().PaddingRight(8).Render(content),
 				lipgloss.NewStyle().Padding(3, 0, 0, 8).Render(
 					lipgloss.JoinVertical(lipgloss.Center,
-						rendering...,
+						keyFieldsRendering...,
 					),
 				),
 			),
@@ -793,16 +885,32 @@ func (m *Queryialog) FullHelp() [][]key.Binding {
 	return [][]key.Binding{}
 }
 
+func (m *Queryialog) renderTitle() string {
+	return m.styles.title.Render(m.content.indexSelection.Title)
+}
+
+func (m *Queryialog) renderContent() string {
+	return m.styles.content.Render(m.content.indexSelection.View())
+}
+
+func (m *Queryialog) renderFilter() string {
+	if m.content.indexSelection.FilterState() != list.Unfiltered {
+		m.content.indexSelection.FilterInput.SetWidth(len(m.content.indexSelection.FilterInput.Value()) + 2) // ensure filter stays centered and stable during cursor blinking
+		return m.content.indexSelection.FilterInput.View()
+	}
+	return lipgloss.NewStyle().Render("") // placeholder for filter
+}
+
 func (m *Queryialog) renderHelp() string {
 	return m.styles.help.Render(m.styles.helpLine.Render(m.help.View(m)))
 }
 
 func (m *Queryialog) renderOperatorSelection() string {
-	return queryOperatorDialogStyle.Render(m.styles.content.Render(m.content.operatorSelection.View()))
+	return m.styles.operatordialog.Render(m.styles.content.Render(m.content.operatorSelection.View()))
 }
 
 func (m *Queryialog) renderRangeOrderSelection() string {
-	return queryOperatorDialogStyle.Render(m.styles.content.Render(m.content.rangeOrderSelection.View()))
+	return m.styles.operatordialog.Render(m.styles.content.Render(m.content.rangeOrderSelection.View()))
 }
 
 func (m *Queryialog) renderHashKey() string {
