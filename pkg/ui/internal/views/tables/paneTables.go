@@ -602,7 +602,8 @@ func (m *tableSelectionPane) updateSize() {
 	h, w := m.window.height, m.window.width
 
 	searchBoxH := u.Ternary(m.search.GetHeight(), 0, m.search.IsEnabled())
-	m.content.SetHeight(h - searchBoxH - u.Ternary(1, 0, m.spinner.active))
+	// TODO: fix the '1' content prints one empty row beyond its allowed height
+	m.content.SetHeight(h - 1 - searchBoxH - u.Ternary(1, 0, m.spinner.active))
 	m.content.SetWidth(w)
 	m.search.SetWidth(w)
 }
