@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 	"image/color"
+	"net/url"
+	"os/exec"
+	"runtime"
 	"slices"
 	"strings"
 	"time"
@@ -357,6 +360,8 @@ func (m *tableSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 			m.search.Reset()
 		case key.Matches(msg, m.KeyMap.Reload):
 			return m.Init()
+		case key.Matches(msg, m.KeyMap.Link):
+			return m.openInBrowser()
 		case key.Matches(msg, m.KeyMap.Copy):
 			return m.copy()
 		default:
@@ -528,6 +533,41 @@ func (m *tableSelectionPane) selectTable() tea.Cmd {
 	return tea.Batch(switchView, selectTable)
 }
 
+// openInBrowser opens the selected table in the system's default browser
+func (m *tableSelectionPane) openInBrowser() tea.Cmd {
+	selection := m.content.SelectedRow()
+	if selection == nil || len([]table.Field(*selection)) == 0 {
+		return nil
+	}
+
+	var (
+		// TODO: think about config workaround for when AWS would change URL
+		urlFmt    = "https://%s.console.aws.amazon.com/dynamodbv2/home?region=%s#table?name=%s"
+		region    = m.config.Region
+		tableName = []table.Field(*selection)[0].Value()
+		cmd       string
+		args      []string
+	)
+
+	url := fmt.Sprintf(urlFmt, region, region, url.PathEscape(tableName))
+
+	switch runtime.GOOS {
+	case "windows":
+		cmd = "cmd"
+		args = []string{"/c", "start"}
+	case "darwin":
+		cmd = "open"
+	default: // "linux", "freebsd", "openbsd", "netbsd"
+		cmd = "xdg-open"
+	}
+	args = append(args, url)
+	if err := exec.Command(cmd, args...).Start(); err != nil {
+		return notifyError(err)
+	}
+
+	return nil
+}
+
 func (m *tableSelectionPane) applySize(height, width int) {
 	m.window.height = height
 	m.window.width = width
@@ -566,6 +606,12 @@ func (m *tableSelectionPane) noContentMessage() string {
 	fmt.Fprintf(&s, "             NO TABLES IN THIS REGION             \n")
 	fmt.Fprintf(&s, "==================================================\n")
 	return s.String()
+}
+
+func notifyError(err error) tea.Cmd {
+	return func() tea.Msg {
+		return messages.ToggleNotificationDialog{Error: err}
+	}
 }
 
 func notifyCopySuccess() tea.Msg {
