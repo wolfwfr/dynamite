@@ -11,6 +11,8 @@ import (
 	"charm.land/bubbles/v2/list"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+
+	"github.com/wolfwfr/dynamite/pkg/util"
 )
 
 type Item struct {
@@ -26,16 +28,22 @@ type Styles struct {
 	Header       lipgloss.Style
 }
 
-// HeaderDelegate accepts an item from the list and returns a header if the item
-// requires one. If not, the function is expected to return an empty string
+// HeaderDelegate accepts an item from the list and returns a header strings if
+// the item requires one. If not, the function is expected to return an empty
+// string. When `ItemDelegate.Collapse` equals `false`, this header is rendered above
+// the item. If `ItemDelegate.Collapse` equals `true`, this header is rendered
+// inline, in brackets following the item Name.
 type HeaderDelegate func(Item, int) string
 
 type ItemDelegate struct {
 	Styles *Styles
 
 	HeadedItems []HeaderDelegate
-	// FirstStarred *string
-	// FirstNormal  string
+
+	// when collapse is false, headers will be rendered above the items. When it
+	// is `true` the collapsed header will instead be rendered inline in
+	// brackets following the item name.
+	Collapse bool
 }
 
 func (d ItemDelegate) Height() int                             { return 1 }
@@ -47,12 +55,17 @@ func (d ItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 		return
 	}
 
-	str := i.Name
+	var (
+		header string
+		str    = i.Name
+	)
 
-	var header string
 	for _, f := range d.HeadedItems {
-		if h := f(i, index); h != "" {
+		if h := f(i, index); h != "" && !d.Collapse {
 			header = d.Styles.Header.Render(h) + "\n"
+			break
+		} else if h != "" && d.Collapse {
+			header = d.Styles.Header.Render(fmt.Sprintf("(%s)", h))
 			break
 		}
 	}
@@ -64,7 +77,11 @@ func (d ItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 		}
 	}
 
-	fmt.Fprint(w, fmt.Sprintf("%s%s", header, fn(str)))
+	if d.Collapse {
+		fmt.Fprintf(w, "%s%s%s", fn(str), util.Ternary(" ", "", len(header) > 0), header)
+		return
+	}
+	fmt.Fprintf(w, "%s%s", header, fn(str))
 }
 
 // HeaderPadding is a convenience helper that returns a best effort centralised

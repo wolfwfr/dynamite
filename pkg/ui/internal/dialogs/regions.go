@@ -2,6 +2,7 @@ package dialogs
 
 import (
 	"fmt"
+	"slices"
 
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/list"
@@ -13,8 +14,6 @@ import (
 	commonstyles "github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
 	u "github.com/wolfwfr/dynamite/pkg/util"
 )
-
-var regionsDialogStyle = commonstyles.DialogStyle
 
 type regionsKeyMap struct {
 	close key.Binding
@@ -50,14 +49,21 @@ type Regions struct {
 	styles regionListStyles
 
 	content list.Model
+
+	// collapseHeaders is set to true when the full list including headers does
+	// not fit in the available height
+	collapseHeaders bool
 }
 
 type regionListStyles struct {
 	headed.Styles
+	dialog   lipgloss.Style
 	title    lipgloss.Style
 	content  lipgloss.Style
 	help     lipgloss.Style
 	helpLine lipgloss.Style
+
+	headerFmt func(string) string
 }
 
 func newRegionStyles(darkBG bool) regionListStyles {
@@ -67,10 +73,16 @@ func newRegionStyles(darkBG bool) regionListStyles {
 	s.SelectedItem = lipgloss.NewStyle().PaddingLeft(2).Foreground(commonstyles.DialogFocusColour)
 	s.Header = lipgloss.NewStyle().Foreground(commonstyles.SubtleColour)
 
+	s.dialog = commonstyles.DialogStyle
 	s.title = lipgloss.NewStyle().Padding(1, 0, 2, 0)
 	s.content = lipgloss.NewStyle().PaddingTop(1).PaddingBottom(2)
 	s.help = list.DefaultStyles(darkBG).HelpStyle.Padding(1, 2, 0, 2)
 	s.helpLine = lipgloss.NewStyle().PaddingBottom(1)
+
+	s.headerFmt = func(s string) string {
+		return fmt.Sprintf("\n%s\n%s", headed.HeaderPadding(s, 17), "_________________\n")
+	}
+
 	return s
 }
 
@@ -80,6 +92,8 @@ func NewRegionsDialog(available, starred []string, current string, close key.Bin
 		starred:   starred,
 		selected:  current,
 
+		styles: newRegionStyles(true),
+
 		keyMap: regionsKeyMap{
 			close: close,
 			enter: key.NewBinding(
@@ -88,7 +102,7 @@ func NewRegionsDialog(available, starred []string, current string, close key.Bin
 			),
 		},
 
-		defaultDialogHeight: 46,
+		defaultDialogHeight: 60,
 		defaultDialogWidth:  55,
 	}
 	r.dialog.width = r.defaultDialogWidth
@@ -116,8 +130,8 @@ func NewRegionsDialog(available, starred []string, current string, close key.Bin
 	l.KeyMap.Quit.SetHelp(r.keyMap.close.Help().Key, r.keyMap.close.Help().Desc)
 
 	r.content = l
-	r.updateStyles(true) // default to dark styles.
 	r.updateSize()
+	r.updateStyles(true) // default to dark styles.
 
 	return r
 }
@@ -143,39 +157,49 @@ func compileSortedList(available, starred []string) (full []list.Item, unstarred
 	return items, unstarred
 }
 
-func (m *Regions) newDelegate(s *regionListStyles) headed.ItemDelegate {
+func (m *Regions) newDelegate(s *regionListStyles, inline bool) headed.ItemDelegate {
 	d := headed.ItemDelegate{
-		Styles: &s.Styles,
+		Styles:   &s.Styles,
+		Collapse: inline,
 	}
 
-	headerFmt := func(s string) string {
-		return fmt.Sprintf("\n%s\n%s", headed.HeaderPadding(s, 17), "_________________\n")
-	}
-
+	headerFmt := m.styles.headerFmt
 	if len(m.starred) > 0 {
 		firstStarred := m.starred[0]
-		d.HeadedItems = append(d.HeadedItems, func(i headed.Item, _ int) string {
+		f := func(i headed.Item, _ int) string {
 			return u.Ternary(headerFmt("*  Starred  *"), "", i.Name == firstStarred)
-		})
+		}
+		if inline {
+			f = func(i headed.Item, _ int) string {
+				return u.Ternary("starred", "", slices.Contains(m.starred, i.Name))
+			}
+		}
+		d.HeadedItems = append(d.HeadedItems, f)
 	}
 
 	if len(m.unstarred) > 0 {
 		firstNormal := m.unstarred[0]
-		d.HeadedItems = append(d.HeadedItems, func(i headed.Item, _ int) string {
+		f := func(i headed.Item, _ int) string {
 			return u.Ternary(headerFmt("Normal"), "", i.Name == firstNormal)
-		})
+		}
+		if inline {
+			f = func(i headed.Item, _ int) string { return "" }
+		}
+		d.HeadedItems = append(d.HeadedItems, f)
 	}
 
 	return d
 }
 
+// NOTE: updateStyles is best executed after updateSize, to first determine the
+// requisite `collapseHeaders` property.
 func (m *Regions) updateStyles(isDark bool) {
 	s := newRegionStyles(isDark)
 	m.content.Styles.Title = s.title
 	m.content.Styles.HelpStyle = s.help
 
 	m.styles = s
-	m.content.SetDelegate(m.newDelegate(&s))
+	m.content.SetDelegate(m.newDelegate(&s, m.collapseHeaders))
 }
 
 func (m *Regions) Init() tea.Cmd {
@@ -190,16 +214,16 @@ func (m *Regions) Update(msg tea.Msg) tea.Cmd {
 			return m.toggleDialog()
 		case key.Matches(msg, m.keyMap.enter):
 			return m.selectRegion()
-		default:
-			var cmd tea.Cmd
-			m.content, cmd = m.content.Update(msg)
-			return cmd
 		}
 	case tea.WindowSizeMsg:
 		m.applySize(msg.Height, msg.Width)
 		return nil
 	}
-	return nil
+	var cmd tea.Cmd
+	m.content, cmd = m.content.Update(msg)
+	m.updateSize()
+	m.updateStyles(true)
+	return cmd
 }
 
 func (m *Regions) selectRegion() tea.Cmd {
@@ -231,41 +255,128 @@ func (m *Regions) applySize(height, width int) {
 	m.window.width = width
 	m.window.height = height
 	m.updateSize()
+	m.updateStyles(true)
 }
 
 func (m *Regions) updateSize() {
-	items := m.content.Items()
+	var (
+		// dialog
+		maxDialogHeight = m.window.height
+		maxDialogWidth  = m.window.width
 
-	// set height of the list within the dialog
-	padding := 4
-	m.content.SetHeight(min(len(m.content.Items())+padding, m.window.height))
+		// dialog elements
+		titleH   = lipgloss.Height(m.renderTitle())
+		contentH = 0
+		filterH  = lipgloss.Height(m.renderFilter())
+		helpH    = lipgloss.Height(m.renderHelp())
 
-	// determine the width of the list within the dialog
-	width := m.defaultDialogWidth
-	for _, itm := range items {
-		width = max(width, len(itm.(headed.Item).Name))
+		// borders
+		bordersW = getBorderWidth(m.styles.dialog)
+		bordersH = getBorderHeight(m.styles.dialog)
+
+		// padding
+		contentPH = getPadHeight(m.styles.content)
+		contentPW = getPadWidth(m.styles.content)
+		helpPW    = getPadWidth(m.styles.help)
+	)
+
+	m.dialog.height = min(m.defaultDialogHeight, maxDialogHeight)
+	m.dialog.width = min(m.defaultDialogWidth, maxDialogWidth)
+
+	{ // update list height
+		var (
+			maxContentH       = maxDialogHeight - (bordersH + titleH + filterH + helpH + contentPH)
+			paginatorH        = lipgloss.Height(m.content.Styles.PaginationStyle.Render(m.content.Paginator.View())) + 1 // margin is set dynamically in list, cannot access; ergo '+1'
+			numHeaders        = u.Ternary(2, 0, len(m.starred) > 0)
+			headerH           = lipgloss.Height(m.styles.Header.Render(m.styles.headerFmt("test-header")))
+			totalHeaderH      = numHeaders * headerH
+			collapsedContentH = len(m.content.Items()) + paginatorH
+			idealContentH     = collapsedContentH + totalHeaderH
+			listAwareH        = idealContentH - totalHeaderH // delagate specifies each item height equals '1', list is not aware of header-height and shouldn't be
+		)
+
+		m.collapseHeaders = maxContentH < idealContentH
+		contentH = u.Ternary(min(maxContentH, collapsedContentH), listAwareH, m.collapseHeaders)
+		m.content.SetHeight(contentH)
 	}
-	// set width of the list within the dialog
-	m.content.SetWidth(width)
 
-	// set height & width of dialog itself
-	regionsDialogStyle = regionsDialogStyle.
-		Height(m.content.Height() + 2).
-		Width(width + 2)
+	{ // update list width
+		contentW := bordersW + max(contentPW, helpPW) // help is now coupled to content (see render)
 
+		// determine the width of the list within the dialog
+		items := m.content.Items()
+		for _, itm := range items {
+			m.dialog.width = u.Clamp(m.dialog.width, len(itm.(headed.Item).Name)+contentW, m.window.width)
+		}
+
+		// set width of the list within the dialog
+		m.content.SetWidth(m.dialog.width - contentW)
+	}
+
+	m.dialog.height = min(bordersH+titleH+contentH+contentPH+filterH+helpH, m.window.height)
+
+	// update dialog style size
+	m.styles.dialog = m.styles.dialog.
+		Height(m.dialog.height).
+		Width(m.dialog.width)
 }
 
 func (m *Regions) View() string {
-	title := m.styles.title.Render(m.content.Title)
-	content := m.styles.content.Render(m.content.View())
-	help := m.styles.help.Render(
-		m.styles.helpLine.Render(m.content.Help.View(m.content)),
-	)
-	return regionsDialogStyle.Render(
+	return m.styles.dialog.Render(
 		lipgloss.JoinVertical(lipgloss.Center,
-			title,
-			content,
-			help,
+			m.renderTitle(),
+			m.renderContent(),
+			// m.renderFilter(),
+			m.renderHelp(),
 		),
 	)
+	// title := m.styles.title.Render(m.content.Title)
+	// content := m.styles.content.Render(m.content.View())
+	// help := m.styles.help.Render(
+	// 	m.styles.helpLine.Render(m.content.Help.View(m.content)),
+	// )
+	// return regionsDialogStyle.Render(
+	// 	lipgloss.JoinVertical(lipgloss.Center,
+	// 		title,
+	// 		content,
+	// 		help,
+	// 	),
+	// )
+}
+
+func (m *Regions) renderContent() string {
+	return m.styles.content.Render(m.content.View())
+}
+
+func (m *Regions) renderFilter() string {
+	if m.content.FilterState() != list.Unfiltered {
+		m.content.FilterInput.SetWidth(len(m.content.FilterInput.Value()) + 2) // ensure filter stays centered and stable during cursor blinking
+		return m.content.FilterInput.View()
+	}
+	return lipgloss.NewStyle().Render("") // placeholder for filter
+}
+
+func (m *Regions) renderTitle() string {
+	return m.styles.title.Render(m.content.Title)
+}
+
+func (m *Regions) renderHelp() string {
+	return m.styles.help.Render(m.JoinedHelp())
+}
+
+func (m *Regions) JoinedHelp() string {
+	if !m.content.Help.ShowAll {
+		helpV := m.content.Help.ShortHelpView
+		helpLine := m.styles.helpLine
+		return lipgloss.JoinVertical(lipgloss.Center,
+			helpLine.Render(helpV(m.content.ShortHelp())),
+			helpLine.Render(helpV([]key.Binding{m.keyMap.enter})),
+		)
+	}
+
+	listBindings := m.content.FullHelp()
+	firstCol := listBindings[0]
+	firstCol = append(firstCol, m.keyMap.enter)
+	listBindings[0] = firstCol
+	return m.content.Help.FullHelpView(listBindings)
 }
