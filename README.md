@@ -140,11 +140,13 @@ Among others, Dynamite offers:
 - **Easy Authentication**: AWS authentication through environment or profile
 - **Region Selection**: select and switch AWS region within the TUI
 - **Fuzzy Finding**: quicly search and find what you need
+- **Syntax Highlighting**: JSON/YAML views of your items with highlighting
 - **Visibility Toggle**: only display the columns you're interested in
 - **Easy Sorting**: quickly sort your results by any field (S, B, N)
 - **Flexible Formatting**: Display your items as JSON or YAML
 - **Quick Copy**: Copy table name, item field or the item JSON/YAML immediately
 - **Scan/Query**: Scan and Query your table, select index, order, and set keys
+- **Open in Browser**: Swiftly open the table or item in your browser and edit
 - **ZOOM**: Don't need the second pane? Zoom in and only display what you need
 
 <br/>
