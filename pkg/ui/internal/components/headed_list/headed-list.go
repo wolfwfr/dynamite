@@ -11,8 +11,6 @@ import (
 	"charm.land/bubbles/v2/list"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-
-	"github.com/wolfwfr/dynamite/pkg/util"
 )
 
 type Item struct {
@@ -32,7 +30,7 @@ type Styles struct {
 // the item requires one. If not, the function is expected to return an empty
 // string. When `ItemDelegate.Collapse` equals `false`, this header is rendered above
 // the item. If `ItemDelegate.Collapse` equals `true`, this header is rendered
-// inline, in brackets following the item Name.
+// inline, following the item Name, spacing should be included in the returned string.
 type HeaderDelegate func(Item, int) string
 
 type ItemDelegate struct {
@@ -65,7 +63,7 @@ func (d ItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 			header = d.Styles.Header.Render(h) + "\n"
 			break
 		} else if h != "" && d.Collapse {
-			header = d.Styles.Header.Render(fmt.Sprintf("(%s)", h))
+			header = d.Styles.Header.Render(fmt.Sprintf("%s", h))
 			break
 		}
 	}
@@ -78,7 +76,7 @@ func (d ItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 	}
 
 	if d.Collapse {
-		fmt.Fprintf(w, "%s%s%s", fn(str), util.Ternary(" ", "", len(header) > 0), header)
+		fmt.Fprintf(w, "%s%s", fn(str), header)
 		return
 	}
 	fmt.Fprintf(w, "%s%s", header, fn(str))

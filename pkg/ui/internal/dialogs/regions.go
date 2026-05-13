@@ -63,6 +63,11 @@ type regionListStyles struct {
 	help     lipgloss.Style
 	helpLine lipgloss.Style
 
+	starFullHeader  string
+	normFullHeader  string
+	starShortHeader string
+	normShortHeader string
+
 	headerFmt func(string) string
 }
 
@@ -78,6 +83,11 @@ func newRegionStyles(darkBG bool) regionListStyles {
 	s.content = lipgloss.NewStyle().PaddingTop(1).PaddingBottom(2)
 	s.help = list.DefaultStyles(darkBG).HelpStyle.Padding(1, 2, 0, 2)
 	s.helpLine = lipgloss.NewStyle().PaddingBottom(1)
+
+	s.starFullHeader = "*  Starred  *"
+	s.normFullHeader = "Normal"
+	s.starShortHeader = " (starred)"
+	s.normShortHeader = ""
 
 	s.headerFmt = func(s string) string {
 		return fmt.Sprintf("\n%s\n%s", headed.HeaderPadding(s, 17), "_________________\n")
@@ -167,11 +177,11 @@ func (m *Regions) newDelegate(s *regionListStyles, inline bool) headed.ItemDeleg
 	if len(m.starred) > 0 {
 		firstStarred := m.starred[0]
 		f := func(i headed.Item, _ int) string {
-			return u.Ternary(headerFmt("*  Starred  *"), "", i.Name == firstStarred)
+			return u.Ternary(headerFmt(m.styles.starFullHeader), "", i.Name == firstStarred)
 		}
 		if inline {
 			f = func(i headed.Item, _ int) string {
-				return u.Ternary("starred", "", slices.Contains(m.starred, i.Name))
+				return u.Ternary(m.styles.starShortHeader, "", slices.Contains(m.starred, i.Name))
 			}
 		}
 		d.HeadedItems = append(d.HeadedItems, f)
@@ -180,10 +190,10 @@ func (m *Regions) newDelegate(s *regionListStyles, inline bool) headed.ItemDeleg
 	if len(m.unstarred) > 0 {
 		firstNormal := m.unstarred[0]
 		f := func(i headed.Item, _ int) string {
-			return u.Ternary(headerFmt("Normal"), "", i.Name == firstNormal)
+			return u.Ternary(headerFmt(m.styles.normFullHeader), "", i.Name == firstNormal)
 		}
 		if inline {
-			f = func(i headed.Item, _ int) string { return "" }
+			f = func(i headed.Item, _ int) string { return m.styles.normShortHeader }
 		}
 		d.HeadedItems = append(d.HeadedItems, f)
 	}
@@ -301,12 +311,15 @@ func (m *Regions) updateSize() {
 	}
 
 	{ // update list width
-		contentW := bordersW + max(contentPW, helpPW) // help is now coupled to content (see render)
+		var (
+			contentW   = bordersW + max(contentPW, helpPW) // help is now coupled to content (see render)
+			maxHeaderW = u.Ternary(max(len(m.styles.starShortHeader), len(m.styles.normShortHeader)), max(len(m.styles.starFullHeader), len(m.styles.normFullHeader)), m.collapseHeaders)
+		)
 
 		// determine the width of the list within the dialog
 		items := m.content.Items()
 		for _, itm := range items {
-			m.dialog.width = u.Clamp(m.dialog.width, len(itm.(headed.Item).Name)+contentW, m.window.width)
+			m.dialog.width = u.Clamp(m.dialog.width, len(itm.(headed.Item).Name)+contentW+maxHeaderW, m.window.width)
 		}
 
 		// set width of the list within the dialog
@@ -330,18 +343,6 @@ func (m *Regions) View() string {
 			m.renderHelp(),
 		),
 	)
-	// title := m.styles.title.Render(m.content.Title)
-	// content := m.styles.content.Render(m.content.View())
-	// help := m.styles.help.Render(
-	// 	m.styles.helpLine.Render(m.content.Help.View(m.content)),
-	// )
-	// return regionsDialogStyle.Render(
-	// 	lipgloss.JoinVertical(lipgloss.Center,
-	// 		title,
-	// 		content,
-	// 		help,
-	// 	),
-	// )
 }
 
 func (m *Regions) renderContent() string {
