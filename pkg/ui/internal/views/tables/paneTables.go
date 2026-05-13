@@ -541,15 +541,31 @@ func (m *tableSelectionPane) openInBrowser() tea.Cmd {
 	}
 
 	var (
+		region = m.config.Region
 		// TODO: think about config workaround for when AWS would change URL
-		urlFmt    = "https://%s.console.aws.amazon.com/dynamodbv2/home?region=%s#table?name=%s"
-		region    = m.config.Region
+		weburl    = fmt.Sprintf("https://%s.console.aws.amazon.com/dynamodbv2/home", region)
 		tableName = []table.Field(*selection)[0].Value()
 		cmd       string
 		args      []string
 	)
 
-	url := fmt.Sprintf(urlFmt, region, region, url.PathEscape(tableName))
+	paramkeys := []string{
+		"region",
+		"name",
+	}
+
+	paramVals := []string{
+		fmt.Sprintf("%s#table?", region),
+		url.PathEscape(tableName),
+	}
+
+	// manually parsing query parameters, because of the strange double query
+	// parameter section in the dynamo-db url
+	weburl = fmt.Sprintf("%s%s", weburl, u.Ternary("?", "", len(paramkeys) > 0))
+	for i := range paramkeys {
+		sep := u.Ternary("&", "", i > 1)
+		weburl = fmt.Sprintf("%s%s%s=%s", weburl, sep, paramkeys[i], paramVals[i])
+	}
 
 	switch runtime.GOOS {
 	case "windows":
@@ -560,12 +576,13 @@ func (m *tableSelectionPane) openInBrowser() tea.Cmd {
 	default: // "linux", "freebsd", "openbsd", "netbsd"
 		cmd = "xdg-open"
 	}
-	args = append(args, url)
+	args = append(args, weburl)
 	if err := exec.Command(cmd, args...).Start(); err != nil {
 		return notifyError(err)
 	}
 
 	return nil
+
 }
 
 func (m *tableSelectionPane) applySize(height, width int) {

@@ -5,6 +5,9 @@ import (
 	"context"
 	"fmt"
 	"image/color"
+	"net/url"
+	"os/exec"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -392,6 +395,8 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 			return m.ToggleQueryParametersDialog()
 		case key.Matches(msg, m.KeyMap.Copy):
 			return m.copy()
+		case key.Matches(msg, m.KeyMap.Link):
+			return m.openInBrowser()
 		case key.Matches(msg, m.KeyMap.ColVis):
 			return m.toggleColumnVsibilityDialog(msg)
 		case key.Matches(msg, m.KeyMap.ColSort):
@@ -819,6 +824,73 @@ func compileCompleteKeys(table [][]types.KeyValue, existing []string, hasRangeKe
 	copy(res[sortLenOffset:], toSort)
 
 	return res
+}
+
+func (m *ItemSelectionPane) openInBrowser() tea.Cmd {
+	selection := m.content.SelectedRow()
+	if selection == nil || len([]table.Field(*selection)) == 0 || m.selectedTable.TableName == nil {
+		return nil
+	}
+
+	var (
+		region = m.config.Region
+		// TODO: think about config workaround for when AWS would change URL
+		weburl    = fmt.Sprintf("https://%s.console.aws.amazon.com/dynamodbv2/home", region)
+		tableName = *m.selectedTable.TableName
+		fields    = []table.Field(*selection)
+		cmd       string
+		args      []string
+	)
+	_, r := primaryKeysFromSchema(keysFromIndex(m.tableIndex.activeIndex, m.selectedTable))
+
+	paramkeys := []string{
+		"region",
+		"itemMode",
+		"pk",
+		"table",
+	}
+
+	paramVals := []string{
+		fmt.Sprintf("%s#edit-item?", region),
+		"2", // 1:create, 2:edit, 3:duplicate
+		url.QueryEscape(strings.Trim(fields[0].Value(), "\"")),
+		url.PathEscape(tableName),
+	}
+
+	if r != nil {
+		paramkeys = append(paramkeys, "sk")
+		paramVals = append(paramVals, url.QueryEscape(strings.Trim(fields[1].Value(), "\"")))
+	}
+
+	// manually parsing query parameters, because of the strange double query
+	// parameter section in the dynamo-db url
+	weburl = fmt.Sprintf("%s%s", weburl, u.Ternary("?", "", len(paramkeys) > 0))
+	for i := range paramkeys {
+		sep := u.Ternary("&", "", i > 1)
+		weburl = fmt.Sprintf("%s%s%s=%s", weburl, sep, paramkeys[i], paramVals[i])
+	}
+
+	switch runtime.GOOS {
+	case "windows":
+		cmd = "cmd"
+		args = []string{"/c", "start"}
+	case "darwin":
+		cmd = "open"
+	default: // "linux", "freebsd", "openbsd", "netbsd"
+		cmd = "xdg-open"
+	}
+	args = append(args, weburl)
+	if err := exec.Command(cmd, args...).Start(); err != nil {
+		return notifyError(err)
+	}
+
+	return nil
+}
+
+func notifyError(err error) tea.Cmd {
+	return func() tea.Msg {
+		return messages.ToggleNotificationDialog{Error: err}
+	}
 }
 
 func (m *ItemSelectionPane) applySize(height, width int) {
