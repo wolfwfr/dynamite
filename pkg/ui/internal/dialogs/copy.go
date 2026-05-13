@@ -135,6 +135,9 @@ func (m *CopyDialog) updateStyles(isDark bool) {
 	m.content.Styles.Title = s.title
 	m.content.Styles.HelpStyle = s.help
 
+	// dialog-style is actively resized; retain
+	s.dialog = m.styles.dialog
+
 	m.styles = s
 	m.content.SetDelegate(m.newDelegate(&s))
 }

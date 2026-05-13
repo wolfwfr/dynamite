@@ -109,8 +109,8 @@ func newscanStyles(darkBG bool) scanListStyles {
 	s.gsiFullHeader = "Global Secondary Indices"
 	s.lsiFullHeader = "Local Secondary Indices"
 	s.tableShortHeader = " (table)"
-	s.gsiShortHeader = " (gsi)"
-	s.lsiShortHeader = " (lsi)"
+	s.gsiShortHeader = " (GSI)"
+	s.lsiShortHeader = " (LSI)"
 
 	s.headerFmt = func(s string) string {
 		return fmt.Sprintf("\n\n%s\n%s", headed.HeaderPadding(s, 30), "______________________________\n")
@@ -171,11 +171,11 @@ func NewScanDialog(close key.Binding) *ScanDialog {
 func (m *ScanDialog) newDelegate(s *scanListStyles) headed.ItemDelegate {
 	headerFmt := m.styles.headerFmt
 	d := headed.ItemDelegate{
-		Styles: &s.Styles,
+		Styles:   &s.Styles,
+		Collapse: m.collapseHeaders,
 		HeadedItems: []headed.HeaderDelegate{
 			func(i headed.Item, ix int) string { return u.Ternary(headerFmt(m.styles.tableFullHeader), "", ix == 0) },
 		},
-		Collapse: m.collapseHeaders,
 	}
 
 	if m.collapseHeaders {
@@ -219,6 +219,9 @@ func (m *ScanDialog) updateStyles(isDark bool) {
 	m.content.Styles.Title = s.title
 	m.content.Styles.HelpStyle = s.help
 	s.keyInfo = s.keyInfo.Width(m.dialog.width - 10)
+
+	// dialog-style is actively resized; retain
+	s.dialog = m.styles.dialog
 
 	m.styles = s
 	m.content.SetDelegate(m.newDelegate(&s))
