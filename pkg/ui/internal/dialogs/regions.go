@@ -167,10 +167,10 @@ func compileSortedList(available, starred []string) (full []list.Item, unstarred
 	return items, unstarred
 }
 
-func (m *Regions) newDelegate(s *regionListStyles, inline bool) headed.ItemDelegate {
+func (m *Regions) newDelegate(s *regionListStyles) headed.ItemDelegate {
 	d := headed.ItemDelegate{
 		Styles:   &s.Styles,
-		Collapse: inline,
+		Collapse: m.collapseHeaders,
 	}
 
 	headerFmt := m.styles.headerFmt
@@ -179,7 +179,7 @@ func (m *Regions) newDelegate(s *regionListStyles, inline bool) headed.ItemDeleg
 		f := func(i headed.Item, _ int) string {
 			return u.Ternary(headerFmt(m.styles.starFullHeader), "", i.Name == firstStarred)
 		}
-		if inline {
+		if m.collapseHeaders {
 			f = func(i headed.Item, _ int) string {
 				return u.Ternary(m.styles.starShortHeader, "", slices.Contains(m.starred, i.Name))
 			}
@@ -192,7 +192,7 @@ func (m *Regions) newDelegate(s *regionListStyles, inline bool) headed.ItemDeleg
 		f := func(i headed.Item, _ int) string {
 			return u.Ternary(headerFmt(m.styles.normFullHeader), "", i.Name == firstNormal)
 		}
-		if inline {
+		if m.collapseHeaders {
 			f = func(i headed.Item, _ int) string { return m.styles.normShortHeader }
 		}
 		d.HeadedItems = append(d.HeadedItems, f)
@@ -209,7 +209,7 @@ func (m *Regions) updateStyles(isDark bool) {
 	m.content.Styles.HelpStyle = s.help
 
 	m.styles = s
-	m.content.SetDelegate(m.newDelegate(&s, m.collapseHeaders))
+	m.content.SetDelegate(m.newDelegate(&s))
 }
 
 func (m *Regions) Init() tea.Cmd {

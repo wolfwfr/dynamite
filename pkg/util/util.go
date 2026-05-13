@@ -48,3 +48,12 @@ func FindBy[S []E, E comparable](slice S, cond func(i E) bool) int {
 func Clamp(v, low, high int) int {
 	return min(max(v, low), high)
 }
+
+func ContainsBy[S ~[]E, E any](s S, f func(E) bool) bool {
+	for _, e := range s {
+		if f(e) {
+			return true
+		}
+	}
+	return false
+}
