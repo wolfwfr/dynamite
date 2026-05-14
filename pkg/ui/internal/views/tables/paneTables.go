@@ -511,6 +511,7 @@ func (m *tableSelectionPane) selectTable() tea.Cmd {
 	if len(row) == 0 {
 		return nil // nothing to select
 	}
+	// TODO: async!
 	if m.details == nil || (m.details.TableName != nil && *m.details.TableName != row[0].Value()) {
 		m.cleanSlate()
 		ctx, cc := context.WithTimeout(m.ctx, m.stdTO)

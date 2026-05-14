@@ -278,6 +278,7 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 						p.itemfiltering.matchedRunes[i] = match.Matches
 					}
 					p.content.SetVirtualRows(filtered)
+					p.refreshCache()
 					return nil
 				},
 				Reset: func(searchHeight int) tea.Cmd {
