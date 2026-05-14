@@ -130,6 +130,9 @@ func NewColumnSortingDialog(close key.Binding) *ColumnSorting {
 		defaultDialogHeight: 46,
 		defaultDialogWidth:  66,
 	}
+
+	c.styles = newColumnSortingStyles(true)
+
 	c.dialog.width = c.defaultDialogWidth
 	c.dialog.height = c.defaultDialogHeight
 

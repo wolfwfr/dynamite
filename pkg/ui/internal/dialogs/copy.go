@@ -92,6 +92,8 @@ func NewCopyDialog(close key.Binding) *CopyDialog {
 		defaultDialogHeight: 46,
 		defaultDialogWidth:  66,
 	}
+
+	c.styles = newCopyStyles(true)
 	c.dialog.width = c.defaultDialogWidth
 	c.dialog.height = c.defaultDialogHeight
 

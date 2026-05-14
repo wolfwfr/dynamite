@@ -95,6 +95,9 @@ func NewColumnVisibilityDialog(close key.Binding) *ColumnVis {
 		defaultDialogHeight: 46,
 		defaultDialogWidth:  66,
 	}
+
+	c.styles = newColumnStyles(true)
+
 	c.dialog.width = c.defaultDialogWidth
 	c.dialog.height = c.defaultDialogHeight
 
