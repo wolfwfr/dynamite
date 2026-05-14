@@ -360,7 +360,7 @@ func (m *tableSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 			m.search.Reset()
 		case key.Matches(msg, m.KeyMap.Reload):
 			return m.Init()
-		case key.Matches(msg, m.KeyMap.Link):
+		case key.Matches(msg, m.KeyMap.Browser):
 			return m.openInBrowser()
 		case key.Matches(msg, m.KeyMap.Copy):
 			return m.copy()

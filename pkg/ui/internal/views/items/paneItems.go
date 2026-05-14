@@ -396,7 +396,7 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 			return m.ToggleQueryParametersDialog()
 		case key.Matches(msg, m.KeyMap.Copy):
 			return m.copy()
-		case key.Matches(msg, m.KeyMap.Link):
+		case key.Matches(msg, m.KeyMap.Browser):
 			return m.openInBrowser()
 		case key.Matches(msg, m.KeyMap.ColVis):
 			return m.toggleColumnVsibilityDialog(msg)

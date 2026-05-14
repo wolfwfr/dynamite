@@ -55,7 +55,7 @@ type ItemPaneKeyMap struct {
 	Query           key.Binding
 	QueryParameters key.Binding
 	Copy            key.Binding
-	Link            key.Binding
+	Browser         key.Binding
 	ColVis          key.Binding
 	ColSort         key.Binding
 	Reload          key.Binding
@@ -69,7 +69,7 @@ func (km *ItemPaneKeyMap) ShortHelp() []key.Binding {
 // FullHelp implements the KeyMap interface.
 func (km *ItemPaneKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{km.Search, km.Zoom, km.Reload, km.Esc, km.ChCols, km.ToggleFmt, km.Scan, km.ScanParameters, km.Query, km.QueryParameters, km.Copy, km.Link, km.ColVis, km.ColSort},
+		{km.Search, km.Zoom, km.Reload, km.Esc, km.ChCols, km.ToggleFmt, km.Scan, km.ScanParameters, km.Query, km.QueryParameters, km.Copy, km.Browser, km.ColVis, km.ColSort},
 	}
 }
 
@@ -122,9 +122,9 @@ func DefaultItemPaneKeyMap() *ItemPaneKeyMap {
 			key.WithKeys("Y"),
 			key.WithHelp("shift+y", "copy"),
 		),
-		Link: key.NewBinding(
-			key.WithKeys("L"),
-			key.WithHelp("shift+L", "open in browser"),
+		Browser: key.NewBinding(
+			key.WithKeys("X"),
+			key.WithHelp("shift+x", "open in browser"),
 		),
 		ColVis: key.NewBinding(
 			key.WithKeys("V"),

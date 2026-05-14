@@ -35,13 +35,13 @@ func DefaultDetailsKeyMap() *DetailsPaneKeyMap {
 // TablePaneKeyMap defines keybindings. It satisfies to the help.KeyMap interface, which
 // is used to render the help menu.
 type TablePaneKeyMap struct {
-	Select key.Binding
-	Search key.Binding
-	Zoom   key.Binding
-	Copy   key.Binding
-	Link   key.Binding
-	Reload key.Binding
-	Esc    key.Binding
+	Select  key.Binding
+	Search  key.Binding
+	Zoom    key.Binding
+	Copy    key.Binding
+	Browser key.Binding
+	Reload  key.Binding
+	Esc     key.Binding
 }
 
 // ShortHelp implements the KeyMap interface.
@@ -52,7 +52,7 @@ func (km *TablePaneKeyMap) ShortHelp() []key.Binding {
 // FullHelp implements the KeyMap interface.
 func (km *TablePaneKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{km.Select, km.Search, km.Zoom, km.Link, km.Reload, km.Copy, km.Esc},
+		{km.Select, km.Search, km.Zoom, km.Browser, km.Reload, km.Copy, km.Esc},
 	}
 }
 
@@ -75,9 +75,9 @@ func DefaultTablePaneKeyMap() *TablePaneKeyMap {
 			key.WithKeys("Y"),
 			key.WithHelp("shift+y", "copy"),
 		),
-		Link: key.NewBinding(
-			key.WithKeys("L"),
-			key.WithHelp("shift+L", "open in browser"),
+		Browser: key.NewBinding(
+			key.WithKeys("X"),
+			key.WithHelp("shift+x", "open in browser"),
 		),
 		Reload: key.NewBinding(
 			key.WithKeys("ctrl+r"),
