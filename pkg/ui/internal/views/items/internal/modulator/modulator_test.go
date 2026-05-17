@@ -1,4 +1,4 @@
-package itemselection
+package modulator
 
 import (
 	"testing"

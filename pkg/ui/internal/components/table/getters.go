@@ -1,5 +1,7 @@
 package table
 
+import "charm.land/bubbles/v2/help"
+
 // Focused returns the focus state of the table.
 func (m *Model) Focused() bool {
 	return m.focus
@@ -67,4 +69,14 @@ func (m *Model) CursorAtEnd() bool {
 // ViewAtEnd returns whether the last available row is in view
 func (m *Model) ViewAtEnd() bool {
 	return m.end == len(m.VisualRows())
+}
+
+// GetKeyMap returns a pointer to the model's keymap
+func (m *Model) GetKeyMap() *KeyMap {
+	return m.keyMap
+}
+
+// GetHelp returns the table's help model
+func (m *Model) GetHelp() help.Model {
+	return m.help
 }

@@ -10,8 +10,8 @@ import (
 
 // Model defines a state for the table widget.
 type Model struct {
-	KeyMap *KeyMap
-	Help   help.Model
+	keyMap *KeyMap
+	help   help.Model
 
 	// fieldDelegate, when set, is called to provide non-default styling for a row
 	fieldDelegate FieldDelegate
