@@ -32,8 +32,8 @@ func New(opts ...Option) *Model {
 
 		dynCols: true,
 
-		KeyMap: DefaultKeyMap(),
-		Help:   help.New(),
+		keyMap: DefaultKeyMap(),
+		help:   help.New(),
 		styles: DefaultStyles(),
 	}
 
@@ -70,33 +70,33 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
 		switch {
-		case key.Matches(msg, m.KeyMap.LineUp):
+		case key.Matches(msg, m.keyMap.LineUp):
 			m.MoveUp(1)
-		case key.Matches(msg, m.KeyMap.LineDown):
+		case key.Matches(msg, m.keyMap.LineDown):
 			m.MoveDown(1)
-		case key.Matches(msg, m.KeyMap.ScrollRight):
+		case key.Matches(msg, m.keyMap.ScrollRight):
 			m.ScrollRight(1)
-		case key.Matches(msg, m.KeyMap.ScrollLeft):
+		case key.Matches(msg, m.keyMap.ScrollLeft):
 			m.ScrollLeft(1)
-		case key.Matches(msg, m.KeyMap.ShiftRight):
+		case key.Matches(msg, m.keyMap.ShiftRight):
 			m.ScrollRight(m.content.Width() / 4)
-		case key.Matches(msg, m.KeyMap.ShiftLeft):
+		case key.Matches(msg, m.keyMap.ShiftLeft):
 			m.ScrollLeft(m.content.Width() / 4)
-		case key.Matches(msg, m.KeyMap.PageUp):
+		case key.Matches(msg, m.keyMap.PageUp):
 			m.MoveUp(m.content.Height())
-		case key.Matches(msg, m.KeyMap.PageDown):
+		case key.Matches(msg, m.keyMap.PageDown):
 			m.MoveDown(m.content.Height())
-		case key.Matches(msg, m.KeyMap.HalfPageUp):
+		case key.Matches(msg, m.keyMap.HalfPageUp):
 			m.MoveUp(m.content.Height() / 2) //nolint:mnd
-		case key.Matches(msg, m.KeyMap.HalfPageDown):
+		case key.Matches(msg, m.keyMap.HalfPageDown):
 			m.MoveDown(m.content.Height() / 2) //nolint:mnd
-		case key.Matches(msg, m.KeyMap.GotoTop):
+		case key.Matches(msg, m.keyMap.GotoTop):
 			m.GotoTop()
-		case key.Matches(msg, m.KeyMap.GotoBottom):
+		case key.Matches(msg, m.keyMap.GotoBottom):
 			m.GotoBottom()
-		case key.Matches(msg, m.KeyMap.GotoLeft):
+		case key.Matches(msg, m.keyMap.GotoLeft):
 			m.GotoLeft()
-		case key.Matches(msg, m.KeyMap.GotoRight):
+		case key.Matches(msg, m.keyMap.GotoRight):
 			m.GotoRight()
 		}
 	}
@@ -113,7 +113,7 @@ func (m *Model) View() string {
 // Note that this view is not rendered by default and you must call it
 // manually in your application, where applicable.
 func (m *Model) HelpView() string {
-	return m.Help.View(m.KeyMap)
+	return m.help.View(m.keyMap)
 }
 
 func (m *Model) MoveContentBoundaries(n int) {

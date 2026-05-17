@@ -16,7 +16,7 @@ func (m *TableSelection) ShortHelp() []key.Binding {
 
 // TABLE PANE
 func (m *tableSelectionPane) ShortHelp() []key.Binding {
-	return appendShortHelp(m.content.KeyMap.ShortHelp(), m.KeyMap.ShortHelp())
+	return appendShortHelp(m.content.GetKeyMap().ShortHelp(), m.KeyMap.ShortHelp())
 }
 
 // DETAILS PANE
@@ -39,7 +39,7 @@ func (m *TableSelection) FullHelp() [][]key.Binding {
 
 // TABLE PANE
 func (m *tableSelectionPane) FullHelp() [][]key.Binding {
-	return appendFullHelp(m.content.KeyMap.FullHelp(), m.KeyMap.FullHelp())
+	return appendFullHelp(m.content.GetKeyMap().FullHelp(), m.KeyMap.FullHelp())
 }
 
 // DETAILS PANE

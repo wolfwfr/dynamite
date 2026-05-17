@@ -67,7 +67,7 @@ func WithStyles(s Styles) Option {
 // WithKeyMap sets the key map.
 func WithKeyMap(km KeyMap) Option {
 	return func(m *Model) {
-		m.KeyMap = &km
+		m.keyMap = &km
 	}
 }
 

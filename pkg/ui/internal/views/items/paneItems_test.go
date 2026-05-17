@@ -516,7 +516,9 @@ func TestSearch(t *testing.T) {
 	t.Run("item-selection-pane should", func(t *testing.T) {
 		t.Run("prevent paging in new results when search is enabled", func(t *testing.T) {
 			readyForPaging := func(sut *ItemSelectionPane) {
-				sut.resetPaging()                                                                                  // setup; reset any settings from previous paging
+				backup := sut.pagingDisabled
+				sut.resetPaging() // setup; reset any settings from previous paging
+				sut.pagingDisabled = backup
 				sut.pageKey = map[string]dynamodbtypes.AttributeValue{"a": &dynamodbtypes.AttributeValueMemberS{}} // setup; fake a pagination-key
 			}
 
@@ -533,26 +535,26 @@ func TestSearch(t *testing.T) {
 				ScanTable(gm.Any(), gm.Any(), gm.Any(), gm.Any()).
 				Return(&apitypes.ScanResponse{}, nil).
 				Times(2)
-			readyForPaging(sut)                                    // setup; get ready for paging
-			cmd := sut.Update(tea.KeyPressMsg(tea.Key{Text: "G"})) // jump to bottom; to trigger pagination
-			msgs := tu.ExtractMessages[messages.PageReady](cmd)    // execute pagination
-			require.Len(t, msgs, 1)                                // require at least one page
-			sut.Update(tea.KeyPressMsg(tea.Key{Text: "g"}))        // jump back to top to reset
-			sut.Update(searchKey)                                  // enable search
-			_, ok := searchItemSelection(t, sut, "id=id")          // search for some items to filter results & disable pagination
-			require.True(t, ok)                                    // ensure search was properly applied
-			sut.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEsc})) // blur the search
-			readyForPaging(sut)                                    // setup; get ready for paging
-			cmd = sut.Update(tea.KeyPressMsg(tea.Key{Text: "G"}))  // jump to bottom again
-			msgs = tu.ExtractMessages[messages.PageReady](cmd)     // execute any potential pagination
-			assert.Len(t, msgs, 0)                                 // assert no pagination this time
-			sut.Update(tea.KeyPressMsg(tea.Key{Text: "g"}))        // jump back to top to reset
-			sut.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEsc})) // cancel the search (reset)
-			require.False(t, sut.itemfiltering.enabled)            // ensure search is disabled again
-			readyForPaging(sut)                                    // setup; get ready for paging
-			cmd = sut.Update(tea.KeyPressMsg(tea.Key{Text: "G"}))  // jump to bottom again
-			msgs = tu.ExtractMessages[messages.PageReady](cmd)     // execute any potential pagination
-			assert.Len(t, msgs, 1)                                 // assert pagination was re-enabled
+			readyForPaging(sut)                                          // setup; get ready for paging
+			cmd := sut.Update(tea.KeyPressMsg(tea.Key{Text: "G"}))       // jump to bottom; to trigger pagination
+			msgs := tu.ExtractMessages[messages.PageReady](cmd)          // execute pagination
+			require.Len(t, msgs, 1)                                      // require at least one page
+			sut.Update(tea.KeyPressMsg(tea.Key{Text: "g"}))              // jump back to top to reset
+			sut.Update(searchKey)                                        // enable search
+			_, ok := searchItemSelection(t, sut, "id=id")                // search for some items to filter results & disable pagination
+			require.True(t, ok)                                          // ensure search was properly applied
+			sut.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEsc}))       // blur the search
+			readyForPaging(sut)                                          // setup; get ready for paging
+			cmd = sut.Update(tea.KeyPressMsg(tea.Key{Text: "G"}))        // jump to bottom again
+			msgs = tu.ExtractMessages[messages.PageReady](cmd)           // execute any potential pagination
+			assert.Len(t, msgs, 0)                                       // assert no pagination this time
+			sut.Update(tea.KeyPressMsg(tea.Key{Text: "g"}))              // jump back to top to reset
+			sut.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEsc}))       // cancel the search (reset)
+			require.False(t, sut.modulatedContent.Itemfiltering.Enabled) // ensure search is disabled again
+			readyForPaging(sut)                                          // setup; get ready for paging
+			cmd = sut.Update(tea.KeyPressMsg(tea.Key{Text: "G"}))        // jump to bottom again
+			msgs = tu.ExtractMessages[messages.PageReady](cmd)           // execute any potential pagination
+			assert.Len(t, msgs, 1)                                       // assert pagination was re-enabled
 		})
 	})
 }
@@ -624,7 +626,7 @@ func searchItemSelection(t *testing.T, receiver *ItemSelectionPane, query string
 	valid = assert.Contains(t, receiver.search.View(), query) && valid // once false, stays false
 
 	// ensure search results were processed by pane
-	valid = assert.True(t, receiver.itemfiltering.enabled) && valid // once false, stays false
+	valid = assert.True(t, receiver.modulatedContent.Itemfiltering.Enabled) && valid // once false, stays false
 
 	return tea.Batch(cmds...), valid
 }
