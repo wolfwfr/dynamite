@@ -243,7 +243,9 @@ func (m *ColumnSorting) reset() tea.Cmd {
 	m.state.Ascending = true
 	m.updateContent()
 	return func() tea.Msg {
-		return messages.ColumnSortingReset{}
+		return messages.ColumnSortingReset{
+			TableARN: m.state.TableARN,
+		}
 	}
 }
 

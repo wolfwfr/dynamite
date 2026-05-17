@@ -428,8 +428,7 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 	case messages.PageReady:
 		return m.ProcessPage(msg)
 	case messages.ColumnSortingReset:
-		m.resetColumnSorting()
-		return nil
+		return m.handleResetColumnSortingMessage(msg)
 	case spinner.TickMsg:
 		if !m.spinner.active {
 			return nil
@@ -1018,11 +1017,12 @@ func (m *ItemSelectionPane) resetColumnVisibility() {
 	m.columnVisibility.inVisible = make(map[string]struct{}, 0)
 }
 
-func (m *ItemSelectionPane) handleResetColumnSortingMessage(msg messages.ColumnSortingReset) {
+func (m *ItemSelectionPane) handleResetColumnSortingMessage(msg messages.ColumnSortingReset) tea.Cmd {
 	if msg.TableARN != u.IfNotNil(m.selectedTable.TableArn, "") { // expired
-		return
+		return nil
 	}
 	m.resetColumnSorting()
+	return nil
 }
 
 // resetColumnSorting re-initialises column-sorting associated state parameters
