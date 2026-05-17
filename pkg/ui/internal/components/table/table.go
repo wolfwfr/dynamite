@@ -160,7 +160,7 @@ func (m *Model) UpdateContent() (updateHeader bool) {
 		for j := range m.cols {
 			mx := len(m.cols[j].Title) + len(m.cols[j].Suffix)
 			for i := m.start; i < m.end; i++ {
-				mx = max(mx, len(m.VisualRows()[i][j].Value()))
+				mx = max(mx, len(m.VisualRows()[i].Fields[j].Value()))
 			}
 			colChanged = colChanged || mx != m.cols[j].Width // once true, stays true
 			m.cols[j].DynamicWidth = mx
@@ -409,7 +409,7 @@ func (m *Model) FromValues(value, separator string, cb func(v string) Field) {
 	for _, line := range strings.Split(value, "\n") {
 		r := Row{}
 		for _, fieldValue := range strings.Split(line, separator) {
-			r = append(r, cb(fieldValue))
+			r.Fields = append(r.Fields, cb(fieldValue))
 		}
 		rows = append(rows, r)
 	}
@@ -449,7 +449,7 @@ func (m *Model) renderHeader() string {
 func (m *Model) renderRow(r int) string {
 	s := make([]string, 0, len(m.cols))
 	rows := m.VisualRows()
-	for i := range rows[r] {
+	for i := range rows[r].Fields {
 		if m.cols[i].InVisible {
 			continue
 		}
@@ -466,7 +466,7 @@ func (m *Model) renderRow(r int) string {
 
 		// proceed with default styling if not
 
-		value := rows[r][i].Value()
+		value := rows[r].Fields[i].Value()
 		enforceWidth := lipgloss.NewStyle().Width(width).MaxWidth(width).Inline(true).Render
 		renderedCell := m.styles.Cell.Render(enforceWidth(ternary(value, ansi.Truncate(value, width, "…"), m.dynCols)))
 

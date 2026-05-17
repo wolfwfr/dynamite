@@ -45,6 +45,8 @@ const (
 	JSONformat
 )
 
+const itemIndexMetaKey = "item_index"
+
 type SessionData struct {
 	queryMode   messages.ItemsQueryMode
 	queryParams struct {
@@ -162,9 +164,10 @@ type ItemSelectionPane struct {
 
 	// column sorting collects settings related to column sorting
 	columnSorting struct {
-		SortingOn string
-		Ascending bool // if false, descending
-		Enabled   bool
+		sortedItems []int // indices referring to items
+		SortingOn   string
+		Ascending   bool // if false, descending
+		Enabled     bool
 	}
 
 	lastPreviewItem int                   // index
@@ -261,7 +264,6 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 					p.itemfiltering.matchedItems = make([]int, 0)
 					p.itemfiltering.matchedRunes = make([][]int, 0)
 					p.content.ResetVirtualRows()
-					p.KeyMap.ColSort.SetEnabled(true)
 					return p.MaybePreviewItem(true)
 				},
 				Results: func(col string, results []search.FilteredItem) tea.Cmd {
@@ -292,6 +294,7 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 				},
 				SearchBoxOpens: func(searchHeight int) tea.Cmd {
 					p.KeyMap.ColSort.SetEnabled(false)
+					p.resetColumnSorting()
 					p.updateSize()
 					return nil
 				},
@@ -447,7 +450,7 @@ func (m *ItemSelectionPane) TableRowFieldDelegate(row table.Row, col table.Colum
 	fullWidth := colW + padL + padR
 
 	// obtain field in question
-	field := row[colIdx].(enrichedField)
+	field := row.Fields[colIdx].(enrichedField)
 
 	// fill up with padding if empty
 	if field.style == nil {
@@ -608,7 +611,9 @@ func (m *ItemSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
 	}
 
 	idx := m.content.Cursor()
-	if len(m.itemfiltering.matchedItems) > 0 { // cursor refers to filtered items
+	if len(m.columnSorting.sortedItems) > 0 {
+		idx = m.columnSorting.sortedItems[idx]
+	} else if len(m.itemfiltering.matchedItems) > 0 { // cursor refers to filtered items
 		idx = m.itemfiltering.matchedItems[idx]
 	}
 	// if preview was already instructed to preview this item, skip
@@ -689,9 +694,20 @@ func (m *ItemSelectionPane) ProcessPage(msg messages.PageReady) tea.Cmd {
 			m.content.SetRows(m.sortRows(rows))
 		}
 	}
+
+	// always refresh cache to respect potential new sorting
+	m.refreshCache()
+
 	m.paging = false
 	m.initialised = true
 	return m.MaybePreviewItem(true)
+}
+
+// sortingRow is a wrapper around row that couples the row to the index of the
+// original item
+type sortingRow struct {
+	r table.Row
+	i int
 }
 
 func (m *ItemSelectionPane) sortRows(rows []table.Row) []table.Row {
@@ -711,8 +727,8 @@ func (m *ItemSelectionPane) sortRows(rows []table.Row) []table.Row {
 	// determine field-type
 	var field string
 	for _, r := range rows {
-		if r[idx].Value() != "" {
-			field = r[idx].Value()
+		if r.Fields[idx].Value() != "" {
+			field = r.Fields[idx].Value()
 			break
 		}
 	}
@@ -720,38 +736,54 @@ func (m *ItemSelectionPane) sortRows(rows []table.Row) []table.Row {
 	_, errFloat := strconv.ParseFloat(field, 64)
 
 	// choose the appropriate sorting function
-	var sortFunc func(a, b table.Row) int
+	var sortFunc func(a, b sortingRow) int
 	switch {
 	// NOTE: assumes that float fields always contain decimal point
 	case errFloat == nil:
-		sortFunc = func(a, b table.Row) int {
-			aI, _ := strconv.ParseFloat(a[idx].Value(), 64)
-			bI, _ := strconv.ParseFloat(b[idx].Value(), 64)
+		sortFunc = func(a, b sortingRow) int {
+			aI, _ := strconv.ParseFloat(a.r.Fields[idx].Value(), 64)
+			bI, _ := strconv.ParseFloat(b.r.Fields[idx].Value(), 64)
 			check := ternary(aI < bI, aI > bI, m.columnSorting.Ascending)
 			return ternary(-1, 1, check)
 		}
 	case errInt == nil:
-		sortFunc = func(a, b table.Row) int {
-			aI, _ := strconv.ParseInt(a[idx].Value(), 10, 64)
-			bI, _ := strconv.ParseInt(b[idx].Value(), 10, 64)
+		sortFunc = func(a, b sortingRow) int {
+			aI, _ := strconv.ParseInt(a.r.Fields[idx].Value(), 10, 64)
+			bI, _ := strconv.ParseInt(b.r.Fields[idx].Value(), 10, 64)
 			check := ternary(aI < bI, aI > bI, m.columnSorting.Ascending)
 			return ternary(-1, 1, check)
 		}
 	default:
-		sortFunc = func(a, b table.Row) int {
-			s := []string{a[idx].Value(), b[idx].Value()}
+		sortFunc = func(a, b sortingRow) int {
+			s := []string{a.r.Fields[idx].Value(), b.r.Fields[idx].Value()}
 			slices.Sort(s)
-			check := ternary(s[0] == a[idx].Value(), s[1] == a[idx].Value(), m.columnSorting.Ascending)
+			check := ternary(s[0] == a.r.Fields[idx].Value(), s[1] == a.r.Fields[idx].Value(), m.columnSorting.Ascending)
 			return ternary(-1, 1, check)
 		}
 	}
 
 	// apply sorting function on slice backed by new array
-	sorted := make([]table.Row, len(rows))
-	copy(sorted, rows)
+	sorted := make([]sortingRow, len(rows))
+	for i, r := range rows {
+		sorted[i] = sortingRow{
+			r: r,
+			i: r.Metadata[itemIndexMetaKey].(int),
+		}
+	}
+
+	// sort
 	slices.SortFunc(sorted, sortFunc)
 
-	return sorted
+	// reset sorted-item-mapping
+	m.columnSorting.sortedItems = make([]int, len(sorted))
+
+	res := make([]table.Row, len(sorted))
+	for i := range sorted {
+		m.columnSorting.sortedItems[i] = sorted[i].i
+		res[i] = sorted[i].r
+	}
+
+	return res
 }
 
 // selectTable processes the select-table message, which indicates that the
@@ -829,7 +861,7 @@ func compileCompleteKeys(table [][]types.KeyValue, existing []string, hasRangeKe
 
 func (m *ItemSelectionPane) openInBrowser() tea.Cmd {
 	selection := m.content.SelectedRow()
-	if selection == nil || len([]table.Field(*selection)) == 0 || m.selectedTable.TableName == nil {
+	if selection == nil || len(selection.Fields) == 0 || m.selectedTable.TableName == nil {
 		return nil
 	}
 
@@ -838,7 +870,7 @@ func (m *ItemSelectionPane) openInBrowser() tea.Cmd {
 		// TODO: think about config workaround for when AWS would change URL
 		weburl    = fmt.Sprintf("https://%s.console.aws.amazon.com/dynamodbv2/home", region)
 		tableName = *m.selectedTable.TableName
-		fields    = []table.Field(*selection)
+		fields    = selection.Fields
 		cmd       string
 		args      []string
 	)
@@ -999,6 +1031,7 @@ func (m *ItemSelectionPane) resetColumnSorting() {
 	m.columnSorting.Ascending = true
 	m.columnSorting.SortingOn = ""
 	m.columnSorting.Enabled = false
+	m.columnSorting.sortedItems = []int{}
 
 	// reassemble cols
 	cols := m.assembleColumns(m.keysComplete)
@@ -1239,10 +1272,10 @@ func (m *ItemSelectionPane) copy() tea.Cmd {
 		return nil
 	}
 	row := *rowP
-	values := make([]string, len(row))
-	for i := range row {
+	values := make([]string, len(row.Fields))
+	for i := range row.Fields {
 		// remove surrounding quotes if present, for string values
-		values[i] = strings.Trim(row[i].Value(), "\"")
+		values[i] = strings.Trim(row.Fields[i].Value(), "\"")
 	}
 	init := func() tea.Msg {
 		return messages.InitColumnCopy{
@@ -1445,7 +1478,8 @@ func parseRows(cols []string, tableKeys [][]types.KeyValue) []table.Row {
 				}
 			}
 		}
-		rows[i] = fields
+		rows[i].Fields = fields
+		rows[i].Metadata = map[string]any{itemIndexMetaKey: i}
 	}
 	return rows
 }
@@ -1482,7 +1516,7 @@ func extractColumnFromRows(rows []table.Row, idx int) []string {
 	}
 	items := make([]string, len(rows))
 	for i, r := range rows {
-		items[i] = r[idx].Value()
+		items[i] = r.Fields[idx].Value()
 	}
 	return items
 }

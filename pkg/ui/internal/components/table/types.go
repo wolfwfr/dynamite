@@ -49,7 +49,10 @@ type FieldDelegate func(row Row, col Column, colIdx, rowIdx, colWidth, padL, pad
 type HeaderDelegate func(col Column, colIdx, colWidth, padL, padR int) string
 
 // Row represents one line in the table.
-type Row []Field
+type Row struct {
+	Fields   []Field
+	Metadata map[string]any
+}
 
 type Field interface {
 	Value() string
@@ -57,7 +60,7 @@ type Field interface {
 
 func (r Row) String() string {
 	res := strings.Builder{}
-	for _, f := range r {
+	for _, f := range r.Fields {
 		res.WriteString(f.Value())
 		res.WriteString(" ")
 	}

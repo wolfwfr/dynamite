@@ -291,9 +291,9 @@ func (m *tableSelectionPane) processPage(msg messages.TablePageReady, preview bo
 	// parse and set rows of the new tables
 	rows := make([]table.Row, len(newTables))
 	for i := range newTables {
-		rows[i] = []table.Field{
+		rows[i] = table.Row{Fields: []table.Field{
 			enrichedField{value: newTables[i]},
-		}
+		}}
 	}
 	if init {
 		m.content.SetRows(rows)
@@ -387,7 +387,7 @@ func (m *tableSelectionPane) TableRowFieldDelegate(row table.Row, col table.Colu
 	fullWidth := colW + padL + padR
 
 	// obtain field in question
-	field := row[colIdx].(enrichedField)
+	field := row.Fields[colIdx].(enrichedField)
 
 	enforceWidth := lipgloss.NewStyle().Width(fullWidth).MaxWidth(fullWidth).Inline(true).Render
 	padding := lipgloss.NewStyle().Padding(0, 1).Render
@@ -508,15 +508,15 @@ func (m *tableSelectionPane) selectTable() tea.Cmd {
 		return nil
 	}
 	row := *rowP
-	if len(row) == 0 {
+	if len(row.Fields) == 0 {
 		return nil // nothing to select
 	}
 	// TODO: async!
-	if m.details == nil || (m.details.TableName != nil && *m.details.TableName != row[0].Value()) {
+	if m.details == nil || (m.details.TableName != nil && *m.details.TableName != row.Fields[0].Value()) {
 		m.cleanSlate()
 		ctx, cc := context.WithTimeout(m.ctx, m.stdTO)
 		defer cc()
-		details, err := dynamodb.DescribeTable(m.config.Client, ctx, row[0].Value())
+		details, err := dynamodb.DescribeTable(m.config.Client, ctx, row.Fields[0].Value())
 		if err != nil {
 			m.err = err
 			return nil
@@ -527,7 +527,7 @@ func (m *tableSelectionPane) selectTable() tea.Cmd {
 
 	selectTable := func() tea.Msg {
 		return messages.SelectTable{
-			TableName:    row[0].Value(),
+			TableName:    row.Fields[0].Value(),
 			TableDetails: *details,
 		}
 	}
@@ -537,7 +537,7 @@ func (m *tableSelectionPane) selectTable() tea.Cmd {
 // openInBrowser opens the selected table in the system's default browser
 func (m *tableSelectionPane) openInBrowser() tea.Cmd {
 	selection := m.content.SelectedRow()
-	if selection == nil || len([]table.Field(*selection)) == 0 {
+	if selection == nil || len(selection.Fields) == 0 {
 		return nil
 	}
 
@@ -545,7 +545,7 @@ func (m *tableSelectionPane) openInBrowser() tea.Cmd {
 		region = m.config.Region
 		// TODO: think about config workaround for when AWS would change URL
 		weburl    = fmt.Sprintf("https://%s.console.aws.amazon.com/dynamodbv2/home", region)
-		tableName = []table.Field(*selection)[0].Value()
+		tableName = selection.Fields[0].Value()
 		cmd       string
 		args      []string
 	)
