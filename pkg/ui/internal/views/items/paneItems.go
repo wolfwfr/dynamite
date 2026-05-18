@@ -683,13 +683,13 @@ func (m *ItemSelectionPane) ProcessPage(msg messages.PageReady) tea.Cmd {
 		switch {
 		case columnUpdate: // update columns & ALL rows
 			cols := m.assembleColumns(completeKeys)
-			rows := parseRows(completeKeys, m.items.TableKeys)
+			rows := parseRows(completeKeys, m.items.TableKeys, 0)
 			m.content.SetContent(cols, m.sortRows(rows))
 		case appendOnly: // update with  new rows (append)
-			rows := parseRows(completeKeys, page.Items.TableKeys)
+			rows := parseRows(completeKeys, page.Items.TableKeys, len(m.content.Rows()))
 			m.content.AppendRows(m.sortRows(rows))
 		default: // update ALL rows but no columns
-			rows := parseRows(completeKeys, m.items.TableKeys)
+			rows := parseRows(completeKeys, m.items.TableKeys, 0)
 			m.content.SetRows(m.sortRows(rows))
 		}
 	}
@@ -1037,7 +1037,7 @@ func (m *ItemSelectionPane) resetColumnSorting() {
 	cols := m.assembleColumns(m.keysComplete)
 
 	// reassemble rows
-	rows := parseRows(m.keysComplete, m.items.TableKeys)
+	rows := parseRows(m.keysComplete, m.items.TableKeys, 0)
 
 	// set content
 	m.content.SetContent(cols, rows)
@@ -1453,25 +1453,27 @@ func (f enrichedField) Value() string {
 	return f.value
 }
 
-func parseRows(cols []string, tableKeys [][]types.KeyValue) []table.Row {
+// parseRows accepts a set of columns and key-value pairs that represent the
+// rows and each row's fields, as well as a starting-index. The function
+// prepares []table.Row, and injects empty fields when the specified column does
+// not occur in the key-value pairs.
+//
+// Each row is provided with meta-data that specifies the index of the row's
+// associated item. The index order follows the order of the provided
+// key-value-pairs and can be offset by providing a non-zero `startingIndex`.
+func parseRows(cols []string, tableKeys [][]types.KeyValue, startingIndex int) []table.Row {
 	rows := make([]table.Row, len(tableKeys))
 	for i, k := range tableKeys {
-		raw := make([]string, len(cols))
-		styled := make([]string, len(cols))
 		fields := make([]table.Field, len(cols))
 		var x int
 		for j, key := range cols {
 			if key == k[x].Key { // matching key
-				raw[j] = k[x].Value
-				styled[j] = k[x].ValueStyling.Render(k[x].Value)
 				fields[j] = enrichedField{
 					value: k[x].Value,
 					style: &k[x].ValueStyling,
 				}
 				x = min(len(k)-1, x+1)
 			} else { // no matching key
-				raw[j] = ""
-				styled[j] = ""
 				fields[j] = enrichedField{
 					value: "",
 					style: nil,
@@ -1479,7 +1481,7 @@ func parseRows(cols []string, tableKeys [][]types.KeyValue) []table.Row {
 			}
 		}
 		rows[i].Fields = fields
-		rows[i].Metadata = map[string]any{itemIndexMetaKey: i}
+		rows[i].Metadata = map[string]any{itemIndexMetaKey: startingIndex + i}
 	}
 	return rows
 }
