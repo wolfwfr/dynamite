@@ -605,9 +605,7 @@ func (m *ItemSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
 			return nil
 		}
 		return func() tea.Msg {
-			return messages.PreviewItem{
-				StyledItem: "",
-			}
+			return messages.PreviewItem{}
 		}
 	}
 
