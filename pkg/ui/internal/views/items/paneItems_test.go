@@ -36,8 +36,23 @@ func TestKeyMapValid(t *testing.T) {
 	assert.True(t, searchKeyValid)
 }
 
-func genJSONItems(b, n int) apitypes.Items {
+type genOpts struct {
+	begin int
+	idFmt string
+}
+
+func genJSONItems(n int, opts ...genOpts) apitypes.Items {
 	res := apitypes.Items{}
+
+	var (
+		b     = 0
+		idFmt = "id-%d"
+	)
+
+	if len(opts) > 0 {
+		b = opts[0].begin
+		idFmt = opts[0].idFmt
+	}
 
 	ln := n - b
 	res.JSON = make([]string, ln)
@@ -46,7 +61,7 @@ func genJSONItems(b, n int) apitypes.Items {
 	res.TableKeys = make([][]apitypes.KeyValue, ln)
 
 	for i := range ln {
-		id := fmt.Sprintf("id-%d", b+i)
+		id := fmt.Sprintf(idFmt, b+i)
 
 		res.JSON[i] = `{
   "id": "` + id + `",
@@ -105,7 +120,7 @@ func TestItemSelectionPreviews(t *testing.T) {
 			// prepare message
 			inputMessage := messages.PageReady{
 				Table:    apitypes.DescribeTableResponse{TableArn: &tableARN},
-				Response: &messages.Page{Items: genJSONItems(0, 1)},
+				Response: &messages.Page{Items: genJSONItems(1)},
 			}
 
 			// call
@@ -122,8 +137,8 @@ func TestItemSelectionPreviews(t *testing.T) {
 		t.Run("preview correct item after loading new page that is sorted to table top", func(t *testing.T) {
 			var (
 				sut   = newSUT()
-				page1 = genJSONItems(0, 3)
-				page2 = genJSONItems(3, 6)
+				page1 = genJSONItems(3, genOpts{begin: 0})
+				page2 = genJSONItems(6, genOpts{begin: 3})
 			)
 
 			// prepare first page
@@ -161,7 +176,7 @@ func TestItemSelectionPreviews(t *testing.T) {
 
 			var (
 				sut   = newSUT()
-				items = genJSONItems(0, 3)
+				items = genJSONItems(3)
 			)
 
 			// load items
@@ -184,6 +199,75 @@ func TestItemSelectionPreviews(t *testing.T) {
 			require.NotEmpty(t, targets)
 			// assert correct item being previewed
 			assert.EqualValues(t, items.JSON[1], targets[len(targets)-1].RawItem)
+		})
+	})
+}
+
+func TestItemSelectionCacheRefresh(t *testing.T) {
+
+}
+
+func TestItemSelectionURLResolution(t *testing.T) {
+	var (
+		tableARN  = "table"
+		tableName = "testing-table"
+	)
+
+	// factory initialising a new system-under-test
+	newSUT := func() *ItemSelectionPane {
+		sut := newItemSelectionPane(context.Background(), &appconfig.Config{})
+		sut.selectedTable.TableArn = &tableARN
+		return sut
+	}
+
+	t.Run("item-selection-pane should", func(t *testing.T) {
+		t.Run("resolve URLs with correct path-escaping", func(t *testing.T) {
+			sut := newSUT()
+
+			sut.selectedTable.TableName = &tableName
+			sut.selectedTable.TableArn = &tableARN
+
+			items := genJSONItems(1, genOpts{idFmt: "id %d"}) // include space
+
+			// load items
+			sut.Update(messages.PageReady{
+				Table:    apitypes.DescribeTableResponse{TableArn: &tableARN},
+				Response: &messages.Page{Items: items},
+			})
+
+			url := sut.resolveBrowserURL()
+			// assert query params are path-escaped: `id 0` becomes `id%200`
+			exp := "https://.console.aws.amazon.com/dynamodbv2/home?region=#edit-item?itemMode=2&pk=id%200&table=testing-table"
+			assert.EqualValues(t, exp, url)
+		})
+		t.Run("resolve URLs with sort-key", func(t *testing.T) {
+			sut := newSUT()
+
+			items := genJSONItems(1, genOpts{idFmt: "id %d"}) // include space
+
+			sut.selectedTable.TableName = &tableName
+			sut.selectedTable.TableArn = &tableARN
+			sut.selectedTable.KeySchema = []types.KeySchemaElement{
+				{
+					AttributeName: &items.TableKeys[0][0].Key,
+					KeyType:       types.KeyTypeHash,
+				},
+				{
+					AttributeName: &items.TableKeys[0][1].Key,
+					KeyType:       types.KeyTypeRange,
+				},
+			}
+
+			// load items
+			sut.Update(messages.PageReady{
+				Table:    apitypes.DescribeTableResponse{TableArn: &tableARN},
+				Response: &messages.Page{Items: items},
+			})
+
+			url := sut.resolveBrowserURL()
+			// assert query params are path-escaped: `id 0` becomes `id%200`
+			exp := "https://.console.aws.amazon.com/dynamodbv2/home?region=#edit-item?itemMode=2&pk=id%200&table=testing-table&sk=true"
+			assert.EqualValues(t, exp, url)
 		})
 	})
 }

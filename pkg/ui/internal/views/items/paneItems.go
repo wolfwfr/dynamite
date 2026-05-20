@@ -402,7 +402,7 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 		case key.Matches(msg, m.KeyMap.Copy):
 			return m.copy()
 		case key.Matches(msg, m.KeyMap.Browser):
-			return m.openInBrowser()
+			return m.openInBrowser(m.resolveBrowserURL())
 		case key.Matches(msg, m.KeyMap.ColVis):
 			return m.toggleColumnVsibilityDialog(msg)
 		case key.Matches(msg, m.KeyMap.ColSort):
@@ -858,10 +858,10 @@ func compileCompleteKeys(table [][]types.KeyValue, existing []string, hasRangeKe
 	return res
 }
 
-func (m *ItemSelectionPane) openInBrowser() tea.Cmd {
+func (m ItemSelectionPane) resolveBrowserURL() string {
 	selection := m.content.SelectedRow()
 	if selection == nil || len(selection.Fields) == 0 || m.selectedTable.TableName == nil {
-		return nil
+		return ""
 	}
 
 	var (
@@ -870,8 +870,6 @@ func (m *ItemSelectionPane) openInBrowser() tea.Cmd {
 		weburl    = fmt.Sprintf("https://%s.console.aws.amazon.com/dynamodbv2/home", region)
 		tableName = *m.selectedTable.TableName
 		fields    = selection.Fields
-		cmd       string
-		args      []string
 	)
 	_, r := primaryKeysFromSchema(keysFromIndex(m.tableIndex.activeIndex, m.selectedTable))
 
@@ -904,6 +902,19 @@ func (m *ItemSelectionPane) openInBrowser() tea.Cmd {
 		weburl = fmt.Sprintf("%s%s%s=%s", weburl, sep, paramkeys[i], paramVals[i])
 	}
 
+	return weburl
+}
+
+func (m *ItemSelectionPane) openInBrowser(url string) tea.Cmd {
+	if url == "" {
+		return nil
+	}
+
+	var (
+		cmd  string
+		args []string
+	)
+
 	switch runtime.GOOS {
 	case "windows":
 		cmd = "cmd"
@@ -913,7 +924,7 @@ func (m *ItemSelectionPane) openInBrowser() tea.Cmd {
 	default: // "linux", "freebsd", "openbsd", "netbsd"
 		cmd = "xdg-open"
 	}
-	args = append(args, weburl)
+	args = append(args, url)
 	if err := exec.Command(cmd, args...).Start(); err != nil {
 		return notifyError(err)
 	}
