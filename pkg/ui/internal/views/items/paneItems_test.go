@@ -109,14 +109,6 @@ func genJSONItems(n int, opts ...genOpts) apitypes.Items {
 	return res
 }
 
-func extractColumns(in []apitypes.KeyValue) []string {
-	res := make([]string, len(in))
-	for i, kv := range in {
-		res[i] = kv.Key
-	}
-	return res
-}
-
 func TestItemSelectionPreviews(t *testing.T) {
 	var (
 		tableARN = "table"
@@ -132,92 +124,35 @@ func TestItemSelectionPreviews(t *testing.T) {
 
 	t.Run("items-pane should", func(t *testing.T) {
 		t.Run("preview the correct item when paging new results", func(t *testing.T) {
-			var (
-				sut = newSUT()
-			)
-
-			// prepare message
-			inputMessage := messages.PageReady{
-				Table:    apitypes.DescribeTableResponse{TableArn: &tableARN},
-				Response: &messages.Page{Items: genJSONItems(1)},
-			}
-
-			// call
-			cmd := sut.Update(inputMessage)
-
-			// obtain target messages
-			targets := extractMessages[messages.PreviewItem](cmd)
-
-			// assert only one preview-item message
-			require.Len(t, targets, 1)
-			// assert correct item being previewed
-			assert.EqualValues(t, inputMessage.Response.Items.JSON[0], targets[0].RawItem)
+			sut := newSUT()                                          // init
+			items := genJSONItems(1)                                 // page
+			cmd := simpleLoadItems(sut, &tableARN, items)            // load items
+			targets := extractMessages[messages.PreviewItem](cmd)    // obtain target messages
+			require.Len(t, targets, 1)                               // assert only one preview-item message
+			assert.EqualValues(t, items.JSON[0], targets[0].RawItem) // assert correct item being previewed
 		})
 		t.Run("preview correct item after loading new page that is sorted to table top", func(t *testing.T) {
-			var (
-				sut   = newSUT()
-				page1 = genJSONItems(3, genOpts{begin: 0})
-				page2 = genJSONItems(6, genOpts{begin: 3})
-			)
-
-			// prepare first page
-			sut.Update(messages.PageReady{
-				Table:    apitypes.DescribeTableResponse{TableArn: &tableARN},
-				Response: &messages.Page{Items: page1},
-			})
-
-			// enable sorting
-			sut.Update(messages.ColumnSortingUpdate{
-				TableARN:   tableARN,
-				AllColumns: extractColumns(page1.TableKeys[0]),
-				SortingOn:  page1.TableKeys[0][0].Key,
-				Ascending:  false,
-			})
-
-			// load next page
-			cmd := sut.Update(messages.PageReady{
-				Table:    apitypes.DescribeTableResponse{TableArn: &tableARN},
-				Response: &messages.Page{Items: page2},
-			})
-
-			// obtain target messages
-			targets := extractMessages[messages.PreviewItem](cmd)
-
-			// assert only one preview-item message
-			require.Len(t, targets, 1)
-			// assert correct item being previewed
-			assert.EqualValues(t, page2.JSON[2], targets[0].RawItem)
+			sut := newSUT()                                                  // init
+			page1 := genJSONItems(3, genOpts{begin: 0})                      // page 1
+			page2 := genJSONItems(6, genOpts{begin: 3})                      // page 2
+			simpleLoadItems(sut, &tableARN, page1)                           // prepare first page
+			simpleSortItems(sut, tableARN, page1.TableKeys[0][0].Key, false) // enable sorting
+			cmd := simpleLoadItems(sut, &tableARN, page2)                    // load next page
+			targets := extractMessages[messages.PreviewItem](cmd)            // obtain target messages
+			require.Len(t, targets, 1)                                       // assert only one preview-item message
+			assert.EqualValues(t, page2.JSON[2], targets[0].RawItem)         // assert correct item being previewed
 		})
 		t.Run("preview correct item after search", func(t *testing.T) {
-			if !searchKeyValid {
-				t.Skip("skipping due to outdated search key")
-			}
-
-			var (
-				sut   = newSUT()
-				items = genJSONItems(3)
-			)
-
-			// load items
-			sut.Update(messages.PageReady{
-				Table:    apitypes.DescribeTableResponse{TableArn: &tableARN},
-				Response: &messages.Page{Items: items},
-			})
-
-			// enable search
-			sut.Update(searchKey)
-
-			// search for first item
-			cmd, ok := searchItemSelection(t, sut, "id=id-1")
-			require.True(t, ok)
-
-			// obtain target messages
-			targets := extractMessages[messages.PreviewItem](cmd)
-
-			// assert only one preview-item message
-			require.NotEmpty(t, targets)
-			// assert correct item being previewed
-			assert.EqualValues(t, items.JSON[1], targets[len(targets)-1].RawItem)
+			skipIf(t, !searchKeyValid, "skipping due to outdated search key")     // skip if testing-keymap needs updating
+			sut := newSUT()                                                       // init
+			items := genJSONItems(3)                                              // page
+			simpleLoadItems(sut, &tableARN, items)                                // load items
+			sut.Update(searchKey)                                                 // enable search
+			cmd, ok := searchItemSelection(t, sut, "id=id-1")                     // search for first item
+			require.True(t, ok)                                                   // ensure search was successful
+			targets := extractMessages[messages.PreviewItem](cmd)                 // obtain target messages
+			require.NotEmpty(t, targets)                                          // assert only one preview-item message
+			assert.EqualValues(t, items.JSON[1], targets[len(targets)-1].RawItem) // assert correct item being previewed
 		})
 	})
 }
@@ -240,18 +175,12 @@ func TestItemSelectionCacheInvalidation(t *testing.T) {
 		// simple delegate that does not consider any kind of styling, only caching
 		sut.content.SetFieldDelegate(func(row table.Row, col table.Column, colIdx, rowIdx, colW, padL, padR int, selected bool) string {
 			key := cacheKey(rowIdx, colIdx, colW)
-
-			// attempt read from cache
-			if f, ok := sut.renderCache[key]; ok {
+			if f, ok := sut.renderCache[key]; ok { // return from cache if found
 				return f
 			}
-
-			// no styling for this test
-			f := row.Fields[colIdx].Value()
-			// store in cache
-			sut.renderCache[key] = f
-
-			return f
+			f := row.Fields[colIdx].Value() // no styling for this test
+			sut.renderCache[key] = f        // store in cache
+			return f                        // return
 		})
 
 		return sut
@@ -301,52 +230,46 @@ func TestItemSelectionCacheInvalidation(t *testing.T) {
 	t.Run("item-selection-pane should", func(t *testing.T) {
 		t.Run("refresh cache when", func(t *testing.T) {
 			t.Run("updating search results", func(t *testing.T) {
-				if !searchKeyValid {
-					t.Skip("skipping test due to outdated search key")
-				}
-				sut := newSUT()
-				itemsNotMatching := genJSONItems(3)                             // first half page
-				itemsMatching := genJSONItems(3, genOpts{idFmt: "op%d"})        // second half page
-				items := mergeItems(itemsNotMatching, itemsMatching)            // full page
-				simpleLoadItems(sut, &tableARN, items)                          // load items
-				mustPassInitialCacheCheck(t, sut.renderCache, sut.content, 6*2) // ensure cache is initialised
-				sut.Update(searchKey)                                           // enable search
-				_, ok := searchItemSelection(t, sut, "id=op")                   // matching second 3 only
-				require.True(t, ok, "failed to apply search")                   // ensure search is successful
-				assertPassCacheCheck(t, sut.renderCache, sut.content, 3*2)      // assert test passed
+				skipIf(t, !searchKeyValid, "skipping test due to outdated search key") // skip if testing-keymap needs updating
+				sut := newSUT()                                                        // init
+				itemsNotMatching := genJSONItems(3)                                    // first half page
+				itemsMatching := genJSONItems(3, genOpts{idFmt: "op%d"})               // second half page
+				items := mergeItems(itemsNotMatching, itemsMatching)                   // full page
+				simpleLoadItems(sut, &tableARN, items)                                 // load items
+				mustPassInitialCacheCheck(t, sut.renderCache, sut.content, 6*2)        // ensure cache is initialised
+				sut.Update(searchKey)                                                  // enable search
+				_, ok := searchItemSelection(t, sut, "id=op")                          // matching second 3 only
+				require.True(t, ok, "failed to apply search")                          // ensure search is successful
+				assertPassCacheCheck(t, sut.renderCache, sut.content, 3*2)             // assert test passed
 			})
 			t.Run("resetting search", func(t *testing.T) {
-				if !searchKeyValid {
-					t.Skip("skipping test due to outdated search key")
-				}
-				sut := newSUT()
-				itemsNotMatching := genJSONItems(3)                             // first half page
-				itemsMatching := genJSONItems(3, genOpts{idFmt: "op%d"})        // second half page
-				items := mergeItems(itemsNotMatching, itemsMatching)            // full page
-				simpleLoadItems(sut, &tableARN, items)                          // load items
-				mustPassInitialCacheCheck(t, sut.renderCache, sut.content, 6*2) // ensure cache is initialised
-				sut.Update(searchKey)                                           // enable search
-				_, ok := searchItemSelection(t, sut, "id=o")                    // matching second 3 only
-				require.True(t, ok, "failed to apply search")                   // ensure search is successful
-				sut.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEsc}))          // escape once to blur search
-				sut.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEsc}))          // escape twice to reset search
-				assertPassCacheCheck(t, sut.renderCache, sut.content, 6*2)      // assert test passed
+				skipIf(t, !searchKeyValid, "skipping test due to outdated search key") // skip if testing-keymap needs updating
+				sut := newSUT()                                                        // init
+				itemsNotMatching := genJSONItems(3)                                    // first half page
+				itemsMatching := genJSONItems(3, genOpts{idFmt: "op%d"})               // second half page
+				items := mergeItems(itemsNotMatching, itemsMatching)                   // full page
+				simpleLoadItems(sut, &tableARN, items)                                 // load items
+				mustPassInitialCacheCheck(t, sut.renderCache, sut.content, 6*2)        // ensure cache is initialised
+				sut.Update(searchKey)                                                  // enable search
+				_, ok := searchItemSelection(t, sut, "id=o")                           // matching second 3 only
+				require.True(t, ok, "failed to apply search")                          // ensure search is successful
+				sut.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEsc}))                 // escape once to blur search
+				sut.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEsc}))                 // escape twice to reset search
+				assertPassCacheCheck(t, sut.renderCache, sut.content, 6*2)             // assert test passed
 			})
 			t.Run("obtaining empty search input", func(t *testing.T) {
-				if !searchKeyValid {
-					t.Skip("skipping test due to outdated search key")
-				}
-				sut := newSUT()
-				itemsNotMatching := genJSONItems(3)                             // first half page
-				itemsMatching := genJSONItems(3, genOpts{idFmt: "op%d"})        // second half page
-				items := mergeItems(itemsNotMatching, itemsMatching)            // full page
-				simpleLoadItems(sut, &tableARN, items)                          // load items
-				mustPassInitialCacheCheck(t, sut.renderCache, sut.content, 6*2) // ensure cache is initialised
-				sut.Update(searchKey)                                           // enable search
-				_, ok := searchItemSelection(t, sut, "id=o")                    // matching second 3 only
-				require.True(t, ok, "failed to apply search")                   // ensure search is successful
-				sut.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyBackspace}))    // backspace once to trigger empty-input
-				assertPassCacheCheck(t, sut.renderCache, sut.content, 6*2)      // assert test passed
+				skipIf(t, !searchKeyValid, "skipping test due to outdated search key") // skip if testing-keymap needs updating
+				sut := newSUT()                                                        // init
+				itemsNotMatching := genJSONItems(3)                                    // first half page
+				itemsMatching := genJSONItems(3, genOpts{idFmt: "op%d"})               // second half page
+				items := mergeItems(itemsNotMatching, itemsMatching)                   // full page
+				simpleLoadItems(sut, &tableARN, items)                                 // load items
+				mustPassInitialCacheCheck(t, sut.renderCache, sut.content, 6*2)        // ensure cache is initialised
+				sut.Update(searchKey)                                                  // enable search
+				_, ok := searchItemSelection(t, sut, "id=o")                           // matching second 3 only
+				require.True(t, ok, "failed to apply search")                          // ensure search is successful
+				sut.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyBackspace}))           // backspace once to trigger empty-input
+				assertPassCacheCheck(t, sut.renderCache, sut.content, 6*2)             // assert test passed
 			})
 			t.Run("updating sort parameters", func(t *testing.T) {
 				sut := newSUT()
@@ -441,46 +364,25 @@ func TestItemSelectionURLResolution(t *testing.T) {
 	t.Run("item-selection-pane should", func(t *testing.T) {
 		t.Run("resolve URLs with correct path-escaping", func(t *testing.T) {
 			sut := newSUT()
-
-			items := genJSONItems(1, genOpts{idFmt: "id %d"}) // include space
-
-			// load items
-			sut.Update(messages.PageReady{
-				Table:    apitypes.DescribeTableResponse{TableArn: &tableARN},
-				Response: &messages.Page{Items: items},
-			})
-
-			url := sut.resolveBrowserURL()
-			// assert query params are path-escaped: `id 0` becomes `id%200`
-			exp := "https://.console.aws.amazon.com/dynamodbv2/home?region=#edit-item?itemMode=2&pk=id%200&table=testing-table"
-			assert.EqualValues(t, exp, url)
+			items := genJSONItems(1, genOpts{idFmt: "id %d"})                                                                   // include space in ids
+			simpleLoadItems(sut, &tableARN, items)                                                                              // load items
+			url := sut.resolveBrowserURL()                                                                                      // obtain resolved url
+			exp := "https://.console.aws.amazon.com/dynamodbv2/home?region=#edit-item?itemMode=2&pk=id%200&table=testing-table" // define expectation
+			assert.EqualValues(t, exp, url)                                                                                     // assert expectation
 		})
 		t.Run("resolve URLs with sort-key", func(t *testing.T) {
 			sut := newSUT()
-
-			items := genJSONItems(1, genOpts{idFmt: "id %d"}) // include space
-
-			sut.selectedTable.KeySchema = []types.KeySchemaElement{
-				{
-					AttributeName: &items.TableKeys[0][0].Key,
-					KeyType:       types.KeyTypeHash,
-				},
-				{
-					AttributeName: &items.TableKeys[0][1].Key,
-					KeyType:       types.KeyTypeRange,
-				},
+			items := genJSONItems(1, genOpts{idFmt: "id %d"})        // include space
+			sut.selectedTable.KeySchema = []types.KeySchemaElement{{ // define primary keys
+				AttributeName: &items.TableKeys[0][0].Key,
+				KeyType:       types.KeyTypeHash}, {
+				AttributeName: &items.TableKeys[0][1].Key,
+				KeyType:       types.KeyTypeRange},
 			}
-
-			// load items
-			sut.Update(messages.PageReady{
-				Table:    apitypes.DescribeTableResponse{TableArn: &tableARN},
-				Response: &messages.Page{Items: items},
-			})
-
-			url := sut.resolveBrowserURL()
-			// assert query params are path-escaped: `id 0` becomes `id%200`
-			exp := "https://.console.aws.amazon.com/dynamodbv2/home?region=#edit-item?itemMode=2&pk=id%200&table=testing-table&sk=true"
-			assert.EqualValues(t, exp, url)
+			simpleLoadItems(sut, &tableARN, items)                                                                                      // load items
+			url := sut.resolveBrowserURL()                                                                                              // obtain resolved url
+			exp := "https://.console.aws.amazon.com/dynamodbv2/home?region=#edit-item?itemMode=2&pk=id%200&table=testing-table&sk=true" // define expectation
+			assert.EqualValues(t, exp, url)                                                                                             // assert expectation
 		})
 	})
 }
