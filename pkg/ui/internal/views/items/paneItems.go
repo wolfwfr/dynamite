@@ -997,6 +997,7 @@ func (m *ItemSelectionPane) resetContents() {
 	m.content.ResetVirtualRows()
 	m.content.SetContent([]table.Column{}, []table.Row{})
 	m.content.SetCursor(0)
+	// TODO: change to clearCache instead, cleanup & test
 	m.refreshCache()
 }
 

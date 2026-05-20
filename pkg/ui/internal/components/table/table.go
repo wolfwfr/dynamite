@@ -303,6 +303,16 @@ func (m *Model) SetColumns(c []Column) {
 	m.UpdateHeader()
 }
 
+// SetFieldDelegate sets the field-delegate function
+func (m *Model) SetFieldDelegate(f FieldDelegate) {
+	m.fieldDelegate = f
+}
+
+// SetHeaderDelegate sets the header-delegate function
+func (m *Model) SetHeaderDelegate(f HeaderDelegate) {
+	m.headerDelegate = f
+}
+
 // SetDynamicColumnWidth updates the setting for dynamic-column-width and
 // updates the view appropriately
 func (m *Model) SetDynamicColumnWidth(b bool) {
