@@ -882,16 +882,18 @@ func (m *ItemSelectionPane) openInBrowser() tea.Cmd {
 		"table",
 	}
 
+	// NOTE: dynamo-db uses path-escaping for query-values (e.g. '%20' for
+	// ' ' (path-escaping) instead of '+' (query-escaping))
 	paramVals := []string{
 		fmt.Sprintf("%s#edit-item?", region),
 		"2", // 1:create, 2:edit, 3:duplicate
-		url.QueryEscape(strings.Trim(fields[0].Value(), "\"")),
+		url.PathEscape(strings.Trim(fields[0].Value(), "\"")),
 		url.PathEscape(tableName),
 	}
 
 	if r != nil {
 		paramkeys = append(paramkeys, "sk")
-		paramVals = append(paramVals, url.QueryEscape(strings.Trim(fields[1].Value(), "\"")))
+		paramVals = append(paramVals, url.PathEscape(strings.Trim(fields[1].Value(), "\"")))
 	}
 
 	// manually parsing query parameters, because of the strange double query
