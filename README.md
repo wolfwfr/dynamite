@@ -29,7 +29,7 @@ _  /_/ /_  /_/ /_  / / / /_/ /_  / / / / /  / / /_ /  __/
 
 <br/>
 
-[dynamite.webm](https://github.com/user-attachments/assets/faf11479-a137-4813-9b32-c17927a46e4d)
+[dynamite.webm](https://github.com/user-attachments/assets/442d57de-ce0c-4ff0-9e6e-a3f07c994d9f)
 
 <img width="3452" height="1769" alt="dynamite-screenshots-composition-1" src="https://github.com/user-attachments/assets/a07c1665-f7b5-4f49-8c89-04211870fab2" />
 
