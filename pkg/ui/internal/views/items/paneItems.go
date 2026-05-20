@@ -264,6 +264,7 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 					p.itemfiltering.matchedItems = make([]int, 0)
 					p.itemfiltering.matchedRunes = make([][]int, 0)
 					p.content.ResetVirtualRows()
+					p.refreshCache()
 					return p.MaybePreviewItem(true)
 				},
 				Results: func(col string, results []search.FilteredItem) tea.Cmd {
@@ -290,6 +291,7 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 					p.content.ResetVirtualRows()
 					p.updateSize()
 					p.KeyMap.ColSort.SetEnabled(true)
+					p.refreshCache()
 					return p.MaybePreviewItem(true)
 				},
 				SearchBoxOpens: func(searchHeight int) tea.Cmd {
