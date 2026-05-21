@@ -287,7 +287,7 @@ func TestItemSelectionCacheInvalidation(t *testing.T) {
 				simpleLoadItems(sut, &tableARN, items)                           // load items
 				mustPassInitialCacheCheck(t, sut.renderCache, sut.content, 3*2)  // ensure cache is initialised
 				simpleSortItems(sut, tableARN, items.TableKeys[0][0].Key, false) // sort items
-				sut.Update(messages.ColumnSortingReset{tableARN})                // rese sorting
+				sut.Update(messages.ColumnSortingReset{tableARN})                // reset sorting
 				assertPassCacheCheck(t, sut.renderCache, sut.content, 3*2)       // assert test passed
 			})
 			t.Run("processing a new page (could change the sorting of existing records)", func(t *testing.T) {
@@ -358,17 +358,19 @@ func TestItemSelectionURLResolution(t *testing.T) {
 		sut := newItemSelectionPane(context.Background(), &appconfig.Config{})
 		sut.selectedTable.TableArn = &tableARN
 		sut.selectedTable.TableName = &tableName
+		sut.config = &appconfig.Config{}
+		sut.config.Region = "us-east-1"
 		return sut
 	}
 
 	t.Run("item-selection-pane should", func(t *testing.T) {
 		t.Run("resolve URLs with correct path-escaping", func(t *testing.T) {
 			sut := newSUT()
-			items := genJSONItems(1, genOpts{idFmt: "id %d"})                                                                   // include space in ids
-			simpleLoadItems(sut, &tableARN, items)                                                                              // load items
-			url := sut.resolveBrowserURL()                                                                                      // obtain resolved url
-			exp := "https://.console.aws.amazon.com/dynamodbv2/home?region=#edit-item?itemMode=2&pk=id%200&table=testing-table" // define expectation
-			assert.EqualValues(t, exp, url)                                                                                     // assert expectation
+			items := genJSONItems(1, genOpts{idFmt: "id %d"})                                                                                     // include space in ids
+			simpleLoadItems(sut, &tableARN, items)                                                                                                // load items
+			url := sut.resolveBrowserURL()                                                                                                        // obtain resolved url
+			exp := "https://us-east-1.console.aws.amazon.com/dynamodbv2/home?region=us-east-1#edit-item?itemMode=2&pk=id%200&table=testing-table" // define expectation
+			assert.EqualValues(t, exp, url)                                                                                                       // assert expectation
 		})
 		t.Run("resolve URLs with sort-key", func(t *testing.T) {
 			sut := newSUT()
@@ -379,10 +381,10 @@ func TestItemSelectionURLResolution(t *testing.T) {
 				AttributeName: &items.TableKeys[0][1].Key,
 				KeyType:       types.KeyTypeRange},
 			}
-			simpleLoadItems(sut, &tableARN, items)                                                                                      // load items
-			url := sut.resolveBrowserURL()                                                                                              // obtain resolved url
-			exp := "https://.console.aws.amazon.com/dynamodbv2/home?region=#edit-item?itemMode=2&pk=id%200&table=testing-table&sk=true" // define expectation
-			assert.EqualValues(t, exp, url)                                                                                             // assert expectation
+			simpleLoadItems(sut, &tableARN, items)                                                                                                        // load items
+			url := sut.resolveBrowserURL()                                                                                                                // obtain resolved url
+			exp := "https://us-east-1.console.aws.amazon.com/dynamodbv2/home?region=us-east-1#edit-item?itemMode=2&pk=id%200&table=testing-table&sk=true" // define expectation
+			assert.EqualValues(t, exp, url)                                                                                                               // assert expectation
 		})
 	})
 }
