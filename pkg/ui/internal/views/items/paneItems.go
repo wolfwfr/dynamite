@@ -987,10 +987,8 @@ func (m *ItemSelectionPane) refreshCache() {
 // to empty. It also cancels and resets paging and resets preview tracking.
 func (m *ItemSelectionPane) resetContents() {
 	m.err = nil
-	m.pageCancel()
+	m.resetPaging()
 	m.initialised = false
-	m.paging = false
-	m.pageKey = nil
 	m.items = types.Items{}
 	m.keysComplete = []string{}
 	m.itemfiltering.matchedItems = []int{}
@@ -1002,6 +1000,14 @@ func (m *ItemSelectionPane) resetContents() {
 	m.content.SetCursor(0)
 	// TODO: change to clearCache instead, cleanup & test
 	m.refreshCache()
+}
+
+// resetPaging resets any paging related parameters and calcels any lingering
+// paging calls
+func (m *ItemSelectionPane) resetPaging() {
+	m.pageCancel()
+	m.paging = false
+	m.pageKey = nil
 }
 
 // resetQueryParameters resets any parameters required for sanning or querying a

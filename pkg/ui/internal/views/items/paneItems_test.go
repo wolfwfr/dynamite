@@ -7,6 +7,7 @@ import (
 
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
+	gm "go.uber.org/mock/gomock"
 
 	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/stretchr/testify/assert"
@@ -17,6 +18,7 @@ import (
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/components/table"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
+	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/items/mocks"
 )
 
 // validate keys on init
@@ -462,7 +464,6 @@ func TestLoadSessions(t *testing.T) {
 			assert.EqualValues(t, true, sut.queryParameters.rangeOrderDescending)         // assert restored; range-order
 			assert.EqualValues(t, messages.Between, sut.queryParameters.rangeKeyOperator) // assert restored; range-key operator
 			assert.EqualValues(t, someIndex, *sut.tableIndex.activeIndex)                 // assert restored; active index
-
 		})
 		t.Run("store & restore query parameters when switching to scan-mode", func(t *testing.T) {
 			skipIf(t, !queryKeyValid, "skipping due to outdated keymap")                  // skip if keymap needs updating
@@ -486,7 +487,66 @@ func TestLoadSessions(t *testing.T) {
 			assert.EqualValues(t, true, sut.queryParameters.rangeOrderDescending)         // assert restored; range-order
 			assert.EqualValues(t, messages.Between, sut.queryParameters.rangeKeyOperator) // assert restored; range-key operator
 			assert.EqualValues(t, someIndex, *sut.tableIndex.activeIndex)                 // assert restored; active index
+		})
+	})
+}
 
+func TestSearch(t *testing.T) {
+	var (
+		tableARN  = "table"
+		tableName = "table-name"
+	)
+
+	// factory initialising a new system-under-test
+	newSUT := func(m *mocks.MockdynamodbClient) *ItemSelectionPane {
+		sut := newItemSelectionPane(context.Background(), &appconfig.Config{})
+		sut.dynamodbClient = m
+		sut.selectedTable.TableArn = &tableARN
+		sut.selectedTable.TableName = &tableName
+		return sut
+	}
+
+	t.Run("item-selection-pane should", func(t *testing.T) {
+		t.Run("prevent paging in new results when search is enabled", func(t *testing.T) {
+
+			readyForPaging := func(sut *ItemSelectionPane) {
+				sut.resetPaging()                                                                                  // setup; reset any settings from previous paging
+				sut.pageKey = map[string]dynamodbtypes.AttributeValue{"a": &dynamodbtypes.AttributeValueMemberS{}} // setup; fake a pagination-key
+			}
+
+			skipIf(t, !searchKeyValid, "skipping due to outdated search key") // skip if testing-keymap needs updating
+			ctrl := gm.NewController(t)                                       // init mock controller
+			db := mocks.NewMockdynamodbClient(ctrl)                           // init mocked DynamoDB client
+			sut := newSUT(db)                                                 // init
+			sut.window.height = 10                                            // setup; at most 10 items at a time
+			items := genJSONItems(1)                                          // setup; prepare initial items
+			simpleLoadItems(sut, tableARN, items)                             // setup; load items
+			// expect one page to be retrieved before search and one after
+			// search is cancelled
+			db.EXPECT().
+				ScanTable(gm.Any(), gm.Any(), gm.Any(), gm.Any()).
+				Return(&apitypes.ScanResponse{}, nil).
+				Times(2)
+			readyForPaging(sut)                                    // setup; get ready for paging
+			cmd := sut.Update(tea.KeyPressMsg(tea.Key{Text: "G"})) // jump to bottom; to trigger pagination
+			msgs := extractMessages[messages.PageReady](cmd)       // execute pagination
+			require.Len(t, msgs, 1)                                // require at least one page
+			sut.Update(tea.KeyPressMsg(tea.Key{Text: "g"}))        // jump back to top to reset
+			sut.Update(searchKey)                                  // enable search
+			_, ok := searchItemSelection(t, sut, "id=id")          // search for some items to filter results & disable pagination
+			require.True(t, ok)                                    // ensure search was properly applied
+			sut.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEsc})) // blur the search
+			readyForPaging(sut)                                    // setup; get ready for paging
+			cmd = sut.Update(tea.KeyPressMsg(tea.Key{Text: "G"}))  // jump to bottom again
+			msgs = extractMessages[messages.PageReady](cmd)        // execute any potential pagination
+			assert.Len(t, msgs, 0)                                 // assert no pagination this time
+			sut.Update(tea.KeyPressMsg(tea.Key{Text: "g"}))        // jump back to top to reset
+			sut.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEsc})) // cancel the search (reset)
+			require.False(t, sut.itemfiltering.enabled)            // ensure search is disabled again
+			readyForPaging(sut)                                    // setup; get ready for paging
+			cmd = sut.Update(tea.KeyPressMsg(tea.Key{Text: "G"}))  // jump to bottom again
+			msgs = extractMessages[messages.PageReady](cmd)        // execute any potential pagination
+			assert.Len(t, msgs, 1)                                 // assert pagination was re-enabled
 		})
 	})
 }
