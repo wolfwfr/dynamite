@@ -28,10 +28,12 @@ var (
 	searchKeyValid bool
 	queryKeyValid  bool
 	scanKeyValid   bool
+	exitKeyValid   bool
 
 	searchKey = tea.KeyPressMsg(tea.Key{Text: "/"})
 	queryKey  = tea.KeyPressMsg(tea.Key{Text: "Q", Mod: tea.ModShift, Code: 'q', ShiftedCode: 'Q'})
 	scanKey   = tea.KeyPressMsg(tea.Key{Text: "S", Mod: tea.ModShift, Code: 's', ShiftedCode: 'S'})
+	exitKey   = tea.KeyPressMsg(tea.Key{Code: tea.KeyEsc})
 )
 
 // validateItemSelectionKeys ensures keymap-variables accurately inform tests on the validity
@@ -43,11 +45,13 @@ func validateItemSelectionKeys() {
 	keymap.Search.SetEnabled(true)
 	keymap.Query.SetEnabled(true)
 	keymap.Scan.SetEnabled(true)
+	keymap.Esc.SetEnabled(true)
 
 	// test matching
 	searchKeyValid = key.Matches(searchKey, keymap.Search)
 	queryKeyValid = key.Matches(queryKey, keymap.Query)
 	scanKeyValid = key.Matches(scanKey, keymap.Scan)
+	exitKeyValid = key.Matches(exitKey, keymap.Esc)
 }
 
 // fail tests on invalid keys; indicates the keymap has changed
@@ -55,6 +59,7 @@ func TestKeyMapValid(t *testing.T) {
 	assert.True(t, searchKeyValid)
 	assert.True(t, queryKeyValid)
 	assert.True(t, scanKeyValid)
+	assert.True(t, exitKeyValid)
 }
 
 type genOpts struct {
@@ -389,6 +394,103 @@ func TestItemSelectionURLResolution(t *testing.T) {
 	})
 }
 
+func TestLoadSessions(t *testing.T) {
+	var (
+		tableARN1  = "table-1"
+		tableARN2  = "table-2"
+		tableName1 = "testing-table-1"
+		tableName2 = "testing-table-2"
+		someIndex  = "some index"
+		hkValue    = "hk-value"
+		rkValue1   = "rk-value1"
+		rkValue2   = "rk-value2"
+	)
+
+	// factory initialising a new system-under-test
+	newSUT := func() *ItemSelectionPane {
+		sut := newItemSelectionPane(context.Background(), &appconfig.Config{})
+		sut.selectedTable.TableArn = &tableARN1
+		sut.selectedTable.TableName = &tableName1
+		sut.config = &appconfig.Config{}
+		return sut
+	}
+
+	t.Run("item-selection-pane should", func(t *testing.T) {
+		t.Run("store & restore scan parameters when exiting item-selection view in scan-mode", func(t *testing.T) {
+			skipIf(t, !exitKeyValid, "skipping due to outdated keymap")   // skip if keymap needs updating
+			sut := newSUT()                                               // init sut
+			sut.scanParameters.index = &someIndex                         // set params; index
+			sut.Update(exitKey)                                           // exit view
+			simpleSelectTable(sut, tableARN2, tableName2, 10)             // select table 2 in between
+			sut.Update(exitKey)                                           // exit again
+			simpleSelectTable(sut, tableARN1, tableName1, 10)             // re-enter table 1
+			assert.EqualValues(t, someIndex, *sut.scanParameters.index)   // assert restored; index
+			assert.EqualValues(t, someIndex, *sut.tableIndex.activeIndex) // assert restored; active index
+		})
+		t.Run("store & restore scan parameters when switching to and from query-mode", func(t *testing.T) {
+			skipIf(t, !queryKeyValid, "skipping due to outdated keymap")  // skip if keymap needs updating
+			skipIf(t, !scanKeyValid, "skipping due to outdated keymap")   // skip if keymap needs updating
+			sut := newSUT()                                               // init sut
+			sut.scanParameters.index = &someIndex                         // set params; index
+			sut.Update(queryKey)                                          // switch to query-mode
+			assert.Nil(t, sut.tableIndex.activeIndex)                     // assert active index is reset
+			sut.Update(scanKey)                                           // re-enter scan-mode
+			assert.EqualValues(t, someIndex, *sut.scanParameters.index)   // assert restored; index
+			assert.EqualValues(t, someIndex, *sut.tableIndex.activeIndex) // assert restored; active index
+		})
+		t.Run("store & restore query parameters when exiting item-selection view in query-mode", func(t *testing.T) {
+			skipIf(t, !exitKeyValid, "skipping due to outdated keymap")                   // skip if keymap needs updating
+			skipIf(t, !queryKeyValid, "skipping due to outdated keymap")                  // skip if keymap needs updating
+			sut := newSUT()                                                               // init sut
+			sut.Update(queryKey)                                                          // switch to query-mode
+			sut.queryParameters.index = &someIndex                                        // set params; index
+			sut.queryParameters.hashKeyValue = hkValue                                    // set params; hash-key value
+			sut.queryParameters.rangeKeyValue1 = &rkValue1                                // set params; range-key value 1
+			sut.queryParameters.rangeKeyValue2 = &rkValue2                                // set params; range-key value 2
+			sut.queryParameters.rangeOrderDescending = true                               // set params; range-order
+			sut.queryParameters.rangeKeyOperator = messages.Between                       // set params; range operator
+			sut.Update(exitKey)                                                           // exit view
+			simpleSelectTable(sut, tableARN2, tableName2, 10)                             // select table 2 in between
+			sut.Update(queryKey)                                                          // switch to query-mode again
+			sut.Update(exitKey)                                                           // exit again
+			simpleSelectTable(sut, tableARN1, tableName1, 10)                             // re-enter table 1
+			assert.EqualValues(t, sut.queryMode, messages.QueryMode)                      // assert re-enter straight into query-mode this time
+			assert.EqualValues(t, someIndex, *sut.queryParameters.index)                  // assert restored; index
+			assert.EqualValues(t, hkValue, sut.queryParameters.hashKeyValue)              // assert restored; hash-key value
+			assert.EqualValues(t, rkValue1, *sut.queryParameters.rangeKeyValue1)          // assert restored; range-key value 1
+			assert.EqualValues(t, rkValue2, *sut.queryParameters.rangeKeyValue2)          // assert restored; range-key value 2
+			assert.EqualValues(t, true, sut.queryParameters.rangeOrderDescending)         // assert restored; range-order
+			assert.EqualValues(t, messages.Between, sut.queryParameters.rangeKeyOperator) // assert restored; range-key operator
+			assert.EqualValues(t, someIndex, *sut.tableIndex.activeIndex)                 // assert restored; active index
+
+		})
+		t.Run("store & restore query parameters when switching to scan-mode", func(t *testing.T) {
+			skipIf(t, !queryKeyValid, "skipping due to outdated keymap")                  // skip if keymap needs updating
+			skipIf(t, !scanKeyValid, "skipping due to outdated keymap")                   // skip if keymap needs updating
+			sut := newSUT()                                                               // init sut
+			sut.Update(queryKey)                                                          // switch to query-mode
+			sut.queryParameters.index = &someIndex                                        // set params; index
+			sut.queryParameters.hashKeyValue = hkValue                                    // set params; hash-key value
+			sut.queryParameters.rangeKeyValue1 = &rkValue1                                // set params; range-key value 1
+			sut.queryParameters.rangeKeyValue2 = &rkValue2                                // set params; range-key value 2
+			sut.queryParameters.rangeOrderDescending = true                               // set params; range-order
+			sut.queryParameters.rangeKeyOperator = messages.Between                       // set params; range operator
+			sut.Update(scanKey)                                                           // switch to scan-mode
+			assert.Nil(t, sut.tableIndex.activeIndex)                                     // assert active index is reset
+			sut.Update(queryKey)                                                          // re-enter query-mode
+			assert.EqualValues(t, sut.queryMode, messages.QueryMode)                      // assert re-enter straight into query-mode this time
+			assert.EqualValues(t, someIndex, *sut.queryParameters.index)                  // assert restored; index
+			assert.EqualValues(t, hkValue, sut.queryParameters.hashKeyValue)              // assert restored; hash-key value
+			assert.EqualValues(t, rkValue1, *sut.queryParameters.rangeKeyValue1)          // assert restored; range-key value 1
+			assert.EqualValues(t, rkValue2, *sut.queryParameters.rangeKeyValue2)          // assert restored; range-key value 2
+			assert.EqualValues(t, true, sut.queryParameters.rangeOrderDescending)         // assert restored; range-order
+			assert.EqualValues(t, messages.Between, sut.queryParameters.rangeKeyOperator) // assert restored; range-key operator
+			assert.EqualValues(t, someIndex, *sut.tableIndex.activeIndex)                 // assert restored; active index
+
+		})
+	})
+}
+
 // convenience function to apply a search query. Returns a boolean that equals
 // `true` when the search was successfully applied.
 //
@@ -498,6 +600,18 @@ func simpleLoadItems(sut *ItemSelectionPane, tableARN *string, items apitypes.It
 	return sut.Update(messages.PageReady{
 		Table:    apitypes.DescribeTableResponse{TableArn: tableARN},
 		Response: &messages.Page{Items: items},
+	})
+}
+
+// convenience function to send a 'SelectTable' message to the
+// system-under-test
+func simpleSelectTable(sut *ItemSelectionPane, tableARN, tableName string, count int64) tea.Cmd {
+	return sut.Update(messages.SelectTable{
+		TableName: tableName,
+		TableDetails: apitypes.DescribeTableResponse{
+			TableArn:  &tableARN,
+			ItemCount: &count,
+		},
 	})
 }
 
