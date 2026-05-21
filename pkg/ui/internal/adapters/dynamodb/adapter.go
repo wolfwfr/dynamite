@@ -16,8 +16,17 @@ import (
 	cncrtypes "github.com/wolfwfr/dynamite/pkg/aws/dynamodb/types"
 )
 
+// Adapter encapsulates the dynamo-db adapter functions. Although stateless, it
+// can be mocked or decorated.
+type Adapter struct{}
+
+// NewAdapter returns a new instance of Adapter.
+func NewAdapter() *Adapter {
+	return &Adapter{}
+}
+
 // simple one on one translation
-func ListTables(client *dynamodb.Client, ctx context.Context, req apitypes.ListTablesRequest) (*apitypes.ListTablesResponse, error) {
+func (a *Adapter) ListTables(client *dynamodb.Client, ctx context.Context, req apitypes.ListTablesRequest) (*apitypes.ListTablesResponse, error) {
 	dreq := cncrtypes.ListTablesRequest{
 		LastEvaluatedTableName: req.LastEvaluatedTableName,
 		Limit:                  req.Limit,
@@ -33,7 +42,7 @@ func ListTables(client *dynamodb.Client, ctx context.Context, req apitypes.ListT
 }
 
 // simple one on one translation
-func DescribeTable(client *dynamodb.Client, ctx context.Context, tableName string) (*apitypes.DescribeTableResponse, error) {
+func (a *Adapter) DescribeTable(client *dynamodb.Client, ctx context.Context, tableName string) (*apitypes.DescribeTableResponse, error) {
 	res, err := connector.DescribeTable(client, ctx, tableName)
 	if res == nil {
 		return nil, err
@@ -60,7 +69,7 @@ func DescribeTable(client *dynamodb.Client, ctx context.Context, tableName strin
 
 // ScanTable forwards the call to the dynamodb connector & parses the results
 // for UI display.
-func ScanTable(client *dynamodb.Client, ctx context.Context, table string, params apitypes.ScanParameters) (*apitypes.ScanResponse, error) {
+func (a *Adapter) ScanTable(client *dynamodb.Client, ctx context.Context, table string, params apitypes.ScanParameters) (*apitypes.ScanResponse, error) {
 	dparams := cncrtypes.ScanParameters{
 		KeyDetails:       params.KeyDetails,
 		IndexName:        params.IndexName,
@@ -104,7 +113,7 @@ func ScanTable(client *dynamodb.Client, ctx context.Context, table string, param
 
 // QueryTable forwards the call to the dynamodb connector & parses the results
 // for UI display.
-func QueryTable(client *dynamodb.Client, ctx context.Context, table string, params apitypes.QueryParameters) (*apitypes.QueryResponse, error) {
+func (a *Adapter) QueryTable(client *dynamodb.Client, ctx context.Context, table string, params apitypes.QueryParameters) (*apitypes.QueryResponse, error) {
 	dparams := cncrtypes.QueryParameters{
 		KeyDetails:       params.KeyDetails,
 		IndexName:        params.IndexName,

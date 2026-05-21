@@ -63,6 +63,9 @@ type tableSelectionPane struct {
 	// shared config
 	config *appconfig.Config
 
+	// dynamo-db adapter for UI purposes
+	dynamodbClient dynamodbClient
+
 	// errorText
 	err error
 
@@ -112,13 +115,14 @@ func withTablePaneKeys(keys keymaps.AdditionalKeys) tablePaneOption {
 
 func newTableSelectionPane(ctx context.Context, config *appconfig.Config, opts ...tablePaneOption) *tableSelectionPane {
 	p := &tableSelectionPane{
-		ctx:           ctx,
-		cancelDetails: func() {}, // noop on init
-		cancelTables:  func() {}, // noop on init
-		debounceDur:   50 * time.Millisecond,
-		config:        config,
-		stdTO:         30 * time.Second,
-		KeyMap:        DefaultTablePaneKeyMap(),
+		ctx:            ctx,
+		cancelDetails:  func() {}, // noop on init
+		cancelTables:   func() {}, // noop on init
+		debounceDur:    50 * time.Millisecond,
+		config:         config,
+		dynamodbClient: dynamodb.NewAdapter(),
+		stdTO:          30 * time.Second,
+		KeyMap:         DefaultTablePaneKeyMap(),
 	}
 
 	{ // contents table
@@ -257,7 +261,7 @@ func (m *tableSelectionPane) pageNext(init bool) tea.Cmd {
 		if limit == 0 {
 			return nil
 		}
-		out, err := dynamodb.ListTables(client, ctx, apitypes.ListTablesRequest{
+		out, err := m.dynamodbClient.ListTables(client, ctx, apitypes.ListTablesRequest{
 			LastEvaluatedTableName: m.lastPageKey,
 			Limit:                  u.ToPtr(int32(limit)),
 		})
@@ -477,7 +481,7 @@ func (m *tableSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
 
 		ctx, cc := context.WithTimeout(ctx, m.stdTO)
 		defer cc()
-		details, err := dynamodb.DescribeTable(m.config.Client, ctx, table)
+		details, err := m.dynamodbClient.DescribeTable(m.config.Client, ctx, table)
 		if err != nil {
 			return nil
 		}
@@ -516,7 +520,7 @@ func (m *tableSelectionPane) selectTable() tea.Cmd {
 		m.cleanSlate()
 		ctx, cc := context.WithTimeout(m.ctx, m.stdTO)
 		defer cc()
-		details, err := dynamodb.DescribeTable(m.config.Client, ctx, row.Fields[0].Value())
+		details, err := m.dynamodbClient.DescribeTable(m.config.Client, ctx, row.Fields[0].Value())
 		if err != nil {
 			m.err = err
 			return nil

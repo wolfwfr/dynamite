@@ -19,3 +19,5 @@ tmp
 # local files
 .env
 .envrc
+
+**/mocks/

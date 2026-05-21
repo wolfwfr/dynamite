@@ -89,6 +89,9 @@ type ItemSelectionPane struct {
 	// shared config
 	config *appconfig.Config
 
+	// dynamo-db adapter for UI purposes
+	dynamodbClient dynamodbClient
+
 	// error
 	err error
 
@@ -201,17 +204,18 @@ func withItemsPaneKeys(keys keymaps.AdditionalKeys) itemsPaneOption {
 
 func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ...itemsPaneOption) *ItemSelectionPane {
 	p := &ItemSelectionPane{
-		ctx:           ctx,
-		renderCache:   map[string]string{},
-		config:        config,
-		stdTO:         30 * time.Second,
-		KeyMap:        DefaultItemPaneKeyMap(),
-		sessions:      map[string]SessionData{},
-		queryMode:     messages.ScanMode,
-		previewFormat: JSONformat,
-		scanLimit:     10,
-		queryLimit:    10,
-		pageCancel:    func() {}, // init as noop
+		ctx:            ctx,
+		renderCache:    map[string]string{},
+		config:         config,
+		dynamodbClient: dynamodb.NewAdapter(),
+		stdTO:          30 * time.Second,
+		KeyMap:         DefaultItemPaneKeyMap(),
+		sessions:       map[string]SessionData{},
+		queryMode:      messages.ScanMode,
+		previewFormat:  JSONformat,
+		scanLimit:      10,
+		queryLimit:     10,
+		pageCancel:     func() {}, // init as noop
 	}
 
 	{ // contents table
@@ -521,7 +525,6 @@ func (m *ItemSelectionPane) PageNext(init bool) tea.Cmd {
 		return nil
 	}
 	m.paging = true
-	spinnerCmd := m.activateSpinner()
 	mode := m.queryMode
 	table := m.selectedTable
 	key := m.pageKey
@@ -542,13 +545,13 @@ func (m *ItemSelectionPane) PageNext(init bool) tea.Cmd {
 		case messages.QueryMode:
 			if hash == "" { // prevent impossible query
 				return messages.PageReady{
-					Table:    table,
+					TableARN: u.IfNotNil(table.TableArn, ""),
 					Index:    idx,
 					Response: nil,
 					Err:      nil,
 				}
 			}
-			result, err := dynamodb.QueryTable(client, ctx, *table.TableName, types.QueryParameters{
+			result, err := m.dynamodbClient.QueryTable(client, ctx, *table.TableName, types.QueryParameters{
 				KeyDetails:       table.AttributeDefinitions,
 				IndexName:        idx,
 				KeySchema:        keysFromIndex(idx, table),
@@ -561,13 +564,13 @@ func (m *ItemSelectionPane) PageNext(init bool) tea.Cmd {
 				LastEvaluatedKey: key,
 			})
 			return messages.PageReady{
-				Table:    table,
+				TableARN: u.IfNotNil(table.TableArn, ""),
 				Index:    idx,
 				Response: queryPageToPage(result),
 				Err:      err,
 			}
 		case messages.ScanMode:
-			result, err := dynamodb.ScanTable(client, ctx, *table.TableName, types.ScanParameters{
+			result, err := m.dynamodbClient.ScanTable(client, ctx, *table.TableName, types.ScanParameters{
 				KeyDetails:       table.AttributeDefinitions,
 				IndexName:        idx,
 				KeySchema:        keysFromIndex(idx, table),
@@ -575,7 +578,7 @@ func (m *ItemSelectionPane) PageNext(init bool) tea.Cmd {
 				LastEvaluatedKey: key,
 			})
 			return messages.PageReady{
-				Table:    table,
+				TableARN: u.IfNotNil(table.TableArn, ""),
 				Index:    idx,
 				Response: scanPageToPage(result),
 				Err:      err,
@@ -583,7 +586,7 @@ func (m *ItemSelectionPane) PageNext(init bool) tea.Cmd {
 		}
 		return nil
 	}
-	return tea.Batch(pageCmd, spinnerCmd)
+	return tea.Batch(pageCmd, m.activateSpinner())
 }
 
 func (m *ItemSelectionPane) ToggleJSONYAMLFormat() tea.Cmd {
@@ -659,7 +662,7 @@ func (m *ItemSelectionPane) ProcessPage(msg messages.PageReady) tea.Cmd {
 	page := msg.Response
 	details := m.selectedTable
 
-	if m.selectedTable.TableArn != msg.Table.TableArn || m.tableIndex.activeIndex != msg.Index { // expired
+	if u.IfNotNil(m.selectedTable.TableArn, "") != msg.TableARN || m.tableIndex.activeIndex != msg.Index { // expired
 		return nil
 	}
 

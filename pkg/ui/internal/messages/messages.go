@@ -93,7 +93,7 @@ type Page struct {
 }
 
 type PageReady struct {
-	Table    apitypes.DescribeTableResponse
+	TableARN string
 	Index    *string
 	Response *Page
 	Err      error

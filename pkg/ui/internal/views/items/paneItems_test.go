@@ -7,8 +7,9 @@ import (
 
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
+	gm "go.uber.org/mock/gomock"
 
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/components/table"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
+	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/items/mocks"
 )
 
 // validate keys on init
@@ -88,7 +90,7 @@ func genJSONItems(n int, opts ...genOpts) apitypes.Items {
 	ln := n - b
 	res.JSON = make([]string, ln)
 	res.JSONStyled = make([]styles.ObjectStyle, ln)
-	res.Raw = make([]map[string]types.AttributeValue, ln)
+	res.Raw = make([]map[string]dynamodbtypes.AttributeValue, ln)
 	res.TableKeys = make([][]apitypes.KeyValue, ln)
 
 	for i := range ln {
@@ -100,9 +102,9 @@ func genJSONItems(n int, opts ...genOpts) apitypes.Items {
 }`
 		res.JSONStyled[i] = styles.ObjectStyle{}
 
-		res.Raw[i] = map[string]types.AttributeValue{
-			"id":         &types.AttributeValueMemberS{Value: id},
-			"configured": &types.AttributeValueMemberBOOL{Value: true},
+		res.Raw[i] = map[string]dynamodbtypes.AttributeValue{
+			"id":         &dynamodbtypes.AttributeValueMemberS{Value: id},
+			"configured": &dynamodbtypes.AttributeValueMemberBOOL{Value: true},
 		}
 
 		res.TableKeys[i] = []apitypes.KeyValue{
@@ -131,7 +133,7 @@ func TestItemSelectionPreviews(t *testing.T) {
 		t.Run("preview the correct item when paging new results", func(t *testing.T) {
 			sut := newSUT()                                          // init
 			items := genJSONItems(1)                                 // page
-			cmd := simpleLoadItems(sut, &tableARN, items)            // load items
+			cmd := simpleLoadItems(sut, tableARN, items)             // load items
 			targets := extractMessages[messages.PreviewItem](cmd)    // obtain target messages
 			require.Len(t, targets, 1)                               // assert only one preview-item message
 			assert.EqualValues(t, items.JSON[0], targets[0].RawItem) // assert correct item being previewed
@@ -140,9 +142,9 @@ func TestItemSelectionPreviews(t *testing.T) {
 			sut := newSUT()                                                  // init
 			page1 := genJSONItems(3, genOpts{begin: 0})                      // page 1
 			page2 := genJSONItems(6, genOpts{begin: 3})                      // page 2
-			simpleLoadItems(sut, &tableARN, page1)                           // prepare first page
+			simpleLoadItems(sut, tableARN, page1)                            // prepare first page
 			simpleSortItems(sut, tableARN, page1.TableKeys[0][0].Key, false) // enable sorting
-			cmd := simpleLoadItems(sut, &tableARN, page2)                    // load next page
+			cmd := simpleLoadItems(sut, tableARN, page2)                     // load next page
 			targets := extractMessages[messages.PreviewItem](cmd)            // obtain target messages
 			require.Len(t, targets, 1)                                       // assert only one preview-item message
 			assert.EqualValues(t, page2.JSON[2], targets[0].RawItem)         // assert correct item being previewed
@@ -151,7 +153,7 @@ func TestItemSelectionPreviews(t *testing.T) {
 			skipIf(t, !searchKeyValid, "skipping due to outdated search key")     // skip if testing-keymap needs updating
 			sut := newSUT()                                                       // init
 			items := genJSONItems(3)                                              // page
-			simpleLoadItems(sut, &tableARN, items)                                // load items
+			simpleLoadItems(sut, tableARN, items)                                 // load items
 			sut.Update(searchKey)                                                 // enable search
 			cmd, ok := searchItemSelection(t, sut, "id=id-1")                     // search for first item
 			require.True(t, ok)                                                   // ensure search was successful
@@ -240,7 +242,7 @@ func TestItemSelectionCacheInvalidation(t *testing.T) {
 				itemsNotMatching := genJSONItems(3)                                    // first half page
 				itemsMatching := genJSONItems(3, genOpts{idFmt: "op%d"})               // second half page
 				items := mergeItems(itemsNotMatching, itemsMatching)                   // full page
-				simpleLoadItems(sut, &tableARN, items)                                 // load items
+				simpleLoadItems(sut, tableARN, items)                                  // load items
 				mustPassInitialCacheCheck(t, sut.renderCache, sut.content, 6*2)        // ensure cache is initialised
 				sut.Update(searchKey)                                                  // enable search
 				_, ok := searchItemSelection(t, sut, "id=op")                          // matching second 3 only
@@ -253,7 +255,7 @@ func TestItemSelectionCacheInvalidation(t *testing.T) {
 				itemsNotMatching := genJSONItems(3)                                    // first half page
 				itemsMatching := genJSONItems(3, genOpts{idFmt: "op%d"})               // second half page
 				items := mergeItems(itemsNotMatching, itemsMatching)                   // full page
-				simpleLoadItems(sut, &tableARN, items)                                 // load items
+				simpleLoadItems(sut, tableARN, items)                                  // load items
 				mustPassInitialCacheCheck(t, sut.renderCache, sut.content, 6*2)        // ensure cache is initialised
 				sut.Update(searchKey)                                                  // enable search
 				_, ok := searchItemSelection(t, sut, "id=o")                           // matching second 3 only
@@ -268,7 +270,7 @@ func TestItemSelectionCacheInvalidation(t *testing.T) {
 				itemsNotMatching := genJSONItems(3)                                    // first half page
 				itemsMatching := genJSONItems(3, genOpts{idFmt: "op%d"})               // second half page
 				items := mergeItems(itemsNotMatching, itemsMatching)                   // full page
-				simpleLoadItems(sut, &tableARN, items)                                 // load items
+				simpleLoadItems(sut, tableARN, items)                                  // load items
 				mustPassInitialCacheCheck(t, sut.renderCache, sut.content, 6*2)        // ensure cache is initialised
 				sut.Update(searchKey)                                                  // enable search
 				_, ok := searchItemSelection(t, sut, "id=o")                           // matching second 3 only
@@ -279,7 +281,7 @@ func TestItemSelectionCacheInvalidation(t *testing.T) {
 			t.Run("updating sort parameters", func(t *testing.T) {
 				sut := newSUT()
 				items := genJSONItems(3)                                         // page
-				simpleLoadItems(sut, &tableARN, items)                           // load items
+				simpleLoadItems(sut, tableARN, items)                            // load items
 				mustPassInitialCacheCheck(t, sut.renderCache, sut.content, 3*2)  // ensure cache is initialised
 				simpleSortItems(sut, tableARN, items.TableKeys[0][0].Key, false) // sort items
 				assertPassCacheCheck(t, sut.renderCache, sut.content, 3*2)       // assert test passed
@@ -289,7 +291,7 @@ func TestItemSelectionCacheInvalidation(t *testing.T) {
 			t.Run("resetting sort", func(t *testing.T) {
 				sut := newSUT()
 				items := genJSONItems(3)                                         // page
-				simpleLoadItems(sut, &tableARN, items)                           // load items
+				simpleLoadItems(sut, tableARN, items)                            // load items
 				mustPassInitialCacheCheck(t, sut.renderCache, sut.content, 3*2)  // ensure cache is initialised
 				simpleSortItems(sut, tableARN, items.TableKeys[0][0].Key, false) // sort items
 				sut.Update(messages.ColumnSortingReset{tableARN})                // reset sorting
@@ -299,11 +301,11 @@ func TestItemSelectionCacheInvalidation(t *testing.T) {
 				sut := newSUT()
 				items1 := genJSONItems(6, genOpts{begin: 3})                                   // page 1
 				items2 := genJSONItems(3, genOpts{begin: 0})                                   // page 2
-				simpleLoadItems(sut, &tableARN, items1)                                        // load items
+				simpleLoadItems(sut, tableARN, items1)                                         // load items
 				mustPassInitialCacheCheck(t, sut.renderCache, sut.content, 3*2)                // ensure cache is initialised
 				simpleSortItems(sut, tableARN, items1.TableKeys[0][0].Key, true)               // sort items
 				top := sut.content.VisualRows()[0].Fields[0].Value()                           // obtain first item for later verification
-				simpleLoadItems(sut, &tableARN, items2)                                        // load second page, that puts new items at the top
+				simpleLoadItems(sut, tableARN, items2)                                         // load second page, that puts new items at the top
 				newtop := sut.content.VisualRows()[0].Fields[0].Value()                        // obtain first item for later verification
 				fatalIf(t, top == newtop, "test initialisation failed: expected new top item") // ensure sorting still in effect
 				assertPassCacheCheck(t, sut.renderCache, sut.content, 6*2)                     // assert test passed
@@ -314,7 +316,7 @@ func TestItemSelectionCacheInvalidation(t *testing.T) {
 				skipIf(t, !queryKeyValid, "skipping test because query-keymap is outdated") // skip when testing-keymap needs updating
 				sut := newSUT()                                                             // defaults to scan
 				items := genJSONItems(3)                                                    // page
-				simpleLoadItems(sut, &tableARN, items)                                      // load items
+				simpleLoadItems(sut, tableARN, items)                                       // load items
 				mustPassInitialCacheCheck(t, sut.renderCache, sut.content, 3*2)             // ensure cache is initialised
 				sut.Update(queryKey)                                                        // switch to query mode
 				assert.Empty(t, sut.renderCache)                                            // assert cache has been cleared
@@ -325,7 +327,7 @@ func TestItemSelectionCacheInvalidation(t *testing.T) {
 				sut := newSUT()                                                             // defaults to scan
 				sut.Update(queryKey)                                                        // first enable query mode before switching back
 				items := genJSONItems(3)                                                    // page
-				simpleLoadItems(sut, &tableARN, items)                                      // load items
+				simpleLoadItems(sut, tableARN, items)                                       // load items
 				mustPassInitialCacheCheck(t, sut.renderCache, sut.content, 3*2)             // ensure cache is initialised
 				sut.Update(scanKey)                                                         // switch to scan mode
 				assert.Empty(t, sut.renderCache)                                            // assert cache has been cleared
@@ -333,7 +335,7 @@ func TestItemSelectionCacheInvalidation(t *testing.T) {
 			t.Run("changing scan parameters", func(t *testing.T) {
 				sut := newSUT()                                                 // defaults to scan
 				items := genJSONItems(3)                                        // page
-				simpleLoadItems(sut, &tableARN, items)                          // load items
+				simpleLoadItems(sut, tableARN, items)                           // load items
 				mustPassInitialCacheCheck(t, sut.renderCache, sut.content, 3*2) // ensure cache is initialised
 				simpleChangeScanIndex(sut, tableARN, "new")                     // change index
 				assert.Empty(t, sut.renderCache)                                // assert cache has been cleared
@@ -343,7 +345,7 @@ func TestItemSelectionCacheInvalidation(t *testing.T) {
 				sut := newSUT()                                                             // defaults to scan
 				sut.Update(queryKey)                                                        // first enable query mode to accept query settings
 				items := genJSONItems(3)                                                    // page
-				simpleLoadItems(sut, &tableARN, items)                                      // load items
+				simpleLoadItems(sut, tableARN, items)                                       // load items
 				mustPassInitialCacheCheck(t, sut.renderCache, sut.content, 3*2)             // ensure cache is initialised
 				simpleChangeQParams(sut, tableARN, "new")                                   // change query index
 				assert.Empty(t, sut.renderCache)                                            // assert cache has been cleared
@@ -372,21 +374,21 @@ func TestItemSelectionURLResolution(t *testing.T) {
 		t.Run("resolve URLs with correct path-escaping", func(t *testing.T) {
 			sut := newSUT()
 			items := genJSONItems(1, genOpts{idFmt: "id %d"})                                                                                     // include space in ids
-			simpleLoadItems(sut, &tableARN, items)                                                                                                // load items
+			simpleLoadItems(sut, tableARN, items)                                                                                                 // load items
 			url := sut.resolveBrowserURL()                                                                                                        // obtain resolved url
 			exp := "https://us-east-1.console.aws.amazon.com/dynamodbv2/home?region=us-east-1#edit-item?itemMode=2&pk=id%200&table=testing-table" // define expectation
 			assert.EqualValues(t, exp, url)                                                                                                       // assert expectation
 		})
 		t.Run("resolve URLs with sort-key", func(t *testing.T) {
 			sut := newSUT()
-			items := genJSONItems(1, genOpts{idFmt: "id %d"})        // include space
-			sut.selectedTable.KeySchema = []types.KeySchemaElement{{ // define primary keys
+			items := genJSONItems(1, genOpts{idFmt: "id %d"})                // include space
+			sut.selectedTable.KeySchema = []dynamodbtypes.KeySchemaElement{{ // define primary keys
 				AttributeName: &items.TableKeys[0][0].Key,
-				KeyType:       types.KeyTypeHash}, {
+				KeyType:       dynamodbtypes.KeyTypeHash}, {
 				AttributeName: &items.TableKeys[0][1].Key,
-				KeyType:       types.KeyTypeRange},
+				KeyType:       dynamodbtypes.KeyTypeRange},
 			}
-			simpleLoadItems(sut, &tableARN, items)                                                                                                        // load items
+			simpleLoadItems(sut, tableARN, items)                                                                                                         // load items
 			url := sut.resolveBrowserURL()                                                                                                                // obtain resolved url
 			exp := "https://us-east-1.console.aws.amazon.com/dynamodbv2/home?region=us-east-1#edit-item?itemMode=2&pk=id%200&table=testing-table&sk=true" // define expectation
 			assert.EqualValues(t, exp, url)                                                                                                               // assert expectation
@@ -487,6 +489,200 @@ func TestLoadSessions(t *testing.T) {
 			assert.EqualValues(t, messages.Between, sut.queryParameters.rangeKeyOperator) // assert restored; range-key operator
 			assert.EqualValues(t, someIndex, *sut.tableIndex.activeIndex)                 // assert restored; active index
 
+		})
+	})
+}
+
+func TestQuery(t *testing.T) {
+	var (
+		tableARN             = "table"
+		tableName            = "testing-table"
+		someIndex            = "some index"
+		hkName               = "hk"
+		rkName               = "rk"
+		hkValue              = "hk-value"
+		rkValue1             = "rk-value1"
+		rkValue2             = "rk-value2"
+		items                = genJSONItems(3)
+		AttributeDefinitions = []dynamodbtypes.AttributeDefinition{
+			{
+				AttributeName: &hkName,
+				AttributeType: "S",
+			},
+			{
+				AttributeName: &rkName,
+				AttributeType: "B",
+			},
+		}
+		gsi = []dynamodbtypes.GlobalSecondaryIndexDescription{
+			{
+				IndexName: &someIndex,
+				KeySchema: []dynamodbtypes.KeySchemaElement{
+					{
+						AttributeName: &hkName,
+						KeyType:       dynamodbtypes.KeyTypeHash,
+					},
+					{
+						AttributeName: &rkName,
+						KeyType:       dynamodbtypes.KeyTypeRange,
+					},
+				},
+			},
+		}
+	)
+
+	// factory initialising a new system-under-test
+	newSUT := func(m *mocks.MockdynamodbClient) *ItemSelectionPane {
+		sut := newItemSelectionPane(context.Background(), &appconfig.Config{})
+		sut.dynamodbClient = m
+		sut.config = &appconfig.Config{}
+		sut.selectedTable.TableArn = &tableARN
+		sut.selectedTable.TableName = &tableName
+		sut.selectedTable.AttributeDefinitions = AttributeDefinitions
+		sut.selectedTable.GlobalSecondaryIndexes = gsi
+		return sut
+	}
+
+	t.Run("item-selection-pane should", func(t *testing.T) {
+		t.Run("modify query & query-parameters keys on entering/exiting query-mode", func(t *testing.T) {
+			skipIf(t, !queryKeyValid, "skipping due to outdated keymap") // skip if keymap needs updating
+			sut := newSUT(nil)                                           // init sut
+			require.True(t, sut.KeyMap.Query.Enabled())                  // require key; query-key enabled
+			require.False(t, sut.KeyMap.QueryParameters.Enabled())       // require key; query-parameters key disabled
+			sut.Update(queryKey)                                         // switch to query-mode
+			assert.False(t, sut.KeyMap.Query.Enabled())                  // assert key; query-key disabled
+			assert.True(t, sut.KeyMap.QueryParameters.Enabled())         // assert key; query-parameters key enabled
+		})
+		t.Run("send a complete query request with all parameters included", func(t *testing.T) {
+			skipIf(t, !queryKeyValid, "skipping due to outdated keymap") // skip if keymap needs updating
+			ctrl := gm.NewController(t)                                  // init mock controller
+			db := mocks.NewMockdynamodbClient(ctrl)                      // init mocked DynamoDB client
+			sut := newSUT(db)                                            // init sut
+			sut.Update(queryKey)                                         // switch to query-mode
+			sut.tableIndex.activeIndex = &someIndex                      // set params; active index
+			sut.queryParameters.index = &someIndex                       // set params; index
+			sut.queryParameters.hashKeyValue = hkValue                   // set params; hash-key value
+			sut.queryParameters.rangeKeyValue1 = &rkValue1               // set params; range-key value 1
+			sut.queryParameters.rangeKeyValue2 = &rkValue2               // set params; range-key value 2
+			sut.queryParameters.rangeOrderDescending = true              // set params; range-order
+			sut.queryParameters.rangeKeyOperator = messages.Between      // set params; range operator
+			sut.queryLimit = 10                                          // set params; query limit
+
+			// define expected call to DynamoDB client
+			db.EXPECT().
+				QueryTable(gm.Any(), gm.Any(), tableName, apitypes.QueryParameters{
+					KeyDetails:       AttributeDefinitions,
+					IndexName:        &someIndex,
+					KeySchema:        gsi[0].KeySchema,
+					HashKeyValue:     hkValue,
+					RangeKeyValue1:   &rkValue1,
+					RangeKeyValue2:   &rkValue2,
+					RangeKeyOperator: apitypes.RangeBetween,
+					Limit:            10,
+					LastEvaluatedKey: nil,
+					Descending:       true,
+				}).
+				Return(&apitypes.QueryResponse{Items: items}, nil).
+				Times(1)
+
+			cmd := sut.PageNext(true)                                             // force system-under-test to prepare the query call
+			msgs := extractMessages[messages.PageReady](cmd)                      // conduct async query call & extract result
+			require.Len(t, msgs, 1)                                               // assert response; one result (page)
+			assert.EqualValues(t, tableARN, msgs[0].TableARN)                     // assert response; table-arn
+			assert.Nil(t, msgs[0].Err)                                            // assert response; error
+			assert.EqualValues(t, &someIndex, msgs[0].Index)                      // assert response; index
+			assert.EqualValues(t, messages.Page{Items: items}, *msgs[0].Response) // assert response; page
+		})
+	})
+}
+
+func TestScan(t *testing.T) {
+	var (
+		tableARN             = "table"
+		tableName            = "testing-table"
+		someIndex            = "some index"
+		hkName               = "hk"
+		rkName               = "rk"
+		items                = genJSONItems(3)
+		AttributeDefinitions = []dynamodbtypes.AttributeDefinition{
+			{
+				AttributeName: &hkName,
+				AttributeType: "S",
+			},
+			{
+				AttributeName: &rkName,
+				AttributeType: "B",
+			},
+		}
+		gsi = []dynamodbtypes.GlobalSecondaryIndexDescription{
+			{
+				IndexName: &someIndex,
+				KeySchema: []dynamodbtypes.KeySchemaElement{
+					{
+						AttributeName: &hkName,
+						KeyType:       dynamodbtypes.KeyTypeHash,
+					},
+					{
+						AttributeName: &rkName,
+						KeyType:       dynamodbtypes.KeyTypeRange,
+					},
+				},
+			},
+		}
+	)
+
+	// factory initialising a new system-under-test
+	newSUT := func(m *mocks.MockdynamodbClient) *ItemSelectionPane {
+		sut := newItemSelectionPane(context.Background(), &appconfig.Config{})
+		sut.dynamodbClient = m
+		sut.config = &appconfig.Config{}
+		sut.selectedTable.TableArn = &tableARN
+		sut.selectedTable.TableName = &tableName
+		sut.selectedTable.AttributeDefinitions = AttributeDefinitions
+		sut.selectedTable.GlobalSecondaryIndexes = gsi
+		return sut
+	}
+
+	t.Run("item-selection-pane should", func(t *testing.T) {
+		t.Run("modify scan & scan-parameters keys on entering/exiting scan-mode", func(t *testing.T) {
+			skipIf(t, !queryKeyValid, "skipping due to outdated keymap") // skip if keymap needs updating
+			sut := newSUT(nil)                                           // init sut
+			require.False(t, sut.KeyMap.Scan.Enabled())                  // require key; scan-key disabled
+			require.True(t, sut.KeyMap.ScanParameters.Enabled())         // require key; scan-parameters key enabled
+			sut.Update(queryKey)                                         // exit scan mode
+			assert.True(t, sut.KeyMap.Scan.Enabled())                    // assert key; scan-key enabled
+			assert.False(t, sut.KeyMap.ScanParameters.Enabled())         // assert key; scan-parameters key disabled
+		})
+		t.Run("send a complete scan request with all parameters included", func(t *testing.T) {
+			skipIf(t, !queryKeyValid, "skipping due to outdated keymap") // skip if keymap needs updating
+			skipIf(t, !scanKeyValid, "skipping due to outdated keymap")  // skip if keymap needs updating
+			ctrl := gm.NewController(t)                                  // init mock controller
+			db := mocks.NewMockdynamodbClient(ctrl)                      // init mocked DynamoDB client
+			sut := newSUT(db)                                            // init sut
+			sut.Update(scanKey)                                          // ensure scan-mode is active
+			sut.tableIndex.activeIndex = &someIndex                      // set params; active index
+			sut.scanParameters.index = &someIndex                        // set params; index
+			sut.scanLimit = 10                                           // set params; query limit
+
+			// define expected call to DynamoDB client
+			db.EXPECT().
+				ScanTable(gm.Any(), gm.Any(), tableName, apitypes.ScanParameters{
+					KeyDetails:       AttributeDefinitions,
+					IndexName:        &someIndex,
+					KeySchema:        gsi[0].KeySchema,
+					Limit:            10,
+					LastEvaluatedKey: nil,
+				}).
+				Return(&apitypes.ScanResponse{Items: items}, nil).
+				Times(1)
+
+			cmd := sut.PageNext(true)                                             // force system-under-test to prepare the query call
+			msgs := extractMessages[messages.PageReady](cmd)                      // conduct async scan call & extract result
+			require.Len(t, msgs, 1)                                               // assert response; one result (page)
+			assert.EqualValues(t, tableARN, msgs[0].TableARN)                     // assert response; table-arn
+			assert.Nil(t, msgs[0].Err)                                            // assert response; error
+			assert.EqualValues(t, &someIndex, msgs[0].Index)                      // assert response; index
+			assert.EqualValues(t, messages.Page{Items: items}, *msgs[0].Response) // assert response; page
 		})
 	})
 }
@@ -596,9 +792,9 @@ func extractMessages[T any](cmd tea.Cmd) []T {
 
 // convenience function to send a page of items for the table-index to the
 // system-under-test.
-func simpleLoadItems(sut *ItemSelectionPane, tableARN *string, items apitypes.Items) tea.Cmd {
+func simpleLoadItems(sut *ItemSelectionPane, tableARN string, items apitypes.Items) tea.Cmd {
 	return sut.Update(messages.PageReady{
-		Table:    apitypes.DescribeTableResponse{TableArn: tableARN},
+		TableARN: tableARN,
 		Response: &messages.Page{Items: items},
 	})
 }
