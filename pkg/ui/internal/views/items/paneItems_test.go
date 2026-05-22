@@ -7,6 +7,7 @@ import (
 
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
+	"go.uber.org/mock/gomock"
 	gm "go.uber.org/mock/gomock"
 
 	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
@@ -32,11 +33,13 @@ var (
 	queryKeyValid  bool
 	scanKeyValid   bool
 	exitKeyValid   bool
+	reloadKeyValid bool
 
 	searchKey = tea.KeyPressMsg(tea.Key{Text: "/"})
 	queryKey  = tea.KeyPressMsg(tea.Key{Text: "Q", Mod: tea.ModShift, Code: 'q', ShiftedCode: 'Q'})
 	scanKey   = tea.KeyPressMsg(tea.Key{Text: "S", Mod: tea.ModShift, Code: 's', ShiftedCode: 'S'})
 	exitKey   = tea.KeyPressMsg(tea.Key{Code: tea.KeyEsc})
+	reloadKey = tea.KeyPressMsg(tea.Key{Text: "ctrl+r", Mod: tea.ModCtrl})
 )
 
 // validateItemSelectionKeys ensures keymap-variables accurately inform tests on the validity
@@ -49,12 +52,14 @@ func validateItemSelectionKeys() {
 	keymap.Query.SetEnabled(true)
 	keymap.Scan.SetEnabled(true)
 	keymap.Esc.SetEnabled(true)
+	keymap.Reload.SetEnabled(true)
 
 	// test matching
 	searchKeyValid = key.Matches(searchKey, keymap.Search)
 	queryKeyValid = key.Matches(queryKey, keymap.Query)
 	scanKeyValid = key.Matches(scanKey, keymap.Scan)
 	exitKeyValid = key.Matches(exitKey, keymap.Esc)
+	reloadKeyValid = key.Matches(reloadKey, keymap.Reload)
 }
 
 // fail tests on invalid keys; indicates the keymap has changed
@@ -63,6 +68,7 @@ func TestKeyMapValid(t *testing.T) {
 	assert.True(t, queryKeyValid)
 	assert.True(t, scanKeyValid)
 	assert.True(t, exitKeyValid)
+	assert.True(t, reloadKeyValid)
 }
 
 type genOpts struct {
@@ -509,7 +515,6 @@ func TestSearch(t *testing.T) {
 
 	t.Run("item-selection-pane should", func(t *testing.T) {
 		t.Run("prevent paging in new results when search is enabled", func(t *testing.T) {
-
 			readyForPaging := func(sut *ItemSelectionPane) {
 				sut.resetPaging()                                                                                  // setup; reset any settings from previous paging
 				sut.pageKey = map[string]dynamodbtypes.AttributeValue{"a": &dynamodbtypes.AttributeValueMemberS{}} // setup; fake a pagination-key
@@ -548,6 +553,47 @@ func TestSearch(t *testing.T) {
 			cmd = sut.Update(tea.KeyPressMsg(tea.Key{Text: "G"}))  // jump to bottom again
 			msgs = tu.ExtractMessages[messages.PageReady](cmd)     // execute any potential pagination
 			assert.Len(t, msgs, 1)                                 // assert pagination was re-enabled
+		})
+	})
+}
+
+func TestReload(t *testing.T) {
+	var (
+		tableARN  = "table"
+		tableName = "table-name"
+	)
+
+	// factory initialising a new system-under-test
+	newSUT := func(m *mocks.MockdynamodbClient) *ItemSelectionPane {
+		sut := newItemSelectionPane(context.Background(), &appconfig.Config{})
+		sut.selectedTable.TableArn = &tableARN
+		sut.selectedTable.TableName = &tableName
+		sut.dynamodbClient = m
+		sut.applySize(10, 10) // size required to depict content
+		return sut
+	}
+
+	t.Run("item-selection-pane should", func(t *testing.T) {
+		t.Run("successfully reload when search was enabled (bugfix)", func(t *testing.T) {
+			skipIf(t, !searchKeyValid, "skipping due to outdated search key") // skip if testing-keymap needs updating
+			skipIf(t, !reloadKeyValid, "skipping due to outdated search key") // skip if testing-keymap needs updating
+			ctrl := gm.NewController(t)                                       // init mock controller
+			db := mocks.NewMockdynamodbClient(ctrl)                           // init mocked DynamoDB client
+			sut := newSUT(db)                                                 // init sut
+			items := genJSONItems(3)                                          // page
+			simpleLoadItems(sut, tableARN, items)                             // load items
+			sut.Update(searchKey)                                             // enable search
+			_, ok := searchItemSelection(t, sut, "id=id-1")                   // search for first item
+			require.True(t, ok)                                               // ensure search was successful
+			sut.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEsc}))            // blur the search
+			cmd := sut.Update(reloadKey)                                      // trigger reload
+			db.EXPECT().
+				ScanTable(gm.Any(), gm.Any(), tableName, gomock.Any()).
+				Return(&apitypes.ScanResponse{Items: items}, nil).
+				Times(1) // reload the items
+			msgs := tu.ExtractMessages[messages.PageReady](cmd) // obtain target messages
+			require.Len(t, msgs, 1)
+			sut.Update(msgs[0])
 		})
 	})
 }

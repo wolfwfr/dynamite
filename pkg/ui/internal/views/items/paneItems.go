@@ -992,9 +992,11 @@ func (m *ItemSelectionPane) resetContents() {
 	m.initialised = false
 	m.items = types.Items{}
 	m.keysComplete = []string{}
-	m.itemfiltering.matchedItems = []int{}
 	m.lastPreviewItem = 0
 	m.lastPreviewMsg = nil
+
+	// reset search
+	m.search.Reset()
 
 	m.content.ResetVirtualRows()
 	m.content.SetContent([]table.Column{}, []table.Row{})
