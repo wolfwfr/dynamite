@@ -8,6 +8,7 @@ import (
 	apitypes "github.com/wolfwfr/dynamite/pkg/ui/internal/adapters/dynamodb/types"
 )
 
+//go:generate mockgen -source=$GOFILE -destination=./mocks/gen.go -package=mocks
 type dynamodbClient interface {
 	ListTables(client *dynamodb.Client, ctx context.Context, req apitypes.ListTablesRequest) (*apitypes.ListTablesResponse, error)
 	DescribeTable(client *dynamodb.Client, ctx context.Context, tableName string) (*apitypes.DescribeTableResponse, error)

@@ -19,6 +19,7 @@ import (
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/items/mocks"
+	tu "github.com/wolfwfr/dynamite/test/testutils"
 )
 
 // validate keys on init
@@ -134,7 +135,7 @@ func TestItemSelectionPreviews(t *testing.T) {
 			sut := newSUT()                                          // init
 			items := genJSONItems(1)                                 // page
 			cmd := simpleLoadItems(sut, tableARN, items)             // load items
-			targets := extractMessages[messages.PreviewItem](cmd)    // obtain target messages
+			targets := tu.ExtractMessages[messages.PreviewItem](cmd) // obtain target messages
 			require.Len(t, targets, 1)                               // assert only one preview-item message
 			assert.EqualValues(t, items.JSON[0], targets[0].RawItem) // assert correct item being previewed
 		})
@@ -145,7 +146,7 @@ func TestItemSelectionPreviews(t *testing.T) {
 			simpleLoadItems(sut, tableARN, page1)                            // prepare first page
 			simpleSortItems(sut, tableARN, page1.TableKeys[0][0].Key, false) // enable sorting
 			cmd := simpleLoadItems(sut, tableARN, page2)                     // load next page
-			targets := extractMessages[messages.PreviewItem](cmd)            // obtain target messages
+			targets := tu.ExtractMessages[messages.PreviewItem](cmd)         // obtain target messages
 			require.Len(t, targets, 1)                                       // assert only one preview-item message
 			assert.EqualValues(t, page2.JSON[2], targets[0].RawItem)         // assert correct item being previewed
 		})
@@ -157,7 +158,7 @@ func TestItemSelectionPreviews(t *testing.T) {
 			sut.Update(searchKey)                                                 // enable search
 			cmd, ok := searchItemSelection(t, sut, "id=id-1")                     // search for first item
 			require.True(t, ok)                                                   // ensure search was successful
-			targets := extractMessages[messages.PreviewItem](cmd)                 // obtain target messages
+			targets := tu.ExtractMessages[messages.PreviewItem](cmd)              // obtain target messages
 			require.NotEmpty(t, targets)                                          // assert only one preview-item message
 			assert.EqualValues(t, items.JSON[1], targets[len(targets)-1].RawItem) // assert correct item being previewed
 		})
@@ -529,7 +530,7 @@ func TestSearch(t *testing.T) {
 				Times(2)
 			readyForPaging(sut)                                    // setup; get ready for paging
 			cmd := sut.Update(tea.KeyPressMsg(tea.Key{Text: "G"})) // jump to bottom; to trigger pagination
-			msgs := extractMessages[messages.PageReady](cmd)       // execute pagination
+			msgs := tu.ExtractMessages[messages.PageReady](cmd)    // execute pagination
 			require.Len(t, msgs, 1)                                // require at least one page
 			sut.Update(tea.KeyPressMsg(tea.Key{Text: "g"}))        // jump back to top to reset
 			sut.Update(searchKey)                                  // enable search
@@ -538,14 +539,14 @@ func TestSearch(t *testing.T) {
 			sut.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEsc})) // blur the search
 			readyForPaging(sut)                                    // setup; get ready for paging
 			cmd = sut.Update(tea.KeyPressMsg(tea.Key{Text: "G"}))  // jump to bottom again
-			msgs = extractMessages[messages.PageReady](cmd)        // execute any potential pagination
+			msgs = tu.ExtractMessages[messages.PageReady](cmd)     // execute any potential pagination
 			assert.Len(t, msgs, 0)                                 // assert no pagination this time
 			sut.Update(tea.KeyPressMsg(tea.Key{Text: "g"}))        // jump back to top to reset
 			sut.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEsc})) // cancel the search (reset)
 			require.False(t, sut.itemfiltering.enabled)            // ensure search is disabled again
 			readyForPaging(sut)                                    // setup; get ready for paging
 			cmd = sut.Update(tea.KeyPressMsg(tea.Key{Text: "G"}))  // jump to bottom again
-			msgs = extractMessages[messages.PageReady](cmd)        // execute any potential pagination
+			msgs = tu.ExtractMessages[messages.PageReady](cmd)     // execute any potential pagination
 			assert.Len(t, msgs, 1)                                 // assert pagination was re-enabled
 		})
 	})
@@ -580,78 +581,6 @@ func searchItemSelection(t *testing.T, receiver *ItemSelectionPane, query string
 	valid = assert.True(t, receiver.itemfiltering.enabled) && valid // once false, stays false
 
 	return tea.Batch(cmds...), valid
-}
-
-// basic implementation, supports only lowercase basic characters
-func charsToMessages(in string) []tea.Msg {
-	msgs := make([]tea.Msg, len(in))
-	for i, c := range in {
-		msgs[i] = tea.KeyPressMsg(tea.Key{Text: string(c)})
-	}
-	return msgs
-}
-
-// executeCommand executes the given commands in linear fashion, for simplicity
-// & greater reproducability
-// TODO: execute linearly in DFS style
-func executeCommand(cmd tea.Cmd) []tea.Msg {
-	var (
-		msgs []tea.Msg
-		i    = -1
-		cmds = []tea.Cmd{cmd}
-	)
-
-	for {
-		i++
-		if i >= len(cmds) {
-			break
-		}
-
-		cmd := cmds[i]
-		if cmd == nil {
-			continue
-		}
-		msg := cmd()
-
-		if batch, ok := msg.(tea.BatchMsg); ok {
-			cmds = append(cmds, batch...)
-			continue
-		}
-		msgs = append(msgs, msg)
-	}
-
-	return msgs
-}
-
-func extractMessages[T any](cmd tea.Cmd) []T {
-	var (
-		targets []T
-		i       = -1
-		cmds    = []tea.Cmd{cmd}
-	)
-
-	for {
-		i++
-		if i >= len(cmds) {
-			break
-		}
-
-		cmd := cmds[i]
-		if cmd == nil {
-			continue
-		}
-		msg := cmd()
-
-		if pr, ok := msg.(T); ok {
-			targets = append(targets, pr)
-		}
-
-		if batch, ok := msg.(tea.BatchMsg); ok {
-			cmds = append(cmds, batch...)
-		}
-	}
-
-	return targets
 }
 
 // convenience function to send a page of items for the table-index to the
@@ -725,16 +654,9 @@ func mergeItems(items ...apitypes.Items) apitypes.Items {
 	return res
 }
 
-// convenience function for more concise test expressions
-func fatalIf(t *testing.T, cond bool, msg ...any) {
-	if cond {
-		t.Fatal(msg...)
-	}
-}
-
-// convenience function for more concise test expressions
-func skipIf(t *testing.T, cond bool, msg ...any) {
-	if cond {
-		t.Skip(msg...)
-	}
-}
+var (
+	fatalIf         = tu.FatalIf
+	skipIf          = tu.SkipIf
+	executeCommand  = tu.ExecuteCommand
+	charsToMessages = tu.CharsToMessages
+)

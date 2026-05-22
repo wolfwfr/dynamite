@@ -13,6 +13,7 @@ import (
 	apitypes "github.com/wolfwfr/dynamite/pkg/ui/internal/adapters/dynamodb/types"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/items/mocks"
+	tu "github.com/wolfwfr/dynamite/test/testutils"
 )
 
 func TestQuery(t *testing.T) {
@@ -108,7 +109,7 @@ func TestQuery(t *testing.T) {
 				Times(1)
 
 			cmd := sut.PageNext(true)                                             // force system-under-test to prepare the query call
-			msgs := extractMessages[messages.PageReady](cmd)                      // conduct async query call & extract result
+			msgs := tu.ExtractMessages[messages.PageReady](cmd)                   // conduct async query call & extract result
 			require.Len(t, msgs, 1)                                               // assert response; one result (page)
 			assert.EqualValues(t, tableARN, msgs[0].TableARN)                     // assert response; table-arn
 			assert.Nil(t, msgs[0].Err)                                            // assert response; error
