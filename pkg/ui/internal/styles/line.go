@@ -35,7 +35,7 @@ func (l LineStyle) has(n int) bool {
 }
 
 // GetAt returns the text-style for the specified rune-index, as well as a
-// boolean status signyfying whether a style for the specified index was found.
+// boolean status signifying whether a style for the specified index was found.
 // An empty text-style is returned when no item was present at the given index.
 func (l LineStyle) GetAt(n int) (textStyle, bool) {
 	if l.has(n) {

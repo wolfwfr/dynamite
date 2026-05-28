@@ -19,7 +19,7 @@ func NewModulator(table *table.Model) *Modulator {
 
 	m.ColumnVisibility.InVisible = map[string]struct{}{}
 
-	m.content = table
+	m.table = table
 
 	return m
 }
@@ -31,7 +31,7 @@ func NewModulator(table *table.Model) *Modulator {
 //
 // Nil returns signify that no update is required
 func (m *Modulator) SetColumnSorting(cols []string, sortingOn string, ascending bool) ([]table.Column, []table.Row, []table.Row) {
-	tablecols := m.content.Columns()
+	tablecols := m.table.Columns()
 	if len(tablecols) != len(cols) {
 		// TODO: better handling of new columns appearing in view
 		return m.ResetColumnSorting()
@@ -48,7 +48,7 @@ func (m *Modulator) SetColumnSorting(cols []string, sortingOn string, ascending 
 		tablecols[i] = c
 	}
 
-	return tablecols, m.sortRows(m.content.Rows()), m.sortRows(m.content.VirtualRows())
+	return tablecols, m.sortRows(m.table.Rows()), m.sortRows(m.table.VirtualRows())
 }
 
 // SetColumnVisibility updates the internal state appropriately and returns
@@ -56,7 +56,7 @@ func (m *Modulator) SetColumnSorting(cols []string, sortingOn string, ascending 
 //
 // Nil returns signify that no update is required
 func (m *Modulator) SetColumnVisibility(cols []string, visible []bool) ([]table.Column, []table.Row, []table.Row) {
-	tablecols := m.content.Columns()
+	tablecols := m.table.Columns()
 	if len(tablecols) != len(cols) {
 		// TODO: better handling of new columns appearing in view
 		return m.ResetColumnVisibility()
@@ -103,8 +103,8 @@ func (m *Modulator) SetSearchResults(col string, results []search.FilteredItem) 
 	m.Itemfiltering.Enabled = true
 	m.Itemfiltering.MatchedItems = make([]int, len(results))
 	m.Itemfiltering.MatchedRunes = make([][]int, len(results))
-	matchedRows := m.content.Rows()
-	colIdx := findColumnByTitle(m.content.Columns(), col)
+	matchedRows := m.table.Rows()
+	colIdx := findColumnByTitle(m.table.Columns(), col)
 	m.Itemfiltering.ColumnIndex = colIdx
 	filtered := make([]table.Row, len(results))
 	for i, match := range results {
@@ -200,7 +200,7 @@ func (m *Modulator) sortRows(rows []table.Row) []table.Row {
 	if !m.ColumnSorting.Enabled || m.ColumnSorting.SortingOn == "" || len(rows) == 0 {
 		return rows
 	}
-	cols := m.content.Columns()
+	cols := m.table.Columns()
 	colsS := make([]string, len(cols))
 	for i, c := range cols {
 		colsS[i] = c.Title

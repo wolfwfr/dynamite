@@ -113,7 +113,8 @@ type ItemSelectionPane struct {
 	content *table.Model
 
 	// modulated-content manages state & modulation of mutable table contents,
-	// e.g. column visibility, row field sorting, etc.
+	// e.g. column visibility, row field sorting, etc. It implements the content
+	// modulation pipeline.
 	modulatedContent *modulator.Modulator
 
 	// sessions (per table ARN)

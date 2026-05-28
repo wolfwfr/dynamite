@@ -6,19 +6,19 @@ import (
 	commonstyles "github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
 )
 
-// ContentMask masks the table's interface to only allow relevant
+// TableMask masks the table's interface to only allow relevant
 // read-operations for the content-modulator.
-type ContentMask interface {
+type TableMask interface {
 	Columns() []table.Column
 	Rows() []table.Row
 	VirtualRows() []table.Row
 }
 
 // Modulator defines the table content modulation pipeline and dictates when
-// columns or rows are updated.
+// table columns or rows are updated.
 type Modulator struct {
 	// access to the tables current contents
-	content ContentMask
+	table TableMask
 
 	// dynamo-db-Items including JSON/YAML render & styling instructions
 	Items types.Items
