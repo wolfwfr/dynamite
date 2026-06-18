@@ -58,13 +58,47 @@ func (t *ItemsTable) Update(msg tea.Msg) tea.Cmd {
 	return t.table.Update(msg)
 }
 
+func (t *ItemsTable) PaginationEligible() bool {
+	return !t.viewOptions.GetSearchResultsOptions().Enabled && t.table.ViewAtEnd()
+}
+
 func (t *ItemsTable) GetAllowedOptions() viewoptions.Check {
 	return t.viewOptions.Check()
+}
+
+func (t *ItemsTable) UpdateSize(height, width int) {
+	t.table.SetHeight(height)
+	t.table.SetWidth(width)
+	t.refreshCache()
 }
 
 // TODO: consider; leaky abstraction?
 func (t *ItemsTable) GetViewOptionsState() viewoptions.ViewOptions {
 	return t.viewOptions
+}
+
+func (t *ItemsTable) GetColumns() []table.Column {
+	return t.table.Columns()
+}
+
+func (t *ItemsTable) GetRows() []table.Row {
+	return t.table.Rows()
+}
+
+func (t *ItemsTable) GetVirtualRows() []table.Row {
+	return t.table.VirtualRows()
+}
+
+func (t *ItemsTable) GetVisualRows() []table.Row {
+	return t.table.VisualRows()
+}
+
+func (t *ItemsTable) GetKeyMap() *table.KeyMap {
+	return t.table.KeyMap
+}
+
+func (t *ItemsTable) GetDynamicColumnWidth() bool {
+	return t.table.DynamicColumnWidth()
 }
 
 // AddItems processes dynamo-db items and appends them to the table contents,
@@ -80,9 +114,9 @@ func (t *ItemsTable) AddItems(items apitypes.Items, hasRangeKey bool) {
 	defer func() { t.KeysComplete = completeKeys }()
 
 	var (
-		cols []table.Column
-		rows []table.Row
-		virt []table.Row
+		cols []table.Column = nil
+		rows []table.Row    = nil
+		virt []table.Row    = nil
 
 		noColumnUpdate = slices.Equal(t.KeysComplete, completeKeys)
 		columnUpdate   = !noColumnUpdate
@@ -94,7 +128,7 @@ func (t *ItemsTable) AddItems(items apitypes.Items, hasRangeKey bool) {
 		cols = assembleColumns(t.viewOptions, completeKeys)
 		rows = parseRows(completeKeys, t.Items.TableKeys)
 	case appendOnly: // update with  new rows (append)
-		rows = parseRows(completeKeys, items.TableKeys)
+		rows = parseRows(completeKeys, t.Items.TableKeys)
 	default: // update ALL rows but no columns
 		rows = parseRows(completeKeys, t.Items.TableKeys)
 	}
@@ -117,7 +151,11 @@ func (t *ItemsTable) View() string {
 	return t.table.View()
 }
 
-func (t *ItemsTable) GetSelectedItem() *Item {
+func (t *ItemsTable) GetSelectedRow() *table.Row {
+	return t.table.SelectedRow()
+}
+
+func (t *ItemsTable) GetSelectedItem() (*Item, int) {
 	var (
 		sorting = t.viewOptions.GetColumnSortingOptions()
 		filter  = t.viewOptions.GetSearchResultsOptions()
@@ -125,7 +163,7 @@ func (t *ItemsTable) GetSelectedItem() *Item {
 	)
 
 	if len(items.Raw) == 0 || filter.Enabled && len(filter.MatchedItems) == 0 {
-		return nil
+		return nil, 0
 	}
 
 	idx := t.table.Cursor()
@@ -144,25 +182,32 @@ func (t *ItemsTable) GetSelectedItem() *Item {
 		YAMLStyled: items.YAMLStyled[idx],
 		Raw:        items.Raw[idx],
 		TableKeys:  items.TableKeys[idx],
-	}
+	}, idx
 }
 
 // updateTable processes the common response format from modulated-content
 // mutations (Sets & Resets), which return updates to columns, rows, and virtual
 // rows. It appropriately refreshes the internal render-cache when necessary.
 func (t *ItemsTable) updateTable(columns []table.Column, rows []table.Row, virt []table.Row) {
+	// return on noop
+	if columns == nil && rows == nil && virt == nil {
+		return
+	}
+
+	// always refresh the cache after updates
+	defer func() {
+		t.refreshCache()
+	}()
+
 	// always apply sorting
 	rows = t.sortRowsAndUpdate(u.Ternary(columns, t.table.Columns(), columns != nil), rows)
-	virt = t.sortRowsAndUpdate(u.Ternary(columns, t.table.Columns(), columns != nil), virt)
 
 	switch {
 	case columns == nil && rows == nil: // no update
 	case columns != nil && rows != nil: // update both
 		t.table.SetContent(columns, rows)
-		t.refreshCache()
 	case columns == nil: // update only rows
 		t.table.SetRows(rows)
-		t.refreshCache()
 	default: // update only columns
 		t.table.SetColumns(columns)
 	}
@@ -171,5 +216,4 @@ func (t *ItemsTable) updateTable(columns []table.Column, rows []table.Row, virt 
 		return
 	}
 	t.table.SetVirtualRows(virt)
-	t.refreshCache()
 }

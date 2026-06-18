@@ -5,9 +5,8 @@ import (
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/components/table"
 )
 
-// Reset completely resets all internal state parameters and returns empty table
-// contents.
-func (t *ItemsTable) Reset() ([]table.Column, []table.Row, []table.Row) {
+// Reset completely resets all internal state parameters and empties the table
+func (t *ItemsTable) Reset() {
 	t.Items = types.Items{}
 	t.KeysComplete = []string{}
 
@@ -15,33 +14,30 @@ func (t *ItemsTable) Reset() ([]table.Column, []table.Row, []table.Row) {
 	t.viewOptions.ResetColumnVisibilityState()
 	t.viewOptions.ResetSearchState()
 
-	return []table.Column{}, []table.Row{}, []table.Row{}
+	t.table.SetCursor(0)
+
+	t.updateTable([]table.Column{}, []table.Row{}, []table.Row{})
 }
 
 // ResetColumnVisibility resets column-visibility related state parameters and
-// returns updates for the table contents (columns, rows, and virtual rows).
-//
-// Nil returns signify that no update is required
+// updates the table contents
 func (t *ItemsTable) ResetColumnVisibility() {
 	t.viewOptions.ResetColumnVisibilityState()
 	t.updateTable(assembleColumns(t.viewOptions, t.KeysComplete), nil, nil)
 }
 
-// ResetColumnSorting resets column-sorting related state parameters and returns
-// updates for the table contents (columns, rows, and virtual rows).
-//
-// Nil returns signify that no update is required
+// ResetColumnSorting resets column-sorting related state parameters and updates
+// the table contents
 func (t *ItemsTable) ResetColumnSorting() {
 	t.viewOptions.ResetColumnSortingState()
 	t.updateTable(assembleColumns(t.viewOptions, t.KeysComplete), parseRows(t.KeysComplete, t.Items.TableKeys), nil)
 }
 
-// ResetSearch resets search related state parameters and returns updates for
-// the table contents (columns, rows, and virtual rows).
-//
-// Nil returns signify that no update is required
+// ResetSearch resets search related state parameters and updates the table
+// contents
 func (t *ItemsTable) ResetSearch() {
 	t.viewOptions.ResetSearchState()
+	t.table.ResetVirtualRows()
 	t.updateTable(nil, t.sortRowsAndUpdate(t.table.Columns(), parseRows(t.KeysComplete, t.Items.TableKeys)), nil)
 }
 
@@ -50,6 +46,7 @@ func (t *ItemsTable) ResetSearch() {
 // rendered rows will be updated anew. Use refreshCache if this is your goal.
 func (t *ItemsTable) clearCache() {
 	t.renderCache = map[string]string{}
+	t.table.ResetCache()
 }
 
 // refreshCache clears the cache and then forces a rerender of rows

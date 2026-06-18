@@ -16,7 +16,6 @@ func (m *ItemSelectionPane) enableQueryMode(force bool) tea.Cmd {
 	}
 
 	m.resetContents()
-	m.clearCache()
 
 	m.queryMode = messages.QueryMode
 	m.tableIndex.activeIndex = m.queryParameters.index

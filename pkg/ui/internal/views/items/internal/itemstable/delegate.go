@@ -14,14 +14,14 @@ import (
 // item, whether the row is selected, and search-matching.
 //
 // It returns cached responses when possible.
-func (t *ItemsTable) TableRowFieldDelegate(row table.Row, col table.Column, colIdx, rowIdx, colW, padL, padR int, selected bool) string {
+func (t *ItemsTable) TableRowFieldDelegate(row table.Row, col table.Column, colIdx, rowIdx, colW, padL, padR int, selected, inview bool) string {
 	fullWidth := colW + padL + padR
 
 	// obtain field in question
 	field := row.Fields[colIdx].(EnrichedField)
 
-	// fill up with padding if empty
-	if field.Style == nil {
+	// fill up with padding if empty or not in view (prevent wasting resources)
+	if field.Style == nil || !inview {
 		st := lipgloss.NewStyle().PaddingRight(fullWidth)
 		st = u.Ternary(st.Background(t.styles.SelectedBackground), st, selected)
 		return st.Render("")

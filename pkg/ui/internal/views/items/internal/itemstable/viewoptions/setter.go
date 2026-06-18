@@ -45,7 +45,7 @@ func (s *DoableSetter) Do() (ViewOptions, bool) {
 
 	// guard against incompatible option combinations
 	if s.t == setNone ||
-		s.t == setSearch && !c.searchAllowed ||
+		s.t == setSearch && !c.SearchAllowed ||
 		s.t == setSort && !c.ColumnSortingAllowed ||
 		s.t == setVis && !c.ColumnVisibilityAllowed {
 		return s.p.v, false

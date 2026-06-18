@@ -96,6 +96,16 @@ func (t *ItemsTable) SetColumnVisibility(cols []string, visible []bool) bool {
 	return true
 }
 
+// SetSearchEnable merely enables the search view-options, without setting any
+// additional parameters or updating the table view.
+func (t *ItemsTable) SetSearchEnable() bool {
+	search := t.viewOptions.GetSearchResultsOptions()
+	search.Enabled = true
+	var ok bool
+	t.viewOptions, ok = t.viewOptions.Set().SearchResults().SetAll(search).Do()
+	return ok
+}
+
 // SetSearchResults updates the searchResults state. Changes to search results
 // affects only the virtual rows being displayed. The function returns a boolean
 // that indicates whether the mutation was accepted and successfully applied.
@@ -127,4 +137,8 @@ func (t *ItemsTable) SetSearchResults(col string, results []search.FilteredItem)
 
 	t.updateTable(nil, nil, filtered)
 	return true
+}
+
+func (t *ItemsTable) SetDynamicColumnWidth(b bool) {
+	t.table.SetDynamicColumnWidth(b)
 }

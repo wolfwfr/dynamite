@@ -4,12 +4,10 @@ package itemselection
 import (
 	"context"
 	"fmt"
-	"image/color"
 	"net/url"
 	"os/exec"
 	"runtime"
 	"slices"
-	"strconv"
 	"strings"
 	"time"
 
@@ -28,6 +26,7 @@ import (
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/components/table"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	commonstyles "github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
+	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/items/internal/itemstable"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/util/keymaps"
 	u "github.com/wolfwfr/dynamite/pkg/util"
 )
@@ -62,19 +61,9 @@ type SessionData struct {
 	}
 }
 
-type TableStyles struct {
-	SelectedBackground    color.Color
-	SearchMatchBackground color.Color
-}
-
 type ItemSelectionPane struct {
 	// top-level context
 	ctx context.Context
-
-	// styles
-	styles struct {
-		Table TableStyles
-	}
 
 	// spinner
 	spinner struct {
@@ -111,7 +100,7 @@ type ItemSelectionPane struct {
 	AddKeyMap keymaps.AdditionalKeys
 
 	// the underlying table
-	content *table.Model
+	content *itemstable.ItemsTable
 
 	// sessions (per table ARN)
 	sessions map[string]SessionData
@@ -145,43 +134,11 @@ type ItemSelectionPane struct {
 		rangeOrderDescending bool
 	}
 
-	// render-cache caches row-fields rendered by the table's field-delegate
-	renderCache map[string]string
-
-	// dynamo-db-items including JSON/YAML render & styling instructions
-	items types.Items
-
-	// item filtering collects settings related to item filtering
-	itemfiltering struct {
-		matchedItems []int   // indices referring to items
-		matchedRunes [][]int //matches by index to itemfiltering.matchedItems
-		columnIndex  int
-		enabled      bool
-	}
-
-	// column visibility collects settings related to column visibillity
-	columnVisibility struct {
-		enabled   bool
-		inVisible map[string]struct{}
-	}
-
-	// column sorting collects settings related to column sorting
-	columnSorting struct {
-		sortedItems []int // indices referring to items
-		SortingOn   string
-		Ascending   bool // if false, descending
-		Enabled     bool
-	}
-
 	lastPreviewItem int                   // index
 	lastPreviewMsg  *messages.PreviewItem // prevents preview message looping
 	pageKey         map[string]dynamotypes.AttributeValue
 	pageCancel      func()
 	paging          bool
-
-	// keysComplete represents a unique set of dynamo-db item keys that
-	// exhaustively cover all keys in the currently paged set of items
-	keysComplete []string
 
 	// the currently active table
 	selectedTable types.DescribeTableResponse
@@ -205,7 +162,6 @@ func withItemsPaneKeys(keys keymaps.AdditionalKeys) itemsPaneOption {
 func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ...itemsPaneOption) *ItemSelectionPane {
 	p := &ItemSelectionPane{
 		ctx:            ctx,
-		renderCache:    map[string]string{},
 		config:         config,
 		dynamodbClient: dynamodb.NewAdapter(),
 		stdTO:          30 * time.Second,
@@ -216,33 +172,7 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 		scanLimit:      10,
 		queryLimit:     10,
 		pageCancel:     func() {}, // init as noop
-	}
-
-	{ // contents table
-		t := table.New(
-			table.WithFocused(true),
-			table.WithDynamicColumnWidth(false),
-			table.WithFieldDelegate(p.TableRowFieldDelegate),
-		)
-		s := table.DefaultStyles()
-		s.Header = s.Header.
-			BorderStyle(lipgloss.NormalBorder()).
-			BorderForeground(commonstyles.TableDefaultFg).
-			BorderBottom(true).
-			Bold(false)
-		s.Selected = s.Selected.
-			Foreground(commonstyles.TableSelectedFg).
-			Background(commonstyles.TableSelectedBg).
-			Bold(false)
-		t.SetStyles(s)
-
-		st := TableStyles{
-			SelectedBackground:    commonstyles.TableSelectedBg,
-			SearchMatchBackground: commonstyles.SearchHighlight,
-		}
-
-		p.content = t
-		p.styles.Table = st
+		content:        itemstable.NewItemsTable(),
 	}
 
 	{ // spinner
@@ -259,48 +189,29 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 		p.search = search.NewSearchBox(
 			search.SearchCallbacks{
 				ToSearch: func(col string) []string {
-					cols := p.content.Columns()
+					cols := p.content.GetColumns()
 					idx := findColumnByTitle(cols, col)
-					return extractColumnFromRows(p.content.Rows(), idx)
+					return extractColumnFromRows(p.content.GetRows(), idx)
 				},
 				EmptyInput: func() tea.Cmd {
-					p.itemfiltering.enabled = false
-					p.itemfiltering.matchedItems = make([]int, 0)
-					p.itemfiltering.matchedRunes = make([][]int, 0)
-					p.content.ResetVirtualRows()
-					p.refreshCache()
+					p.content.ResetSearch()
+					p.content.SetSearchEnable() // keep enabled
+					p.updateKeyMaps()
 					return p.MaybePreviewItem(true)
 				},
 				Results: func(col string, results []search.FilteredItem) tea.Cmd {
-					p.itemfiltering.enabled = true
-					p.itemfiltering.matchedItems = make([]int, len(results))
-					p.itemfiltering.matchedRunes = make([][]int, len(results))
-					rows := p.content.Rows()
-					colIdx := findColumnByTitle(p.content.Columns(), col)
-					p.itemfiltering.columnIndex = colIdx
-					filtered := make([]table.Row, len(results))
-					for i, match := range results {
-						filtered[i] = rows[match.Index]
-						p.itemfiltering.matchedItems[i] = match.Index
-						p.itemfiltering.matchedRunes[i] = match.Matches
-					}
-					p.content.SetVirtualRows(filtered)
-					p.refreshCache()
+					p.content.SetSearchResults(col, results)
 					return nil
 				},
 				Reset: func(searchHeight int) tea.Cmd {
-					p.itemfiltering.enabled = false
-					p.itemfiltering.matchedItems = make([]int, 0)
-					p.itemfiltering.matchedRunes = make([][]int, 0)
-					p.content.ResetVirtualRows()
+					p.content.ResetSearch()
 					p.updateSize()
-					p.KeyMap.ColSort.SetEnabled(true)
-					p.refreshCache()
+					p.updateKeyMaps()
 					return p.MaybePreviewItem(true)
 				},
 				SearchBoxOpens: func(searchHeight int) tea.Cmd {
-					p.KeyMap.ColSort.SetEnabled(false)
-					p.resetColumnSorting()
+					p.content.SetSearchEnable()
+					p.updateKeyMaps()
 					p.updateSize()
 					return nil
 				},
@@ -343,12 +254,11 @@ func (m *ItemSelectionPane) softReset() tea.Cmd {
 	// cancel any lingering calls
 	m.pageCancel()
 
-	m.resetContents()
 	cmd := m.resetQueryParameters() // must come first to reinitialise items in state (which may be used for updating content in other functions)
 	m.resetKeyMap()
-	m.resetColumnVisibility()
-	m.resetColumnSorting()
-	m.clearCache() // clear cache last!
+
+	m.content.Reset()
+
 	return cmd
 }
 
@@ -370,6 +280,7 @@ func (m *ItemSelectionPane) Update(msg tea.Msg) (cmd tea.Cmd) {
 		cmds = append(cmds, m.handleNavigation(msg))
 	}
 	cmds = append(cmds, m.MaybePreviewItem(false))
+	m.updateKeyMaps()
 	return tea.Batch(cmds...)
 }
 
@@ -390,7 +301,7 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 		case key.Matches(msg, m.KeyMap.Reload):
 			return m.Reload()
 		case key.Matches(msg, m.KeyMap.ChCols):
-			m.content.SetDynamicColumnWidth(!m.content.DynamicColumnWidth())
+			m.content.SetDynamicColumnWidth(!m.content.GetDynamicColumnWidth())
 		case key.Matches(msg, m.KeyMap.Zoom):
 			return m.Zoom()
 		case key.Matches(msg, m.KeyMap.ToggleFmt):
@@ -444,79 +355,12 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 		return cmd
 	}
 	cmds = append(cmds, m.content.Update(msg))
-	// paginate when not filtering and at end of content
-	if !m.itemfiltering.enabled && m.content.ViewAtEnd() {
+
+	if m.content.PaginationEligible() {
 		cmds = append(cmds, m.PageNext(false))
 	}
+
 	return tea.Batch(cmds...)
-}
-
-func (m *ItemSelectionPane) TableRowFieldDelegate(row table.Row, col table.Column, colIdx, rowIdx, colW, padL, padR int, selected, inview bool) string {
-	fullWidth := colW + padL + padR
-
-	// obtain field in question
-	field := row.Fields[colIdx].(enrichedField)
-
-	// fill up with padding if empty of not in view (prevent wasting resources)
-	if field.style == nil || !inview {
-		st := lipgloss.NewStyle().PaddingRight(fullWidth)
-		st = u.Ternary(st.Background(m.styles.Table.SelectedBackground), st, selected)
-		return st.Render("")
-	}
-
-	style := *field.style
-
-	// attempt to obtain cached value to prevent rerendering
-	cachekey := fmt.Sprintf("%d-%d-%d", rowIdx, colIdx, colW)
-	cachCond := !selected && (!m.itemfiltering.enabled || m.itemfiltering.columnIndex != colIdx)
-	cc, ok := m.renderCache[cachekey]
-	if ok && cachCond {
-		return cc
-	}
-
-	// add padding
-	style = style.SetRightPaddingLast(padR)
-	style = style.SetLeftPaddingFirst(padL)
-
-	// truncate row value to fit within specified column width
-	truncated := ansi.Truncate(field.value, colW, "…")
-	if len([]rune(truncated)) < len([]rune(field.value)) {
-		st, _ := style.GetAt(len([]rune(truncated)) - 1)
-		style = style.Override(len([]rune(truncated))-1, st.PaddingRight(padR))
-	}
-	field.value = truncated
-
-	// apply background styling for selected row
-	if selected {
-		// fill up any remaining space
-		if len([]rune(field.value)) < fullWidth {
-			st, _ := style.GetAt(len([]rune(field.value)) - 1)
-			style = style.Override(len([]rune(field.value))-1, st.PaddingRight(fullWidth-len([]rune(field.value))))
-		}
-		style = style.SetBackgroundAll(m.styles.Table.SelectedBackground)
-	}
-
-	// override background styling for search matches
-	if m.itemfiltering.enabled && m.itemfiltering.columnIndex == colIdx {
-		for _, idx := range m.itemfiltering.matchedRunes[rowIdx] {
-			runeStyle, _ := style.GetAt(idx)
-			c := m.styles.Table.SearchMatchBackground
-			if selected {
-				c = lipgloss.Blend1D(10, c, m.styles.Table.SelectedBackground)[3]
-			}
-			style = style.Override(idx, runeStyle.Background(c))
-		}
-	}
-
-	enforceWidth := lipgloss.NewStyle().Width(fullWidth).MaxWidth(fullWidth).Inline(true).Render
-	res := enforceWidth(style.Render(field.value))
-
-	// cache when appropriate for improved performance
-	if cachCond {
-		m.renderCache[cachekey] = res
-	}
-
-	return res
 }
 
 func (m *ItemSelectionPane) PageNext(init bool) tea.Cmd {
@@ -602,24 +446,11 @@ func (m *ItemSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
 	if !m.initialised {
 		return nil
 	}
-	// render empty preview when no items or no filter results
-	if m.initialised && len(m.items.Raw) == 0 || m.itemfiltering.enabled && len(m.itemfiltering.matchedItems) == 0 {
-		if m.lastPreviewMsg != nil && m.lastPreviewMsg.StyledItem == "" { // prevent looping
-			return nil
-		}
-		return func() tea.Msg {
-			return messages.PreviewItem{}
-		}
-	}
 
-	idx := m.content.Cursor()
-	if len(m.columnSorting.sortedItems) > 0 {
-		idx = m.columnSorting.sortedItems[idx]
-	} else if len(m.itemfiltering.matchedItems) > 0 { // cursor refers to filtered items
-		idx = m.itemfiltering.matchedItems[idx]
-	}
-	// if preview was already instructed to preview this item, skip
-	if idx == m.lastPreviewItem && !force {
+	item, idx := m.content.GetSelectedItem()
+
+	// if no item or preview was already instructed to preview this item, skip
+	if item == nil || idx == m.lastPreviewItem && !force {
 		return nil
 	}
 	m.lastPreviewItem = idx
@@ -627,11 +458,11 @@ func (m *ItemSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
 	var raw string
 	switch m.previewFormat {
 	case JSONformat:
-		raw = m.items.JSON[idx]
-		styled = m.items.JSONStyled[idx].Render(raw)
+		raw = item.JSON
+		styled = item.JSONStyled.Render(raw)
 	case YAMLformat:
-		raw = m.items.YAML[idx]
-		styled = m.items.YAMLStyled[idx].Render(raw)
+		raw = item.YAML
+		styled = item.YAMLStyled.Render(raw)
 	}
 	return func() tea.Msg {
 		return messages.PreviewItem{
@@ -670,35 +501,9 @@ func (m *ItemSelectionPane) ProcessPage(msg messages.PageReady) tea.Cmd {
 		return nil
 	}
 
-	m.appendItems(page.Items)
 	m.pageKey = page.LastEvaluatedKey
-
-	if len(page.Items.TableKeys) > 0 {
-		// set columns
-		_, rang := primaryKeysFromSchema(keysFromIndex(m.tableIndex.activeIndex, details))
-		completeKeys := compileCompleteKeys(page.Items.TableKeys, m.keysComplete, rang != nil)
-		defer func() { m.keysComplete = completeKeys }()
-
-		noColumnUpdate := slices.Equal(m.keysComplete, completeKeys)
-		columnUpdate := !noColumnUpdate
-		appendOnly := noColumnUpdate && !m.columnSorting.Enabled
-
-		switch {
-		case columnUpdate: // update columns & ALL rows
-			cols := m.assembleColumns(completeKeys)
-			rows := parseRows(completeKeys, m.items.TableKeys, 0)
-			m.content.SetContent(cols, m.sortRows(rows))
-		case appendOnly: // update with  new rows (append)
-			rows := parseRows(completeKeys, page.Items.TableKeys, len(m.content.Rows()))
-			m.content.AppendRows(m.sortRows(rows))
-		default: // update ALL rows but no columns
-			rows := parseRows(completeKeys, m.items.TableKeys, 0)
-			m.content.SetRows(m.sortRows(rows))
-		}
-	}
-
-	// always refresh cache to respect potential new sorting
-	m.refreshCache()
+	_, rang := primaryKeysFromSchema(keysFromIndex(m.tableIndex.activeIndex, details))
+	m.content.AddItems(page.Items, rang != nil)
 
 	m.paging = false
 	m.initialised = true
@@ -710,82 +515,6 @@ func (m *ItemSelectionPane) ProcessPage(msg messages.PageReady) tea.Cmd {
 type sortingRow struct {
 	r table.Row
 	i int
-}
-
-func (m *ItemSelectionPane) sortRows(rows []table.Row) []table.Row {
-	if !m.columnSorting.Enabled || m.columnSorting.SortingOn == "" || len(rows) == 0 {
-		return rows
-	}
-	cols := m.content.Columns()
-	colsS := make([]string, len(cols))
-	for i, c := range cols {
-		colsS[i] = c.Title
-	}
-	idx := u.Find(colsS, m.columnSorting.SortingOn)
-	if idx < 0 {
-		return rows
-	}
-
-	// determine field-type
-	var field string
-	for _, r := range rows {
-		if r.Fields[idx].Value() != "" {
-			field = r.Fields[idx].Value()
-			break
-		}
-	}
-	_, errInt := strconv.ParseInt(field, 10, 64)
-	_, errFloat := strconv.ParseFloat(field, 64)
-
-	// choose the appropriate sorting function
-	var sortFunc func(a, b sortingRow) int
-	switch {
-	// NOTE: assumes that float fields always contain decimal point
-	case errFloat == nil:
-		sortFunc = func(a, b sortingRow) int {
-			aI, _ := strconv.ParseFloat(a.r.Fields[idx].Value(), 64)
-			bI, _ := strconv.ParseFloat(b.r.Fields[idx].Value(), 64)
-			check := ternary(aI < bI, aI > bI, m.columnSorting.Ascending)
-			return ternary(-1, 1, check)
-		}
-	case errInt == nil:
-		sortFunc = func(a, b sortingRow) int {
-			aI, _ := strconv.ParseInt(a.r.Fields[idx].Value(), 10, 64)
-			bI, _ := strconv.ParseInt(b.r.Fields[idx].Value(), 10, 64)
-			check := ternary(aI < bI, aI > bI, m.columnSorting.Ascending)
-			return ternary(-1, 1, check)
-		}
-	default:
-		sortFunc = func(a, b sortingRow) int {
-			s := []string{a.r.Fields[idx].Value(), b.r.Fields[idx].Value()}
-			slices.Sort(s)
-			check := ternary(s[0] == a.r.Fields[idx].Value(), s[1] == a.r.Fields[idx].Value(), m.columnSorting.Ascending)
-			return ternary(-1, 1, check)
-		}
-	}
-
-	// apply sorting function on slice backed by new array
-	sorted := make([]sortingRow, len(rows))
-	for i, r := range rows {
-		sorted[i] = sortingRow{
-			r: r,
-			i: r.Metadata[itemIndexMetaKey].(int),
-		}
-	}
-
-	// sort
-	slices.SortFunc(sorted, sortFunc)
-
-	// reset sorted-item-mapping
-	m.columnSorting.sortedItems = make([]int, len(sorted))
-
-	res := make([]table.Row, len(sorted))
-	for i := range sorted {
-		m.columnSorting.sortedItems[i] = sorted[i].i
-		res[i] = sorted[i].r
-	}
-
-	return res
 }
 
 // selectTable processes the select-table message, which indicates that the
@@ -822,8 +551,9 @@ func (m *ItemSelectionPane) selectTable(tableName string, details types.Describe
 		m.tableIndex.indexItemCount = *details.ItemCount
 		cmd = m.enableScanMode(true)
 	}
+
 	// resetting state
-	m.content.ResetVirtualRows()
+	m.content.ResetSearch()
 
 	return cmd
 }
@@ -862,7 +592,7 @@ func compileCompleteKeys(table [][]types.KeyValue, existing []string, hasRangeKe
 }
 
 func (m ItemSelectionPane) resolveBrowserURL() string {
-	selection := m.content.SelectedRow()
+	selection := m.content.GetSelectedRow()
 	if selection == nil || len(selection.Fields) == 0 || m.selectedTable.TableName == nil {
 		return ""
 	}
@@ -947,6 +677,24 @@ func (m *ItemSelectionPane) applySize(height, width int) {
 	m.updateSize()
 }
 
+func (m *ItemSelectionPane) updateKeyMaps() {
+	allowed := m.content.GetAllowedOptions()
+
+	if m.KeyMap.Search.Enabled() && !allowed.SearchAllowed {
+		m.content.ResetSearch()
+	}
+	if m.KeyMap.ColSort.Enabled() && !allowed.ColumnSortingAllowed {
+		m.content.ResetColumnSorting()
+	}
+	if m.KeyMap.ColVis.Enabled() && !allowed.ColumnVisibilityAllowed {
+		m.content.ResetColumnVisibility()
+	}
+
+	m.KeyMap.Search.SetEnabled(allowed.SearchAllowed)
+	m.KeyMap.ColSort.SetEnabled(allowed.ColumnSortingAllowed)
+	m.KeyMap.ColVis.SetEnabled(allowed.ColumnVisibilityAllowed)
+}
+
 // updateSize updates dimensions of the pane's contents based on the current
 // window dimensions.
 func (m *ItemSelectionPane) updateSize() {
@@ -957,8 +705,7 @@ func (m *ItemSelectionPane) updateSize() {
 	m.window.height = h
 	m.window.width = w
 	// TODO: fix the '1'; content prints one empty row beyond its allowed height
-	m.content.SetHeight(h - 1 - searchBoxH - tableInfoH - ternary(1, 0, m.spinner.active))
-	m.content.SetWidth(w)
+	m.content.UpdateSize(h-1-searchBoxH-tableInfoH-ternary(1, 0, m.spinner.active), w)
 	m.search.SetWidth(w)
 	m.queryLimit = h
 	m.scanLimit = h
@@ -971,39 +718,17 @@ func (m *ItemSelectionPane) resetKeyMap() {
 	m.KeyMap.Scan.SetEnabled(false)
 }
 
-// clearCache completely removes any cached state
-// Note that clearing of cache does not automatically imply that the table's
-// rendered rows will be updated anew. Use refreshCache if this is your goal.
-func (m *ItemSelectionPane) clearCache() {
-	m.renderCache = map[string]string{}
-	m.content.ResetCache()
-}
-
-// refreshCache clears the cache and then forces a rerender of rows
-func (m *ItemSelectionPane) refreshCache() {
-	m.clearCache()
-	m.content.UpdateContent()
-}
-
 // reset contents resets any table modifications and resets the table contents
 // to empty. It also cancels and resets paging and resets preview tracking.
 func (m *ItemSelectionPane) resetContents() {
 	m.err = nil
 	m.resetPaging()
 	m.initialised = false
-	m.items = types.Items{}
-	m.keysComplete = []string{}
 	m.lastPreviewItem = 0
 	m.lastPreviewMsg = nil
 
-	// reset search
 	m.search.Reset()
-
-	m.content.ResetVirtualRows()
-	m.content.SetContent([]table.Column{}, []table.Row{})
-	m.content.SetCursor(0)
-	// TODO: change to clearCache instead, cleanup & test
-	m.refreshCache()
+	m.content.Reset()
 }
 
 // resetPaging resets any paging related parameters and calcels any lingering
@@ -1039,36 +764,12 @@ func (m *ItemSelectionPane) resetQueryParameters() tea.Cmd {
 	return cmd
 }
 
-func (m *ItemSelectionPane) resetColumnVisibility() {
-	m.columnVisibility.enabled = false
-	m.columnVisibility.inVisible = make(map[string]struct{}, 0)
-}
-
 func (m *ItemSelectionPane) handleResetColumnSortingMessage(msg messages.ColumnSortingReset) tea.Cmd {
 	if msg.TableARN != u.IfNotNil(m.selectedTable.TableArn, "") { // expired
 		return nil
 	}
-	m.resetColumnSorting()
+	m.content.ResetColumnSorting()
 	return nil
-}
-
-// resetColumnSorting re-initialises column-sorting associated state parameters
-// and restores the columns and rows based on the items stored in state.
-func (m *ItemSelectionPane) resetColumnSorting() {
-	m.columnSorting.Ascending = true
-	m.columnSorting.SortingOn = ""
-	m.columnSorting.Enabled = false
-	m.columnSorting.sortedItems = []int{}
-
-	// reassemble cols
-	cols := m.assembleColumns(m.keysComplete)
-
-	// reassemble rows
-	rows := parseRows(m.keysComplete, m.items.TableKeys, 0)
-
-	// set content
-	m.content.SetContent(cols, rows)
-	m.refreshCache()
 }
 
 func (m *ItemSelectionPane) escape() tea.Cmd {
@@ -1115,38 +816,16 @@ func (m *ItemSelectionPane) UpdateColumnVisibility(msg messages.ColumnVisibility
 	if msg.TableARN != u.IfNotNil(m.selectedTable.TableArn, "") { // expired
 		return nil
 	}
-	cols := m.content.Columns()
-	if len(cols) != len(msg.AllColumns) {
-		// TODO: better handling of new columns appearing in view
-		m.resetColumnVisibility()
-		return nil
-	}
-	m.columnVisibility.enabled = true
-	for i, c := range msg.AllColumns {
-		if !msg.Visible[i] {
-			m.columnVisibility.inVisible[c] = struct{}{}
-		} else {
-			delete(m.columnVisibility.inVisible, c)
-		}
-	}
-	for i, c := range cols {
-		_, isInvisible := m.columnVisibility.inVisible[c.Title]
-		cols[i].InVisible = isInvisible
-	}
-	m.content.SetColumns(cols)
-
-	if len(m.columnVisibility.inVisible) == 0 {
-		m.columnVisibility.enabled = false
-		return nil
-	}
-
+	_ = m.content.SetColumnVisibility(msg.AllColumns, msg.Visible)
+	m.updateKeyMaps()
 	return nil
 }
 
 // toggle column visibility dialog & provide current state (in case dialog opens)
 func (m *ItemSelectionPane) toggleColumnVsibilityDialog(msg tea.Msg) tea.Cmd {
-	cols := m.content.Columns()
-	vis := m.columnVisibility.inVisible
+	cols := m.content.GetColumns()
+	st := m.content.GetViewOptionsState()
+	vis := st.GetColumnVisibilityOptions().InVisible
 
 	colsS := make([]string, 0, len(cols))
 	visB := make([]bool, 0, len(cols))
@@ -1178,48 +857,22 @@ func (m *ItemSelectionPane) UpdateColumnSorting(msg messages.ColumnSortingUpdate
 	if msg.TableARN != u.IfNotNil(m.selectedTable.TableArn, "") { // expired
 		return nil
 	}
-	cols := m.content.Columns()
-	if len(cols) != len(msg.AllColumns) {
-		// TODO: better handling of new columns appearing in view
-		m.resetColumnSorting()
-		return nil
-	}
-
-	// update panel state
-	m.columnSorting.Enabled = true
-	m.columnSorting.Ascending = msg.Ascending
-	m.columnSorting.SortingOn = msg.SortingOn
-
-	// prepare table column update
-	for i, c := range cols {
-		c.Suffix = m.getColumnSuffix(c.Title)
-		cols[i] = c
-	}
-
-	// update table columns
-	m.content.SetColumns(cols)
-
-	// sort table rows
-	rows := m.sortRows(m.content.Rows())
-
-	// update table rows
-	m.content.SetRows(rows)
-
-	// clear cache & force rerender of rows
-	m.refreshCache()
-
+	_ = m.content.SetColumnSorting(msg.AllColumns, msg.SortingOn, msg.Ascending)
+	m.updateKeyMaps()
 	return nil
 }
 
 // toggle column sorting dialog & provide current state (in case dialog opens)
 func (m *ItemSelectionPane) toggleColumnSortingDialog(msg tea.Msg) tea.Cmd {
-	cols := m.content.Columns()
+	cols := m.content.GetColumns()
 	colsS := make([]string, 0, len(cols))
 	for _, c := range cols {
 		colsS = append(colsS, c.Title)
 	}
-	sorting := m.columnSorting.SortingOn
-	ascending := m.columnSorting.Ascending
+	st := m.content.GetViewOptionsState()
+	sortState := st.GetColumnSortingOptions()
+	sorting := sortState.SortingOn
+	ascending := sortState.Ascending
 	arn := u.IfNotNil(m.selectedTable.TableArn, "")
 	toggle := func() tea.Msg {
 		return messages.ToggleColumnSorting{}
@@ -1241,7 +894,6 @@ func (m *ItemSelectionPane) ChangeScanIndex(msg messages.ScanIndexChanged) tea.C
 	}
 
 	m.resetContents()
-	m.clearCache()
 
 	m.queryMode = messages.ScanMode
 
@@ -1283,7 +935,7 @@ func (m *ItemSelectionPane) ChangeQueryParameters(msg messages.QueryParametersCh
 	m.queryParameters.rangeOrderDescending = msg.RangeOrderDescending
 
 	m.resetContents()
-	m.clearCache()
+
 	// ensure query mode is enabled and force new page
 	return m.enableQueryMode(true)
 }
@@ -1293,13 +945,13 @@ func (m *ItemSelectionPane) copy() tea.Cmd {
 		return messages.ToggleColumnCopy{}
 	}
 
-	cols := m.content.Columns()
+	cols := m.content.GetColumns()
 	colStr := make([]string, len(cols))
 	for i, c := range cols {
 		colStr[i] = c.Title
 	}
 
-	rowP := m.content.SelectedRow()
+	rowP := m.content.GetSelectedRow()
 	if rowP == nil {
 		return nil
 	}
@@ -1317,11 +969,6 @@ func (m *ItemSelectionPane) copy() tea.Cmd {
 		}
 	}
 	return tea.Batch(copyDialog, init)
-}
-
-type dialog interface {
-	View() string
-	Width() int
 }
 
 func (m *ItemSelectionPane) View() string {
@@ -1367,7 +1014,7 @@ func (m *ItemSelectionPane) renderTableInfo() string {
 	count := m.tableIndex.indexItemCount
 	indexName := u.IfNotNil(m.tableIndex.activeIndex, "")
 
-	rowcount := int64(len(m.content.VisualRows()))
+	rowcount := int64(len(m.content.GetVisualRows()))
 	right := fmt.Sprintf("Count: %d/%d", rowcount, max(count, rowcount))
 	right = ansi.Truncate(right, rightHalf, "…")
 
@@ -1382,33 +1029,6 @@ func (m *ItemSelectionPane) renderTableInfo() string {
 		leftAligned.Render(left),
 		rightAligned.Render(right),
 	))
-}
-
-func (m *ItemSelectionPane) appendItems(newItems types.Items) {
-	// JSON
-	m.items.JSON = mergeSlices(m.items.JSON, newItems.JSON)
-	// JSON-styled
-	// m.items.JSONStyled = mergeSlices(m.items.JSONStyled, newItems.JSONStyled)
-	m.items.JSONStyled = mergeSlices(m.items.JSONStyled, newItems.JSONStyled)
-	// YAML
-	m.items.YAML = mergeSlices(m.items.YAML, newItems.YAML)
-	// YAML-styled
-	m.items.YAMLStyled = mergeSlices(m.items.YAMLStyled, newItems.YAMLStyled)
-	// RAW
-	m.items.Raw = mergeSlices(m.items.Raw, newItems.Raw)
-	// KEYS
-	m.items.TableKeys = mergeSlices(m.items.TableKeys, newItems.TableKeys)
-}
-
-func mergeSlices[S ~[]E, E any](s1, s2 S) S {
-	n := make([]E, len(s1)+len(s2))
-	copy(n[:len(s1)], s1)
-	copy(n[len(s1):], s2)
-	return n
-}
-
-func clamp(v, low, high int) int {
-	return min(max(v, low), high)
 }
 
 func ternary[T any](first T, second T, cond bool) T {
@@ -1444,78 +1064,6 @@ func keysFromIndex(idx *string, details types.DescribeTableResponse) []dynamotyp
 		}
 	}
 	return details.KeySchema
-}
-
-// assembleColumns returns a set of table columns that incorporates modulations
-// based on the item-selection-pane state, such as the state of column
-// visibility and sorting.
-func (m *ItemSelectionPane) assembleColumns(allColumnTitles []string) []table.Column {
-	cols := make([]table.Column, len(allColumnTitles))
-
-	for i, title := range allColumnTitles {
-		col := table.Column{Title: title, Width: clamp(len(title), 16, 32)}
-
-		// visibility
-		_, isInvisible := m.columnVisibility.inVisible[title]
-		col.InVisible = m.columnVisibility.enabled && isInvisible
-
-		// suffix
-		col.Suffix = m.getColumnSuffix(title)
-
-		// insert
-		cols[i] = col
-	}
-	return cols
-}
-
-func (m *ItemSelectionPane) getColumnSuffix(colTitle string) string {
-	if m.columnSorting.Enabled && m.columnSorting.SortingOn == colTitle {
-		return fmt.Sprintf(" (%s)", ternary("↑", "↓", m.columnSorting.Ascending))
-	}
-	return ""
-}
-
-type enrichedField struct {
-	value string
-	style *commonstyles.LineStyle
-}
-
-// Value implements the matching table.Field interface function
-func (f enrichedField) Value() string {
-	return f.value
-}
-
-// parseRows accepts a set of columns and key-value pairs that represent the
-// rows and each row's fields, as well as a starting-index. The function
-// prepares []table.Row, and injects empty fields when the specified column does
-// not occur in the key-value pairs.
-//
-// Each row is provided with meta-data that specifies the index of the row's
-// associated item. The index order follows the order of the provided
-// key-value-pairs and can be offset by providing a non-zero `startingIndex`.
-func parseRows(cols []string, tableKeys [][]types.KeyValue, startingIndex int) []table.Row {
-	rows := make([]table.Row, len(tableKeys))
-	for i, k := range tableKeys {
-		fields := make([]table.Field, len(cols))
-		var x int
-		for j, key := range cols {
-			if key == k[x].Key { // matching key
-				fields[j] = enrichedField{
-					value: k[x].Value,
-					style: &k[x].ValueStyling,
-				}
-				x = min(len(k)-1, x+1)
-			} else { // no matching key
-				fields[j] = enrichedField{
-					value: "",
-					style: nil,
-				}
-			}
-		}
-		rows[i].Fields = fields
-		rows[i].Metadata = map[string]any{itemIndexMetaKey: startingIndex + i}
-	}
-	return rows
 }
 
 func indexCountFromTable(indexName string, tableDetails types.DescribeTableResponse) int64 {

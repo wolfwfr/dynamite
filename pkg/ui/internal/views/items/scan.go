@@ -16,7 +16,6 @@ func (m *ItemSelectionPane) enableScanMode(force bool) tea.Cmd {
 	}
 
 	m.resetContents()
-	m.clearCache()
 
 	m.queryMode = messages.ScanMode
 	m.tableIndex.activeIndex = m.scanParameters.index
