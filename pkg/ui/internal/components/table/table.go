@@ -155,7 +155,7 @@ func (m *Model) updateContentHeight() {
 // actually require new rendering; therefore, it renders everything, even if the
 // row was already included in the viewport contents and its selection-state did
 // not change.
-func (m *Model) UpdateContent() (updateHeader bool) {
+func (m *Model) UpdateContent() (colWidthChanged bool) {
 	if m.Height() < 1 || m.cursor < 0 {
 		return
 	}
@@ -164,15 +164,13 @@ func (m *Model) UpdateContent() (updateHeader bool) {
 	// Constant runtime, independent of number of rows in a table.
 	// Limits the number of renderedRows to a maximum of m.viewport.Height
 
-	// TODO: consider combining loops
-	var colChanged bool
 	if m.dynCols {
 		for j := range m.cols {
 			mx := len(m.cols[j].Title) + len(m.cols[j].Suffix)
 			for i := m.start; i < m.end; i++ {
 				mx = max(mx, len(m.VisualRows()[i].Fields[j].Value()))
 			}
-			colChanged = colChanged || mx != m.cols[j].Width // once true, stays true
+			colWidthChanged = colWidthChanged || mx != m.cols[j].Width // once true, stays true
 			m.cols[j].DynamicWidth = mx
 		}
 	}
@@ -189,7 +187,7 @@ func (m *Model) UpdateContent() (updateHeader bool) {
 	// ensures horizontal position is updated if content width changed
 	m.content.ScrollLeft(0)
 
-	return colChanged
+	return
 }
 
 func (m *Model) UpdateHeader() {
@@ -404,9 +402,8 @@ func (m *Model) ScrollRight(n int) {
 	m.ResetCache() // foviated rendering could apply
 	m.header.ScrollRight(n)
 	m.content.ScrollRight(n)
-	if m.UpdateContent() {
-		m.UpdateHeader()
-	}
+	m.UpdateContent()
+	m.UpdateHeader()
 }
 
 // ScrollLeft scrolls the header and viewport contents to the left
@@ -414,9 +411,8 @@ func (m *Model) ScrollLeft(n int) {
 	m.ResetCache() // foviated rendering could apply
 	m.header.ScrollLeft(n)
 	m.content.ScrollLeft(n)
-	if m.UpdateContent() {
-		m.UpdateHeader()
-	}
+	m.UpdateContent()
+	m.UpdateHeader()
 }
 
 // GotoTop moves the selection to the first row.
@@ -434,9 +430,8 @@ func (m *Model) GotoLeft() {
 	m.ResetCache() // foviated rendering could apply
 	m.header.SetXOffset(0)
 	m.content.SetXOffset(0)
-	if m.UpdateContent() {
-		m.UpdateHeader()
-	}
+	m.UpdateContent()
+	m.UpdateHeader()
 }
 
 // GotoRight scrolls to the rows ending
@@ -444,9 +439,8 @@ func (m *Model) GotoRight() {
 	m.ResetCache() // foviated rendering could apply
 	m.header.SetXOffset(math.MaxInt)
 	m.content.SetXOffset(math.MaxInt)
-	if m.UpdateContent() {
-		m.UpdateHeader()
-	}
+	m.UpdateContent()
+	m.UpdateHeader()
 }
 
 // FromValues create the table rows from a simple string. It uses `\n` by
@@ -467,32 +461,63 @@ func (m *Model) FromValues(value, separator string, cb func(v string) Field) {
 }
 
 func (m *Model) renderHeader() string {
-	s := make([]string, 0, len(m.cols))
-	for i, col := range m.cols {
-		if col.InVisible {
-			continue
-		}
-		width := ternary(col.DynamicWidth, col.Width, m.dynCols && col.DynamicWidth > 0)
-		if width <= 0 {
-			continue
-		}
+	var (
+		s  = make([]string, 0, len(m.cols))
+		x  = m.content.XOffset()
+		w  = m.content.Width()
+		pL = m.styles.Header.GetPaddingLeft()
+		pR = m.styles.Header.GetPaddingRight()
+		tL = 0
+	)
 
-		// apply header-delegate if available
-		if m.headerDelegate != nil {
-			s = append(s, m.headerDelegate(col, i, width, m.styles.Header.GetPaddingLeft(), m.styles.Header.GetPaddingRight()))
-			continue
-		}
+	// local func predents requirement for downstream recursion
+	renderHeaderFunc := func() string {
+		for i, col := range m.cols {
+			var (
+				width     = ternary(col.DynamicWidth, col.Width, m.dynCols && col.DynamicWidth > 0)
+				cellwidth = width + pL + pR
+				inview    = x < tL+cellwidth && x+w >= tL
+			)
+			if col.InVisible || width <= 0 {
+				continue
+			}
 
-		// proceed with default styling if not
-		style := lipgloss.NewStyle().Width(width).MaxWidth(width).Inline(true)
-		renderedCell := style.Render(fmt.Sprintf(
-			"%s%s",
-			ansi.Truncate(col.Title, width-len(col.Suffix), "…"),
-			col.Suffix,
-		))
-		s = append(s, m.styles.Header.Render(renderedCell))
+			tL += cellwidth
+
+			// apply header-delegate if available
+			if m.headerDelegate != nil {
+				s = append(s, m.headerDelegate(col, i, width, pL, pR, inview))
+				continue
+			}
+
+			// proceed with default styling if not
+			var (
+				renderWidth    = lipgloss.NewStyle().Width(width).MaxWidth(width).Inline(true).Render
+				renderHeader   = m.styles.Header.Render
+				renderedHeader string
+			)
+			if inview {
+				renderedHeader = renderWidth(fmt.Sprintf(
+					"%s%s",
+					ansi.Truncate(col.Title, width-len(col.Suffix), "…"),
+					col.Suffix,
+				))
+			} else {
+				renderedHeader = renderWidth("")
+			}
+			s = append(s, renderHeader(renderedHeader))
+		}
+		return lipgloss.JoinHorizontal(lipgloss.Top, slices.Clip(s)...)
 	}
-	return lipgloss.JoinHorizontal(lipgloss.Top, slices.Clip(s)...)
+
+	rendered := renderHeaderFunc()
+	if x <= tL-m.header.Width() || x == 0 { // if x-offset is (still) valid
+		return rendered
+	}
+
+	// if table width was reduced and x-offset is OOB, adjust x-offset & redo
+	m.header.SetXOffset(tL - m.header.Width())
+	return renderHeaderFunc()
 }
 
 func (m *Model) renderRow(r int) (rendered string) {
@@ -545,8 +570,13 @@ func (m *Model) renderRow(r int) (rendered string) {
 			var (
 				renderWidth  = lipgloss.NewStyle().Width(width).MaxWidth(width).Inline(true).Render
 				renderCell   = m.styles.Cell.Render
-				renderedCell = ternary(m.styles.Cell.Render(renderWidth(ternary(value, ansi.Truncate(value, width, "…"), m.dynCols))), renderCell(renderWidth("")), inview)
+				renderedCell string
 			)
+			if inview {
+				renderedCell = renderCell(renderWidth(ternary(value, ansi.Truncate(value, width, "…"), m.dynCols)))
+			} else {
+				renderedCell = renderCell(renderWidth(""))
+			}
 			s = append(s, renderedCell)
 		}
 

@@ -50,7 +50,7 @@ type Model struct {
 }
 
 type FieldDelegate func(row Row, col Column, colIdx, rowIdx, colWidth, padL, padR int, selected, inview bool) string
-type HeaderDelegate func(col Column, colIdx, colWidth, padL, padR int) string
+type HeaderDelegate func(col Column, colIdx, colWidth, padL, padR int, inview bool) string
 
 // Row represents one line in the table.
 type Row struct {
