@@ -490,18 +490,21 @@ func (m *Model) renderRow(r int) string {
 			continue
 		}
 
+		tL += cellwidth
+
 		// apply field-delegate if available
 		if m.fieldDelegate != nil {
 			s = append(s, m.fieldDelegate(rows[r], m.cols[i], i, r, width, pL, pR, r == m.cursor, inview))
-			tL += cellwidth
 			continue
 		}
 
 		// proceed with default styling if not
 		value := rows[r].Fields[i].Value()
-		enforceWidth := lipgloss.NewStyle().Width(width).MaxWidth(width).Inline(true).Render
-		renderedCell := m.styles.Cell.Render(enforceWidth(ternary(value, ansi.Truncate(value, width, "…"), m.dynCols)))
-
+		var (
+			renderWidth  = lipgloss.NewStyle().Width(width).MaxWidth(width).Inline(true).Render
+			renderCell   = m.styles.Cell.Render
+			renderedCell = ternary(m.styles.Cell.Render(renderWidth(ternary(value, ansi.Truncate(value, width, "…"), m.dynCols))), renderCell(renderWidth("")), inview)
+		)
 		s = append(s, renderedCell)
 	}
 
