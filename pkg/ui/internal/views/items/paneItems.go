@@ -451,14 +451,14 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 	return tea.Batch(cmds...)
 }
 
-func (m *ItemSelectionPane) TableRowFieldDelegate(row table.Row, col table.Column, colIdx, rowIdx, colW, padL, padR int, selected bool) string {
+func (m *ItemSelectionPane) TableRowFieldDelegate(row table.Row, col table.Column, colIdx, rowIdx, colW, padL, padR int, selected, inview bool) string {
 	fullWidth := colW + padL + padR
 
 	// obtain field in question
 	field := row.Fields[colIdx].(enrichedField)
 
-	// fill up with padding if empty
-	if field.style == nil {
+	// fill up with padding if empty of not in view (prevent wasting resources)
+	if field.style == nil || !inview {
 		st := lipgloss.NewStyle().PaddingRight(fullWidth)
 		st = u.Ternary(st.Background(m.styles.Table.SelectedBackground), st, selected)
 		return st.Render("")

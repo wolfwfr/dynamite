@@ -380,12 +380,18 @@ func (m *Model) cursorOutOfBounds() bool {
 func (m *Model) ScrollRight(n int) {
 	m.header.ScrollRight(n)
 	m.content.ScrollRight(n)
+	if m.UpdateContent() {
+		m.UpdateHeader()
+	}
 }
 
 // ScrollLeft scrolls the header and viewport contents to the left
 func (m *Model) ScrollLeft(n int) {
 	m.header.ScrollLeft(n)
 	m.content.ScrollLeft(n)
+	if m.UpdateContent() {
+		m.UpdateHeader()
+	}
 }
 
 // GotoTop moves the selection to the first row.
@@ -402,12 +408,18 @@ func (m *Model) GotoBottom() {
 func (m *Model) GotoLeft() {
 	m.header.SetXOffset(0)
 	m.content.SetXOffset(0)
+	if m.UpdateContent() {
+		m.UpdateHeader()
+	}
 }
 
 // GotoRight scrolls to the rows ending
 func (m *Model) GotoRight() {
 	m.header.SetXOffset(math.MaxInt)
 	m.content.SetXOffset(math.MaxInt)
+	if m.UpdateContent() {
+		m.UpdateHeader()
+	}
 }
 
 // FromValues create the table rows from a simple string. It uses `\n` by
@@ -457,25 +469,35 @@ func (m *Model) renderHeader() string {
 }
 
 func (m *Model) renderRow(r int) string {
-	s := make([]string, 0, len(m.cols))
-	rows := m.VisualRows()
+	var (
+		s    = make([]string, 0, len(m.cols))
+		rows = m.VisualRows()
+		x    = m.content.XOffset()
+		w    = m.content.Width()
+		pL   = m.styles.Cell.GetPaddingLeft()
+		pR   = m.styles.Cell.GetPaddingRight()
+		tL   = 0
+	)
+
 	for i := range rows[r].Fields {
-		if m.cols[i].InVisible {
-			continue
-		}
-		width := ternary(m.cols[i].DynamicWidth, m.cols[i].Width, m.dynCols && m.cols[i].DynamicWidth > 0)
-		if width <= 0 {
+		var (
+			width     = ternary(m.cols[i].DynamicWidth, m.cols[i].Width, m.dynCols && m.cols[i].DynamicWidth > 0)
+			cellwidth = width + pL + pR
+			inview    = x < tL+cellwidth && x+w >= tL
+		)
+
+		if m.cols[i].InVisible || width <= 0 {
 			continue
 		}
 
 		// apply field-delegate if available
 		if m.fieldDelegate != nil {
-			s = append(s, m.fieldDelegate(rows[r], m.cols[i], i, r, width, m.styles.Cell.GetPaddingLeft(), m.styles.Cell.GetPaddingRight(), r == m.cursor))
+			s = append(s, m.fieldDelegate(rows[r], m.cols[i], i, r, width, pL, pR, r == m.cursor, inview))
+			tL += cellwidth
 			continue
 		}
 
 		// proceed with default styling if not
-
 		value := rows[r].Fields[i].Value()
 		enforceWidth := lipgloss.NewStyle().Width(width).MaxWidth(width).Inline(true).Render
 		renderedCell := m.styles.Cell.Render(enforceWidth(ternary(value, ansi.Truncate(value, width, "…"), m.dynCols)))

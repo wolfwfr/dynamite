@@ -387,7 +387,7 @@ func (f enrichedField) Value() string {
 	return f.value
 }
 
-func (m *tableSelectionPane) TableRowFieldDelegate(row table.Row, col table.Column, colIdx, rowIdx, colW, padL, padR int, selected bool) string {
+func (m *tableSelectionPane) TableRowFieldDelegate(row table.Row, col table.Column, colIdx, rowIdx, colW, padL, padR int, selected, inview bool) string {
 	fullWidth := colW + padL + padR
 
 	// obtain field in question
