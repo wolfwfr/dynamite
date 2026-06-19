@@ -5,7 +5,6 @@ import (
 
 	apitypes "github.com/wolfwfr/dynamite/pkg/ui/internal/adapters/dynamodb/types"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
-	"github.com/wolfwfr/dynamite/pkg/util"
 	u "github.com/wolfwfr/dynamite/pkg/util"
 )
 
@@ -39,7 +38,7 @@ func (m *ItemSelectionPane) ToggleScanParametersDialog() tea.Cmd {
 	if m.queryMode != messages.ScanMode {
 		return nil
 	}
-	arn := util.IfNotNil(m.selectedTable.TableArn, "")
+	arn := u.IfNotNil(m.selectedTable.TableArn, "")
 	sch := m.selectedTable.KeySchema
 	hash, rang := primaryKeysFromSchema(sch)
 	defs := m.selectedTable.AttributeDefinitions

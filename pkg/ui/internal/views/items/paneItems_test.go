@@ -7,7 +7,6 @@ import (
 
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
-	"go.uber.org/mock/gomock"
 	gm "go.uber.org/mock/gomock"
 
 	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
@@ -588,7 +587,7 @@ func TestReload(t *testing.T) {
 			sut.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEsc}))            // blur the search
 			cmd := sut.Update(reloadKey)                                      // trigger reload
 			db.EXPECT().
-				ScanTable(gm.Any(), gm.Any(), tableName, gomock.Any()).
+				ScanTable(gm.Any(), gm.Any(), tableName, gm.Any()).
 				Return(&apitypes.ScanResponse{Items: items}, nil).
 				Times(1) // reload the items
 			msgs := tu.ExtractMessages[messages.PageReady](cmd) // obtain target messages

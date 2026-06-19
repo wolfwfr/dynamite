@@ -11,7 +11,6 @@ import (
 
 	appconfig "github.com/wolfwfr/dynamite/pkg"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
-	"github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
 	commonstyles "github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
 )
 
@@ -65,7 +64,7 @@ func newMFAStyles() mfaStyles {
 	s := mfaStyles{}
 	s.dialogStyle = commonstyles.DialogStyle
 	s.title = lipgloss.NewStyle().Padding(1, 0, 1, 0)
-	s.desc = lipgloss.NewStyle().Padding(1, 0, 1, 0).Foreground(styles.SubtleColour)
+	s.desc = lipgloss.NewStyle().Padding(1, 0, 1, 0).Foreground(commonstyles.SubtleColour)
 	s.helpLine = lipgloss.NewStyle().Padding(1, 4, 0, 4)
 	s.inputBox = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(commonstyles.DialogFocusColour)
 	return s
@@ -145,7 +144,6 @@ func (m *MFA) Update(msg tea.Msg) tea.Cmd {
 		m.input, cmd = m.input.Update(msg)
 		return cmd
 	}
-	return nil
 }
 
 func (m *MFA) cancel() tea.Cmd {

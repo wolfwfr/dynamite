@@ -3,10 +3,8 @@ package itemselection
 import (
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/wolfwfr/dynamite/pkg/ui/internal/adapters/dynamodb/types"
 	apitypes "github.com/wolfwfr/dynamite/pkg/ui/internal/adapters/dynamodb/types"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
-	"github.com/wolfwfr/dynamite/pkg/util"
 	u "github.com/wolfwfr/dynamite/pkg/util"
 )
 
@@ -43,7 +41,7 @@ func (m *ItemSelectionPane) ToggleQueryParametersDialog() tea.Cmd {
 	if m.queryMode != messages.QueryMode {
 		return nil
 	}
-	arn := util.IfNotNil(m.selectedTable.TableArn, "")
+	arn := u.IfNotNil(m.selectedTable.TableArn, "")
 	sch := m.selectedTable.KeySchema
 	hash, rang := primaryKeysFromSchema(sch)
 	defs := m.selectedTable.AttributeDefinitions
@@ -109,24 +107,24 @@ func (m *ItemSelectionPane) ToggleQueryParametersDialog() tea.Cmd {
 	return tea.Batch(tgl, init)
 }
 
-func parseRangeKeyOperator(op messages.QueryOperator) types.RangeKeyOperator {
+func parseRangeKeyOperator(op messages.QueryOperator) apitypes.RangeKeyOperator {
 	switch op {
 	case messages.Equals:
-		return types.RangeEquals
+		return apitypes.RangeEquals
 	case messages.Greater:
-		return types.RangeGreater
+		return apitypes.RangeGreater
 	case messages.GreaterEqual:
-		return types.RangeGreaterEqual
+		return apitypes.RangeGreaterEqual
 	case messages.Less:
-		return types.RangeLess
+		return apitypes.RangeLess
 	case messages.LessEqual:
-		return types.RangeLessEqual
+		return apitypes.RangeLessEqual
 	case messages.Between:
-		return types.RangeBetween
+		return apitypes.RangeBetween
 	case messages.BeginsWith:
-		return types.RangeBeginsWith
+		return apitypes.RangeBeginsWith
 	default:
-		return types.RangeEquals
+		return apitypes.RangeEquals
 	}
 }
 

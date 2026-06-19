@@ -11,7 +11,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
-	"github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
 	commonstyles "github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
 )
 
@@ -106,7 +105,7 @@ func (m *NotificationDialog) newStyles() {
 	s.dialogStyle = commonstyles.DialogStyle.Align(lipgloss.Left, lipgloss.Center)
 	s.messageStyle = lipgloss.NewStyle()
 	s.errorStyle = lipgloss.NewStyle()
-	s.dividerStyle = lipgloss.NewStyle().Foreground(styles.SubtleColour3)
+	s.dividerStyle = lipgloss.NewStyle().Foreground(commonstyles.SubtleColour3)
 	s.progressStyle = lipgloss.NewStyle().PaddingTop(1)
 	m.styles = s
 }
