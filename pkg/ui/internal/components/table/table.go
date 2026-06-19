@@ -35,6 +35,8 @@ func New(opts ...Option) *Model {
 		KeyMap: DefaultKeyMap(),
 		Help:   help.New(),
 		styles: DefaultStyles(),
+
+		rowCache: map[int]string{},
 	}
 
 	for _, opt := range opts {
@@ -116,7 +118,12 @@ func (m *Model) HelpView() string {
 	return m.Help.View(m.KeyMap)
 }
 
+func (m *Model) ResetCache() {
+	m.rowCache = map[int]string{}
+}
+
 func (m *Model) MoveContentBoundaries(n int) {
+	m.ResetCache()
 	rows := m.VisualRows()
 
 	m.start = clamp(m.start+n, 0, max(0, len(rows)-m.content.Height()))
@@ -127,6 +134,7 @@ func (m *Model) updateContentHeight() {
 	if m.Height() < 1 || m.cursor < 0 {
 		return
 	}
+	m.ResetCache()
 	oldLen := m.content.TotalLineCount()
 	newLen := m.content.Height()
 	diff := oldLen - newLen
@@ -207,6 +215,7 @@ func (m *Model) Blur() {
 // SetRows sets a new rows state.Can be unsafe if the number of columns changes.
 // Use SetContent if rows and columns change together.
 func (m *Model) SetRows(r []Row) {
+	m.ResetCache()
 	m.rows = r
 
 	// in case of row count reduction, ensure m.end & cursor are in sync with new set
@@ -238,6 +247,7 @@ func (m *Model) AppendRows(r []Row) {
 // To completely remove virtual rows (even if empty) from view, use the
 // `ResetVirtualRows` method.
 func (m *Model) SetVirtualRows(r []Row) {
+	m.ResetCache()
 	if r == nil {
 		r = []Row{} // ensure this function cannot be abused to replace ResetVirtualRows
 	}
@@ -262,6 +272,7 @@ func (m *Model) SetVirtualRows(r []Row) {
 
 // resetVirtaulRows empties virtual rows and ensures that the base rows are returned
 func (m *Model) ResetVirtualRows() {
+	m.ResetCache()
 	m.virtualRows = nil
 	m.cursor = m.lastCursor
 
@@ -282,6 +293,7 @@ func (m *Model) ResetVirtualRows() {
 // when the number of columns changes from the previous content state. This
 // operation also completely resets any virtual rows.
 func (m *Model) SetContent(c []Column, r []Row) {
+	m.ResetCache()
 	m.ResetVirtualRows()
 
 	m.cols = c
@@ -298,6 +310,7 @@ func (m *Model) SetContent(c []Column, r []Row) {
 // SetColumns sets a new columns state. Can be unsafe if the number of columns
 // changes. Use SetContent if rows and columns change together.
 func (m *Model) SetColumns(c []Column) {
+	m.ResetCache()
 	m.cols = c
 	m.UpdateContent()
 	m.UpdateHeader()
@@ -316,6 +329,7 @@ func (m *Model) SetHeaderDelegate(f HeaderDelegate) {
 // SetDynamicColumnWidth updates the setting for dynamic-column-width and
 // updates the view appropriately
 func (m *Model) SetDynamicColumnWidth(b bool) {
+	m.ResetCache()
 	m.dynCols = b
 	m.UpdateContent()
 	m.UpdateHeader()
@@ -323,6 +337,7 @@ func (m *Model) SetDynamicColumnWidth(b bool) {
 
 // SetWidth sets the width of the viewport of the table.
 func (m *Model) SetWidth(w int) {
+	m.ResetCache()
 	m.content.SetWidth(w)
 	m.header.SetWidth(w)
 	// ensures x-offset is updated on change to width
@@ -333,6 +348,7 @@ func (m *Model) SetWidth(w int) {
 
 // SetHeight sets the height of the viewport of the table.
 func (m *Model) SetHeight(h int) {
+	m.ResetCache()
 	m.content.SetHeight(h - m.header.Height())
 	m.updateContentHeight()
 	if colChanged := m.UpdateContent(); colChanged {
@@ -380,6 +396,7 @@ func (m *Model) cursorOutOfBounds() bool {
 
 // ScrollRight scrolls the header and viewport contents to the right
 func (m *Model) ScrollRight(n int) {
+	m.ResetCache() // foviated rendering could apply
 	m.header.ScrollRight(n)
 	m.content.ScrollRight(n)
 	if m.UpdateContent() {
@@ -389,6 +406,7 @@ func (m *Model) ScrollRight(n int) {
 
 // ScrollLeft scrolls the header and viewport contents to the left
 func (m *Model) ScrollLeft(n int) {
+	m.ResetCache() // foviated rendering could apply
 	m.header.ScrollLeft(n)
 	m.content.ScrollLeft(n)
 	if m.UpdateContent() {
@@ -408,6 +426,7 @@ func (m *Model) GotoBottom() {
 
 // GotoLeft scrolls back to the row beginning
 func (m *Model) GotoLeft() {
+	m.ResetCache() // foviated rendering could apply
 	m.header.SetXOffset(0)
 	m.content.SetXOffset(0)
 	if m.UpdateContent() {
@@ -417,6 +436,7 @@ func (m *Model) GotoLeft() {
 
 // GotoRight scrolls to the rows ending
 func (m *Model) GotoRight() {
+	m.ResetCache() // foviated rendering could apply
 	m.header.SetXOffset(math.MaxInt)
 	m.content.SetXOffset(math.MaxInt)
 	if m.UpdateContent() {
@@ -470,7 +490,7 @@ func (m *Model) renderHeader() string {
 	return lipgloss.JoinHorizontal(lipgloss.Top, slices.Clip(s)...)
 }
 
-func (m *Model) renderRow(r int) string {
+func (m *Model) renderRow(r int) (rendered string) {
 	var (
 		s    = make([]string, 0, len(m.cols))
 		rows = m.VisualRows()
@@ -480,6 +500,19 @@ func (m *Model) renderRow(r int) string {
 		pR   = m.styles.Cell.GetPaddingRight()
 		tL   = 0
 	)
+
+	// return cached row when found & appliccable
+	cacheable := r != m.cursor
+	if cached, ok := m.rowCache[r]; cacheable && ok {
+		return cached
+	}
+
+	// cache result when appliccable
+	defer func() {
+		if cacheable {
+			m.rowCache[r] = rendered
+		}
+	}()
 
 	// local func predents requirement for downstream recursion
 	renderRowFunc := func() string {
@@ -516,14 +549,15 @@ func (m *Model) renderRow(r int) string {
 		return ternary(m.styles.Selected.Render(row), row, r == m.cursor)
 	}
 
-	rendered := renderRowFunc()
+	rendered = renderRowFunc()
 	if x <= tL-m.content.Width() || x == 0 { // if x-offset is (still) valid
-		return rendered
+		return
 	}
 
 	// if table width was reduced and x-offset is OOB, adjust x-offset & redo
 	m.content.SetXOffset(tL - m.content.Width())
-	return renderRowFunc()
+	rendered = renderRowFunc()
+	return
 }
 
 func clamp(v, low, high int) int {

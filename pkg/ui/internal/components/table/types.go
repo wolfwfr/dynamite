@@ -13,6 +13,10 @@ type Model struct {
 	KeyMap *KeyMap
 	Help   help.Model
 
+	// rowCache caches rendered-rows; it is reset upon any table update &
+	// sideways scrolling
+	rowCache map[int]string
+
 	// fieldDelegate, when set, is called to provide non-default styling for a row
 	fieldDelegate FieldDelegate
 	// headerDelegate, when set, is called to provide non-default styling for the header

@@ -976,6 +976,7 @@ func (m *ItemSelectionPane) resetKeyMap() {
 // rendered rows will be updated anew. Use refreshCache if this is your goal.
 func (m *ItemSelectionPane) clearCache() {
 	m.renderCache = map[string]string{}
+	m.content.ResetCache()
 }
 
 // refreshCache clears the cache and then forces a rerender of rows
@@ -1168,6 +1169,11 @@ func (m *ItemSelectionPane) toggleColumnVsibilityDialog(msg tea.Msg) tea.Cmd {
 	return tea.Batch(toggle, state)
 }
 
+// FIXME: repeatedly toggling sort on one column does not yield consistent
+// results for non-sorting columns, when the sorting column contains large
+// groups, due to row-input & row-output relating to the same field
+// (table.Rows); this would be fixed by inputting table.Rows and outputting to
+// table.VirtualRows.
 func (m *ItemSelectionPane) UpdateColumnSorting(msg messages.ColumnSortingUpdate) tea.Cmd {
 	if msg.TableARN != u.IfNotNil(m.selectedTable.TableArn, "") { // expired
 		return nil
