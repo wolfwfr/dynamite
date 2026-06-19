@@ -325,6 +325,8 @@ func (m *Model) SetDynamicColumnWidth(b bool) {
 func (m *Model) SetWidth(w int) {
 	m.content.SetWidth(w)
 	m.header.SetWidth(w)
+	// ensures x-offset is updated on change to width
+	m.header.ScrollLeft(0)
 	m.UpdateContent()
 	m.UpdateHeader()
 }
@@ -479,42 +481,49 @@ func (m *Model) renderRow(r int) string {
 		tL   = 0
 	)
 
-	for i := range rows[r].Fields {
-		var (
-			width     = ternary(m.cols[i].DynamicWidth, m.cols[i].Width, m.dynCols && m.cols[i].DynamicWidth > 0)
-			cellwidth = width + pL + pR
-			inview    = x < tL+cellwidth && x+w >= tL
-		)
+	// local func predents requirement for downstream recursion
+	renderRowFunc := func() string {
+		for i := range rows[r].Fields {
+			var (
+				width     = ternary(m.cols[i].DynamicWidth, m.cols[i].Width, m.dynCols && m.cols[i].DynamicWidth > 0)
+				cellwidth = width + pL + pR
+				inview    = x < tL+cellwidth && x+w >= tL
+			)
 
-		if m.cols[i].InVisible || width <= 0 {
-			continue
+			if m.cols[i].InVisible || width <= 0 {
+				continue
+			}
+
+			tL += cellwidth
+
+			// apply field-delegate if available
+			if m.fieldDelegate != nil {
+				s = append(s, m.fieldDelegate(rows[r], m.cols[i], i, r, width, pL, pR, r == m.cursor, inview))
+				continue
+			}
+
+			// proceed with default styling if not
+			value := rows[r].Fields[i].Value()
+			var (
+				renderWidth  = lipgloss.NewStyle().Width(width).MaxWidth(width).Inline(true).Render
+				renderCell   = m.styles.Cell.Render
+				renderedCell = ternary(m.styles.Cell.Render(renderWidth(ternary(value, ansi.Truncate(value, width, "…"), m.dynCols))), renderCell(renderWidth("")), inview)
+			)
+			s = append(s, renderedCell)
 		}
 
-		tL += cellwidth
-
-		// apply field-delegate if available
-		if m.fieldDelegate != nil {
-			s = append(s, m.fieldDelegate(rows[r], m.cols[i], i, r, width, pL, pR, r == m.cursor, inview))
-			continue
-		}
-
-		// proceed with default styling if not
-		value := rows[r].Fields[i].Value()
-		var (
-			renderWidth  = lipgloss.NewStyle().Width(width).MaxWidth(width).Inline(true).Render
-			renderCell   = m.styles.Cell.Render
-			renderedCell = ternary(m.styles.Cell.Render(renderWidth(ternary(value, ansi.Truncate(value, width, "…"), m.dynCols))), renderCell(renderWidth("")), inview)
-		)
-		s = append(s, renderedCell)
+		row := lipgloss.JoinHorizontal(lipgloss.Top, slices.Clip(s)...)
+		return ternary(m.styles.Selected.Render(row), row, r == m.cursor)
 	}
 
-	row := lipgloss.JoinHorizontal(lipgloss.Top, slices.Clip(s)...)
-
-	if r == m.cursor {
-		return m.styles.Selected.Render(row)
+	rendered := renderRowFunc()
+	if x <= tL-m.content.Width() || x == 0 { // if x-offset is (still) valid
+		return rendered
 	}
 
-	return row
+	// if table width was reduced and x-offset is OOB, adjust x-offset & redo
+	m.content.SetXOffset(tL - m.content.Width())
+	return renderRowFunc()
 }
 
 func clamp(v, low, high int) int {
