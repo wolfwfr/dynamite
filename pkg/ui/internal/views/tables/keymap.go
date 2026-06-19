@@ -24,8 +24,8 @@ func (km *DetailsPaneKeyMap) FullHelp() [][]key.Binding {
 func DefaultDetailsKeyMap() *DetailsPaneKeyMap {
 	return &DetailsPaneKeyMap{
 		Zoom: key.NewBinding(
-			key.WithKeys("Z"),
-			key.WithHelp("shift+z", "zoom"),
+			key.WithKeys("z"),
+			key.WithHelp("z", "zoom"),
 		),
 	}
 }
@@ -68,16 +68,16 @@ func DefaultTablePaneKeyMap() *TablePaneKeyMap {
 			key.WithHelp("/", "search"),
 		),
 		Zoom: key.NewBinding(
-			key.WithKeys("Z"),
-			key.WithHelp("shift+z", "zoom"),
+			key.WithKeys("z"),
+			key.WithHelp("z", "zoom"),
 		),
 		Copy: key.NewBinding(
-			key.WithKeys("Y"),
-			key.WithHelp("shift+y", "copy"),
+			key.WithKeys("y"),
+			key.WithHelp("y", "copy"),
 		),
 		Browser: key.NewBinding(
-			key.WithKeys("X"),
-			key.WithHelp("shift+x", "open in browser"),
+			key.WithKeys("x"),
+			key.WithHelp("x", "open in browser"),
 		),
 		Reload: key.NewBinding(
 			key.WithKeys("ctrl+r"),

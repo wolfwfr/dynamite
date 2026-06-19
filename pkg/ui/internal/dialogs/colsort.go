@@ -122,8 +122,8 @@ func NewColumnSortingDialog(close key.Binding) *ColumnSorting {
 				key.WithHelp("space/enter", "select"),
 			),
 			reset: key.NewBinding(
-				key.WithKeys("R"),
-				key.WithHelp("shift+r", "reset"),
+				key.WithKeys("r"),
+				key.WithHelp("r", "reset"),
 			),
 		},
 

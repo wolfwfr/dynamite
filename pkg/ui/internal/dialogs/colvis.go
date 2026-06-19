@@ -84,12 +84,12 @@ func NewColumnVisibilityDialog(close key.Binding) *ColumnVis {
 				key.WithHelp("space/enter", "select"),
 			),
 			enableAll: key.NewBinding(
-				key.WithKeys("E"),
-				key.WithHelp("shift+e", "enable all"),
+				key.WithKeys("e"),
+				key.WithHelp("e", "enable all"),
 			),
 			disableAll: key.NewBinding(
-				key.WithKeys("D"),
-				key.WithHelp("shift+d", "disable all"),
+				key.WithKeys("d"),
+				key.WithHelp("d", "disable all"),
 			),
 		},
 		defaultDialogHeight: 46,

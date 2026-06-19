@@ -26,16 +26,16 @@ func (km *DetailsPaneKeyMap) FullHelp() [][]key.Binding {
 func DefaultDetailsKeyMap() *DetailsPaneKeyMap {
 	return &DetailsPaneKeyMap{
 		Zoom: key.NewBinding(
-			key.WithKeys("Z"),
-			key.WithHelp("shift+z", "zoom"),
+			key.WithKeys("z"),
+			key.WithHelp("z", "zoom"),
 		),
 		ToggleFmt: key.NewBinding(
 			key.WithKeys("J"),
 			key.WithHelp("shift+j", "toggle json/yaml"),
 		),
 		Copy: key.NewBinding(
-			key.WithKeys("Y"),
-			key.WithHelp("shift+y", "copy"),
+			key.WithKeys("y"),
+			key.WithHelp("y", "copy"),
 		),
 	}
 }
@@ -81,8 +81,8 @@ func DefaultItemPaneKeyMap() *ItemPaneKeyMap {
 			key.WithHelp("/", "search"),
 		),
 		Zoom: key.NewBinding(
-			key.WithKeys("Z"),
-			key.WithHelp("shift+z", "zoom"),
+			key.WithKeys("z"),
+			key.WithHelp("z", "zoom"),
 		),
 		Reload: key.NewBinding(
 			key.WithKeys("ctrl+r"),
@@ -93,46 +93,46 @@ func DefaultItemPaneKeyMap() *ItemPaneKeyMap {
 			key.WithHelp("esc", "cancel/return"),
 		),
 		ChCols: key.NewBinding(
-			key.WithKeys("W"),
-			key.WithHelp("shift+w", "toggle column width"),
+			key.WithKeys("w"),
+			key.WithHelp("w", "toggle column width"),
 		),
 		ToggleFmt: key.NewBinding(
 			key.WithKeys("J"),
 			key.WithHelp("shift+j", "toggle json/yaml"),
 		),
 		Scan: key.NewBinding(
-			key.WithKeys("S"),
-			key.WithHelp("shift+s", "scan"),
+			key.WithKeys("s"),
+			key.WithHelp("s", "scan"),
 			key.WithDisabled(), // default to scan mode
 		),
 		ScanParameters: key.NewBinding(
-			key.WithKeys("S"),
-			key.WithHelp("shift+s", "scan params"),
+			key.WithKeys("s"),
+			key.WithHelp("s", "scan params"),
 		),
 		Query: key.NewBinding(
-			key.WithKeys("Q"),
-			key.WithHelp("shift+q", "query"),
+			key.WithKeys("q"),
+			key.WithHelp("q", "query"),
 		),
 		QueryParameters: key.NewBinding(
-			key.WithKeys("Q"),
-			key.WithHelp("shift+q", "query params"),
+			key.WithKeys("q"),
+			key.WithHelp("q", "query params"),
 			key.WithDisabled(), // defautl to scan mode
 		),
 		Copy: key.NewBinding(
-			key.WithKeys("Y"),
-			key.WithHelp("shift+y", "copy"),
+			key.WithKeys("y"),
+			key.WithHelp("y", "copy"),
 		),
 		Browser: key.NewBinding(
-			key.WithKeys("X"),
-			key.WithHelp("shift+x", "open in browser"),
+			key.WithKeys("x"),
+			key.WithHelp("x", "open in browser"),
 		),
 		ColVis: key.NewBinding(
-			key.WithKeys("V"),
-			key.WithHelp("shift+v", "configure column visibility"),
+			key.WithKeys("v"),
+			key.WithHelp("v", "configure column visibility"),
 		),
 		ColSort: key.NewBinding(
-			key.WithKeys("O"),
-			key.WithHelp("shift+o", "configure column order (excl search)"),
+			key.WithKeys("o"),
+			key.WithHelp("o", "configure column order (excl search)"),
 		),
 	}
 }
