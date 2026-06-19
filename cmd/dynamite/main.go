@@ -16,12 +16,16 @@ import (
 )
 
 const (
-	aws_profile_key = "aws_profile"
-	config_key      = "config"
-	dynamo_url_key  = "dynamo_url"
+	aws_profile_key = "profile"
+	config_key      = "cfg"
+	dynamo_url_key  = "url"
 	region_key      = "region"
 
 	corrupt_config_dir = "<config_dir_not_found>"
+
+	env_config_dir  = "DYNAMITE_TUI_CONFIG_DIR"
+	env_aws_profile = "AWS_PROFILE"
+	env_aws_region  = "AWS_REGION"
 )
 
 var configDir string
@@ -43,21 +47,24 @@ func main() {
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    aws_profile_key,
+				Sources: cli.EnvVars(env_aws_profile),
 				Aliases: []string{"p"},
 				Value:   "",
 				Usage:   "aws-profile",
 			},
 			&cli.StringFlag{
 				Name:    region_key,
+				Sources: cli.EnvVars(env_aws_region),
 				Aliases: []string{"r"},
 				Value:   "",
 				Usage:   "aws-region (takes precedence over default or region in config-file, when set)",
 			},
 			&cli.StringFlag{
 				Name:    config_key,
+				Sources: cli.EnvVars(env_config_dir),
 				Aliases: []string{"c"},
-				Value:   filepath.Join(configDir, "dynamite/config.yaml"),
-				Usage:   "path to config file (relative or absolute); must be yaml",
+				Value:   filepath.Join(configDir, "dynamite/"),
+				Usage:   "path to directory hosting 'config.yaml' (relative or absolute)",
 			},
 			&cli.StringFlag{
 				Name:    dynamo_url_key,
@@ -115,6 +122,7 @@ func runApplication(ctx context.Context, cmd *cli.Command) error {
 }
 
 func loadConfig(path string) (configfile.Config, *configfile.ConfigManager, error) {
+	path = filepath.Join(path, "config.yaml")
 	full, err1 := filepath.Abs(path)
 	if err1 != nil {
 		err1 = fmt.Errorf("failed to construct a valid config-path: %w", err1)
@@ -147,9 +155,6 @@ func resolveProfile(cmd *cli.Command, cfg configfile.Config) *string {
 
 func resolveRegion(cmd *cli.Command, cfg configfile.Config) string {
 	if r := cmd.String(region_key); r != "" {
-		return r
-	}
-	if r := os.Getenv("AWS_REGION"); r != "" {
 		return r
 	}
 	if r := cfg.DefaultRegion; r != "" {
