@@ -14,8 +14,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
-
-	"github.com/wolfwfr/dynamite/pkg/logging"
 )
 
 // New creates a new model for the table widget.
@@ -388,7 +386,6 @@ func (m *Model) MoveDown(n int) {
 		m.MoveContentBoundaries(n)
 	}
 	if colChanged := m.UpdateContent(); colChanged {
-		logging.LogDebug("updating header")
 		m.UpdateHeader()
 	}
 }
