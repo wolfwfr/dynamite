@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
+	"slices"
+	"strconv"
 
 	"gopkg.in/yaml.v3"
 )
@@ -52,12 +53,12 @@ var builtInRegions = []string{
 	"af-south-1",
 }
 
-type ConfigFile struct {
+type configFile struct {
 	AWSRegions          []string `yaml:"aws_regions"`
 	StarredRegions      []string `yaml:"starred_regions"`
 	DefaultRegion       string   `yaml:"default_region"`
 	LastUsedRegion      string   `yaml:"last_used_region"`       // TODO: impl
-	DefaultToLastRegion bool     `yaml:"default_to_last_region"` // TODO: impl
+	DefaultToLastRegion string   `yaml:"default_to_last_region"` // TODO: impl
 
 	DefaultProfile string `yaml:"default_profile"`
 
@@ -67,8 +68,18 @@ type ConfigFile struct {
 	MaxTables int `yaml:"max_tables"`
 }
 
-func defaultConfig() ConfigFile {
-	return ConfigFile{
+type Config struct {
+	AWSRegions          []string
+	StarredRegions      []string
+	DefaultRegion       string
+	LastUsedRegion      string
+	DefaultToLastRegion bool // TODO: impl
+	DefaultProfile      string
+	MaxTables           int
+}
+
+func defaultConfig() Config {
+	return Config{
 		AWSRegions:          builtInRegions,
 		StarredRegions:      []string{},
 		DefaultRegion:       "us-east-1",
@@ -91,54 +102,73 @@ func NewConfigManager(absPath string) *ConfigManager {
 
 // LoadConfig will always return a valid config, either the default config, or
 // the one it could find, regardless of whether errors occurred.
-func (m *ConfigManager) LoadConfig(create bool) (ConfigFile, error) {
+func (m *ConfigManager) LoadConfig() (Config, error) {
+	dflt := defaultConfig()
+
 	f, err := os.Open(m.full)
 	if err != nil {
-		if os.IsNotExist(err) && create {
-			return m.create()
+		if os.IsNotExist(err) {
+			return dflt, nil
 		}
 	}
 	defer f.Close()
 
-	dflt := defaultConfig()
-	var cfg ConfigFile
+	var cfg configFile
 	bytes, err := io.ReadAll(f)
 	if err != nil {
 		return dflt, fmt.Errorf("failed to read config file; %w", err)
 	}
+
+	// TODO: move to toml config
 	err = yaml.Unmarshal(bytes, &cfg)
 	if err != nil {
 		return dflt, fmt.Errorf("failed to unmarshal config file; %w", err)
 	}
 
-	if cfg.MaxTables == 0 {
-		cfg.MaxTables = dflt.MaxTables
-	}
-	return cfg, nil
+	return mergeWithDefault(cfg), nil
 }
 
-func (m *ConfigManager) create() (ConfigFile, error) {
-	cfg := defaultConfig()
-
-	dir := filepath.Dir(m.full)
-	err := os.MkdirAll(filepath.Dir(m.full), 0755)
-	if err != nil {
-		return cfg, fmt.Errorf("mkDirAll: %s; %w", dir, err)
+func mergeWithDefault(cfg configFile) Config {
+	res := defaultConfig()
+	res.AWSRegions = unique(append(res.AWSRegions, cfg.AWSRegions...))
+	res.StarredRegions = unique(append(res.StarredRegions, cfg.StarredRegions...))
+	res.DefaultRegion = notEmptyS(cfg.DefaultRegion, res.DefaultRegion)
+	res.LastUsedRegion = notEmptyS(cfg.LastUsedRegion, res.LastUsedRegion)
+	if defreg, err := strconv.ParseBool(cfg.DefaultToLastRegion); err != nil {
+		res.DefaultToLastRegion = defreg
+	}
+	res.DefaultProfile = notEmptyS(cfg.DefaultProfile, res.DefaultProfile)
+	if cfg.MaxTables > 0 {
+		res.MaxTables = cfg.MaxTables
 	}
 
-	data, err := yaml.Marshal(cfg)
-	if err != nil {
-		return cfg, fmt.Errorf("failed to marshal config file to YAML: %w", err)
-	}
-
-	if err := os.WriteFile(m.full, data, 0644); err != nil {
-		return cfg, fmt.Errorf("failed to write config file: %w", err)
-	}
-
-	return cfg, nil
+	return res
 }
 
 // used for storing default profile on first use (if used with profile)
-func (m *ConfigManager) StoreConfig(c ConfigFile) error {
+func (m *ConfigManager) StoreConfig(c Config) error {
 	panic("implement me!")
+}
+
+func unique[E comparable, S ~[]E](s S) S {
+	seen := map[E]struct{}{}
+	res := make(S, 0, len(s))
+	for _, e := range s {
+		if _, ok := seen[e]; ok {
+			continue
+		}
+		seen[e] = struct{}{}
+		res = append(res, e)
+	}
+	return slices.Clip(res)
+}
+
+func notEmptyS(strings ...string) string {
+	var res string
+	for _, s := range strings {
+		if s != "" {
+			return s
+		}
+	}
+	return res
 }

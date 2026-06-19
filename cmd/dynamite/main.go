@@ -114,14 +114,14 @@ func runApplication(ctx context.Context, cmd *cli.Command) error {
 	return err
 }
 
-func loadConfig(path string) (configfile.ConfigFile, *configfile.ConfigManager, error) {
+func loadConfig(path string) (configfile.Config, *configfile.ConfigManager, error) {
 	full, err1 := filepath.Abs(path)
 	if err1 != nil {
 		err1 = fmt.Errorf("failed to construct a valid config-path: %w", err1)
 	}
 
 	configman := configfile.NewConfigManager(full)
-	cfgf, err2 := configman.LoadConfig(true)
+	cfgf, err2 := configman.LoadConfig()
 	if err1 != nil {
 		return cfgf, configman, err1
 	}
@@ -132,7 +132,7 @@ func loadConfig(path string) (configfile.ConfigFile, *configfile.ConfigManager, 
 	return cfgf, configman, nil
 }
 
-func resolveProfile(cmd *cli.Command, cfg configfile.ConfigFile) *string {
+func resolveProfile(cmd *cli.Command, cfg configfile.Config) *string {
 	if pr := cmd.String(aws_profile_key); pr != "" {
 		return &pr
 	}
@@ -145,7 +145,7 @@ func resolveProfile(cmd *cli.Command, cfg configfile.ConfigFile) *string {
 	return nil
 }
 
-func resolveRegion(cmd *cli.Command, cfg configfile.ConfigFile) string {
+func resolveRegion(cmd *cli.Command, cfg configfile.Config) string {
 	if r := cmd.String(region_key); r != "" {
 		return r
 	}
