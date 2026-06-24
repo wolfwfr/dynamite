@@ -35,8 +35,8 @@ var (
 	reloadKeyValid bool
 
 	searchKey = tea.KeyPressMsg(tea.Key{Text: "/"})
-	queryKey  = tea.KeyPressMsg(tea.Key{Text: "Q", Mod: tea.ModShift, Code: 'q', ShiftedCode: 'Q'})
-	scanKey   = tea.KeyPressMsg(tea.Key{Text: "S", Mod: tea.ModShift, Code: 's', ShiftedCode: 'S'})
+	queryKey  = tea.KeyPressMsg(tea.Key{Text: "q", Mod: tea.ModShift, Code: 'q'})
+	scanKey   = tea.KeyPressMsg(tea.Key{Text: "s", Mod: tea.ModShift, Code: 's'})
 	exitKey   = tea.KeyPressMsg(tea.Key{Code: tea.KeyEsc})
 	reloadKey = tea.KeyPressMsg(tea.Key{Text: "ctrl+r", Mod: tea.ModCtrl})
 )
