@@ -21,3 +21,5 @@ tmp
 .envrc
 
 **/mocks/
+
+*.log

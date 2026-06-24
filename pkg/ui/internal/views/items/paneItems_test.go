@@ -96,6 +96,8 @@ func genJSONItems(n int, opts ...genOpts) apitypes.Items {
 	ln := n - b
 	res.JSON = make([]string, ln)
 	res.JSONStyled = make([]styles.ObjectStyle, ln)
+	res.YAML = make([]string, ln)
+	res.YAMLStyled = make([]styles.ObjectStyle, ln)
 	res.Raw = make([]map[string]dynamodbtypes.AttributeValue, ln)
 	res.TableKeys = make([][]apitypes.KeyValue, ln)
 
@@ -188,7 +190,7 @@ func TestItemSelectionPreviews(t *testing.T) {
 // 		sut.content = itemstable.NewItemsTable()
 //
 // 		// simple delegate that does not consider any kind of styling, only caching
-//		// sut.content.SetFieldDelegate(func(row table.Row, col table.Column, colIdx, rowIdx, colW, padL, padR int, selected, inview bool) string {
+// 		// sut.content.SetFieldDelegate(func(row table.Row, col table.Column, colIdx, rowIdx, colW, padL, padR int, selected, inview bool) string {
 // 		// 	key := cacheKey(rowIdx, colIdx, colW)
 // 		// 	if f, ok := sut.renderCache[key]; ok { // return from cache if found
 // 		// 		return f

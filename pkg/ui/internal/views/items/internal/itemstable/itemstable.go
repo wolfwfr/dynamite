@@ -46,6 +46,8 @@ func NewItemsTable() *ItemsTable {
 		m.styles = st
 	}
 
+	m.renderCache = map[string]string{}
+
 	return &m
 }
 
