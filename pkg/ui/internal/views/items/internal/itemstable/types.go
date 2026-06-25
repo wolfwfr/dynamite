@@ -37,9 +37,9 @@ type ItemsTable struct {
 
 	viewOptions view.ViewOptions
 
-	// KeysComplete represents a unique set of dynamo-db item keys that
+	// ColumnTitles represents a unique set of dynamo-db item keys that
 	// exhaustively cover all keys in the currently paged set of items
-	KeysComplete []string
+	ColumnTitles []string
 }
 
 // TODO: refactor dynamodb.Items and add single Item

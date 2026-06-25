@@ -8,8 +8,8 @@ import (
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/adapters/dynamodb/types"
 )
 
-func TestCompileCompleteKeys(t *testing.T) {
-	t.Run("compile-complete-keys should", func(t *testing.T) {
+func TestCompileUniqueKeys(t *testing.T) {
+	t.Run("compile-unique-keys should", func(t *testing.T) {
 		// testcases
 		testcases := []struct {
 			desc           string
@@ -113,7 +113,7 @@ func TestCompileCompleteKeys(t *testing.T) {
 		for _, tc := range testcases {
 			t.Run(tc.desc, func(t *testing.T) {
 				// test
-				res := compileCompleteKeys(tc.input_keys, nil, tc.input_hasRange)
+				res := compileUniqueKeys(tc.input_keys, nil, tc.input_hasRange)
 
 				// assert
 				assert.EqualValues(t, tc.exp, res)

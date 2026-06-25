@@ -14,12 +14,12 @@ func mergeSlices[S ~[]E, E any](s1, s2 S) S {
 	return n
 }
 
-// compileCompleteKeys takes a table of key-value pairs, observes all keys and
+// compileUniqueKeys takes a table of key-value pairs, observes all keys and
 // compiles a complete, in-order list of all unique key observed.
 // This ensures that when individual table rows have keys missing, the final
 // result still contains these keys when they are present in other rows in the
 // specified table.
-func compileCompleteKeys(table [][]apitypes.KeyValue, existing []string, hasRangeKey bool) []string {
+func compileUniqueKeys(table [][]apitypes.KeyValue, existing []string, hasRangeKey bool) []string {
 	res := make([]string, 0)
 	seen := map[string]struct{}{}
 	if len(existing) > 0 {

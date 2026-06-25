@@ -112,27 +112,27 @@ func (t *ItemsTable) AddItems(items apitypes.Items, hasRangeKey bool) {
 	}
 
 	// set columns
-	completeKeys := compileCompleteKeys(items.TableKeys, t.KeysComplete, hasRangeKey)
-	defer func() { t.KeysComplete = completeKeys }()
+	columnTitles := compileUniqueKeys(items.TableKeys, t.ColumnTitles, hasRangeKey)
+	defer func() { t.ColumnTitles = columnTitles }()
 
 	var (
 		cols []table.Column = nil
 		rows []table.Row    = nil
 		virt []table.Row    = nil
 
-		noColumnUpdate = slices.Equal(t.KeysComplete, completeKeys)
+		noColumnUpdate = slices.Equal(t.ColumnTitles, columnTitles)
 		columnUpdate   = !noColumnUpdate
 		appendOnly     = noColumnUpdate && !t.viewOptions.GetColumnSortingOptions().Enabled
 	)
 
 	switch {
 	case columnUpdate: // update columns & ALL rows
-		cols = assembleColumns(t.viewOptions, completeKeys)
-		rows = parseRows(completeKeys, t.Items.TableKeys)
+		cols = assembleColumns(t.viewOptions, columnTitles)
+		rows = parseRows(columnTitles, t.Items.TableKeys)
 	case appendOnly: // update with  new rows (append)
-		rows = parseRows(completeKeys, t.Items.TableKeys)
+		rows = parseRows(columnTitles, t.Items.TableKeys)
 	default: // update ALL rows but no columns
-		rows = parseRows(completeKeys, t.Items.TableKeys)
+		rows = parseRows(columnTitles, t.Items.TableKeys)
 	}
 
 	t.updateTable(cols, rows, virt)
