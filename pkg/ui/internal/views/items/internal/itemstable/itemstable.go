@@ -159,23 +159,16 @@ func (t *ItemsTable) GetSelectedRow() *table.Row {
 
 func (t *ItemsTable) GetSelectedItem() (*Item, int) {
 	var (
-		sorting = t.viewOptions.GetColumnSortingOptions()
-		filter  = t.viewOptions.GetSearchResultsOptions()
-		items   = t.Items
+		search = t.viewOptions.GetSearchResultsOptions()
+		items  = t.Items
 	)
 
-	if len(items.Raw) == 0 || filter.Enabled && len(filter.MatchedItems) == 0 {
+	if len(items.Raw) == 0 || search.Enabled && len(search.MatchedItems) == 0 {
 		return nil, 0
 	}
 
-	idx := t.table.Cursor()
-
-	switch {
-	case len(sorting.SortedItems) > 0:
-		idx = sorting.SortedItems[idx]
-	case len(filter.MatchedItems) > 0:
-		idx = filter.MatchedItems[idx]
-	}
+	row := t.table.SelectedRow()
+	idx := row.Metadata[ItemIndexMetaKey].(int)
 
 	return &Item{
 		JSON:       items.JSON[idx],
@@ -202,7 +195,7 @@ func (t *ItemsTable) updateTable(columns []table.Column, rows []table.Row, virt 
 	}()
 
 	// always apply sorting
-	rows = t.sortRowsAndUpdate(u.Ternary(columns, t.table.Columns(), columns != nil), rows)
+	rows = t.sortRows(u.Ternary(columns, t.table.Columns(), columns != nil), rows)
 
 	switch {
 	case columns == nil && rows == nil: // no update

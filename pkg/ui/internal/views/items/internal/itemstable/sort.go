@@ -9,20 +9,14 @@ import (
 	u "github.com/wolfwfr/dynamite/pkg/util"
 )
 
-// sortRowsAndUpdate applies sorting to the provided rows and updates the
-// table's state with the new order of references to the backing items.
-func (t *ItemsTable) sortRowsAndUpdate(cols []table.Column, rows []table.Row) []table.Row {
-	allowed := t.viewOptions.Check()
-	if !allowed.ColumnSortingAllowed {
+// sortRows applies sorting to the provided rows.
+func (t *ItemsTable) sortRows(cols []table.Column, rows []table.Row) []table.Row {
+	if allowed := t.viewOptions.Check(); !allowed.ColumnSortingAllowed {
 		return rows
 	}
 
 	sortopts := t.viewOptions.GetColumnSortingOptions()
-	res, sortedItems := sortRows(cols, rows, sortopts)
-
-	sortopts.SortedItems = sortedItems
-
-	t.viewOptions, _ = t.viewOptions.Set().ColumnSorting().SetAll(sortopts).Do()
+	res := sortRows(cols, rows, sortopts)
 
 	return res
 }
@@ -31,7 +25,7 @@ func (t *ItemsTable) sortRowsAndUpdate(cols []table.Column, rows []table.Row) []
 // state to apply sorting when sorting is enabled. It dynamically resolves the
 // literal type of the column to sort on, distinguishing between integers,
 // floats, and strings. It returns the sorted rows and a slice of indices, relating
-func sortRows(cols []table.Column, rows []table.Row, sortopts viewoptions.ColumnSorting) ([]table.Row, []int) {
+func sortRows(cols []table.Column, rows []table.Row, sortopts viewoptions.ColumnSorting) []table.Row {
 	var (
 		sortEnabled   = sortopts.Enabled
 		sortingOn     = sortopts.SortingOn
@@ -39,7 +33,7 @@ func sortRows(cols []table.Column, rows []table.Row, sortopts viewoptions.Column
 	)
 
 	if !sortEnabled || sortingOn == "" || len(rows) == 0 {
-		return rows, sortopts.SortedItems
+		return rows
 	}
 
 	colsS := make([]string, len(cols))
@@ -48,7 +42,7 @@ func sortRows(cols []table.Column, rows []table.Row, sortopts viewoptions.Column
 	}
 	idx := u.Find(colsS, sortingOn)
 	if idx < 0 {
-		return rows, sortopts.SortedItems
+		return rows
 	}
 
 	// determine field-type
@@ -94,11 +88,5 @@ func sortRows(cols []table.Column, rows []table.Row, sortopts viewoptions.Column
 	copy(sorted, rows)
 	slices.SortFunc(sorted, sortFunc)
 
-	// assemble references to backing items
-	indices := make([]int, len(sorted))
-	for i := range sorted {
-		indices[i] = sorted[i].Metadata[ItemIndexMetaKey].(int)
-	}
-
-	return sorted, indices
+	return sorted
 }

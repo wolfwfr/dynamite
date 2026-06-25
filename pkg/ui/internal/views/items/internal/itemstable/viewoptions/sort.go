@@ -2,12 +2,9 @@ package viewoptions
 
 // column sorting collects settings related to column sorting
 type ColumnSorting struct {
-	// TODO: remove: only used in 'get-item' and this can fall back to the
-	// row-metadata
-	SortedItems []int // indices referring to items
-	SortingOn   string
-	Ascending   bool // if false, descending
-	Enabled     bool
+	SortingOn string
+	Ascending bool // if false, descending
+	Enabled   bool
 }
 
 // SetColumnSorting is part of the setter-builder
@@ -36,7 +33,6 @@ func (v *ViewOptions) GetColumnSortingOptions() ColumnSorting {
 
 // resetColumnSortingState resets internal state relating to column-sorting functionality
 func (v *ViewOptions) ResetColumnSortingState() {
-	v.columnSorting.SortedItems = make([]int, 0)
 	v.columnSorting.Ascending = true
 	v.columnSorting.SortingOn = ""
 	v.columnSorting.Enabled = false

@@ -38,7 +38,7 @@ func (t *ItemsTable) ResetColumnSorting() {
 func (t *ItemsTable) ResetSearch() {
 	t.viewOptions.ResetSearchState()
 	t.table.ResetVirtualRows()
-	t.updateTable(nil, t.sortRowsAndUpdate(t.table.Columns(), parseRows(t.KeysComplete, t.Items.TableKeys)), nil)
+	t.updateTable(nil, t.sortRows(t.table.Columns(), parseRows(t.KeysComplete, t.Items.TableKeys)), nil)
 }
 
 // clearCache completely removes any cached state
