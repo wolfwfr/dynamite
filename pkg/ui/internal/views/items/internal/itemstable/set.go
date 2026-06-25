@@ -42,7 +42,7 @@ func (t *ItemsTable) SetColumnSorting(cols []string, sortingOn string, ascending
 
 	// prepare table column update
 	for i, c := range tablecols {
-		c.Suffix = t.viewOptions.GetColumnSuffix(c.Title)
+		c.Suffix = getColumnSuffix(t.viewOptions, c.Title)
 		tablecols[i] = c
 	}
 

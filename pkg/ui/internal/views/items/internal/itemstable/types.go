@@ -62,10 +62,3 @@ type EnrichedField struct {
 func (f EnrichedField) Value() string {
 	return f.RawValue
 }
-
-// sortingRow is a wrapper around row that couples the row to the index of the
-// original item
-type sortingRow struct {
-	r table.Row
-	i int
-}
