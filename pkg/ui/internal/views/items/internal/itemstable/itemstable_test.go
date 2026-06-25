@@ -35,7 +35,9 @@ func genJSONItems(n int, opts ...genOpts) apitypes.Items {
 
 	if len(opts) > 0 {
 		b = opts[0].begin
-		idFmt = opts[0].idFmt
+		if opts[0].idFmt != "" {
+			idFmt = opts[0].idFmt
+		}
 	}
 
 	ln := n - b
@@ -244,6 +246,49 @@ func TestCacheInvalidation(t *testing.T) {
 				assert.Empty(t, sut.renderCache)                                // assert new cache is not empty
 				assertContainsExclusively(t, sut.renderCache, sut.table, false) // assert cached values all match current table items
 			})
+		})
+	})
+}
+
+func TestRowItemIndexIntegrity(t *testing.T) {
+	// factory initialising a new system-under-test
+	newSUT := func() *ItemsTable {
+		sut := NewItemsTable()
+		sut.UpdateSize(100, 200) // required for underlying table to properly render items
+
+		return sut
+	}
+
+	assertRowIndexing := func(t *testing.T, rows []table.Row, expectOrderedIndices []int) {
+		for i, row := range rows {
+			idxI := row.Metadata[ItemIndexMetaKey]
+			idx, ok := idxI.(int)
+			require.True(t, ok)
+			assert.EqualValues(t, expectOrderedIndices[i], idx)
+		}
+	}
+
+	t.Run("row-item-indexing should", func(t *testing.T) {
+		t.Run("remain consequtive on append", func(t *testing.T) {
+			sut := newSUT()                                     // init
+			firstPage := genJSONItems(3)                        // define first page
+			secondPage := genJSONItems(6, genOpts{begin: 3})    // define second page
+			sut.AddItems(firstPage, false)                      // add first page to table
+			sut.AddItems(secondPage, false)                     // add second page to table
+			rows := sut.table.Rows()                            // obtain current rows
+			assertRowIndexing(t, rows, []int{0, 1, 2, 3, 4, 5}) // assert
+		})
+		t.Run("remain consequtive on append, when sorting", func(t *testing.T) {
+			sut := newSUT()                                                    // init
+			firstPage := genJSONItems(3)                                       // define first page
+			secondPage := genJSONItems(6, genOpts{begin: 3})                   // define second page
+			sut.AddItems(firstPage, false)                                     // add first page to table
+			columnTitles := compileUniqueKeys(firstPage.TableKeys, nil, false) // obtain unique keys from generated items
+			b := sut.SetColumnSorting(columnTitles, "id", false)               // set column sorting
+			require.True(t, b)                                                 // ensure sorting was applied
+			sut.AddItems(secondPage, false)                                    // add second page to table
+			rows := sut.table.Rows()                                           // obtain current rows
+			assertRowIndexing(t, rows, []int{5, 4, 3, 2, 1, 0})                // assert
 		})
 	})
 }
