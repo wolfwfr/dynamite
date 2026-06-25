@@ -37,14 +37,11 @@ var tableInfoBox = lipgloss.NewStyle().
 	Foreground(commonstyles.SubtleColour2)
 
 type previewFormat int
-type queryMode int
 
 const (
 	YAMLformat previewFormat = iota
 	JSONformat
 )
-
-const itemIndexMetaKey = "item_index"
 
 type SessionData struct {
 	queryMode   messages.ItemsQueryMode
@@ -486,13 +483,6 @@ func (m *ItemSelectionPane) ProcessPage(msg messages.PageReady) tea.Cmd {
 	m.paging = false
 	m.initialised = true
 	return m.MaybePreviewItem(true)
-}
-
-// sortingRow is a wrapper around row that couples the row to the index of the
-// original item
-type sortingRow struct {
-	r table.Row
-	i int
 }
 
 // selectTable processes the select-table message, which indicates that the

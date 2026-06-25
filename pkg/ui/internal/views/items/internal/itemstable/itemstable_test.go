@@ -247,19 +247,3 @@ func TestCacheInvalidation(t *testing.T) {
 		})
 	})
 }
-
-// convenience function to merge multiple items together. Slices will be appended.
-func mergeItems(items ...apitypes.Items) apitypes.Items {
-	res := apitypes.Items{}
-
-	for _, itm := range items {
-		res.JSON = append(res.JSON, itm.JSON...)
-		res.JSONStyled = append(res.JSONStyled, itm.JSONStyled...)
-		res.YAML = append(res.YAML, itm.YAML...)
-		res.YAMLStyled = append(res.YAMLStyled, itm.YAMLStyled...)
-		res.Raw = append(res.Raw, itm.Raw...)
-		res.TableKeys = append(res.TableKeys, itm.TableKeys...)
-	}
-
-	return res
-}
