@@ -6,7 +6,6 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/wolfwfr/dynamite/pkg/logging"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/components/table"
 	u "github.com/wolfwfr/dynamite/pkg/util"
 )
@@ -30,7 +29,6 @@ func (t *ItemsTable) TableRowFieldDelegate(row table.Row, col table.Column, colI
 	if field.Style == nil || !inview {
 		st := lipgloss.NewStyle().PaddingRight(fullWidth)
 		st = u.Ternary(st.Background(t.styles.SelectedBackground), st, selected)
-		logging.LogDebug(fmt.Sprintf("returning early at row/col %d/%d", rowIdx, colIdx))
 		return st.Render("")
 	}
 
@@ -90,7 +88,6 @@ func (t *ItemsTable) TableRowFieldDelegate(row table.Row, col table.Column, colI
 
 	// cache when appropriate for improved performance
 	if cachCond {
-		logging.LogDebug(fmt.Sprintf("caching: %s => %s", cachekey, res))
 		t.renderCache[cachekey] = res
 	}
 
