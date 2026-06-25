@@ -25,7 +25,7 @@ func TestSearchCallbacks(t *testing.T) {
 
 		ctrl := gm.NewController(t)
 		m := mocks.NewMockitemsTable(ctrl)
-		sut.content = m
+		sut.table = m
 
 		return sut, m
 	}

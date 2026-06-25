@@ -16,7 +16,7 @@ func (m *ItemSelection) ShortHelp() []key.Binding {
 
 // ITEM PANE
 func (m *ItemSelectionPane) ShortHelp() []key.Binding {
-	return appendShortHelp(m.content.GetKeyMap().ShortHelp(), m.KeyMap.ShortHelp())
+	return appendShortHelp(m.table.GetKeyMap().ShortHelp(), m.KeyMap.ShortHelp())
 }
 
 // DETAILS PANE
@@ -39,7 +39,7 @@ func (m *ItemSelection) FullHelp() [][]key.Binding {
 
 // ITEM PANE
 func (m *ItemSelectionPane) FullHelp() [][]key.Binding {
-	return appendFullHelp(m.content.GetKeyMap().FullHelp(), m.KeyMap.FullHelp())
+	return appendFullHelp(m.table.GetKeyMap().FullHelp(), m.KeyMap.FullHelp())
 }
 
 // DETAILS PANE

@@ -191,7 +191,7 @@ func TestItemSelectionResets(t *testing.T) {
 
 		ctrl := gm.NewController(t)
 		m := mocks.NewMockitemsTable(ctrl)
-		sut.content = m
+		sut.table = m
 
 		return sut, m
 	}
@@ -507,7 +507,7 @@ func searchItemSelection(t *testing.T, receiver *ItemSelectionPane, query string
 	valid = assert.Contains(t, receiver.search.View(), query) && valid // once false, stays false
 
 	// ensure search results were processed by pane
-	st := receiver.content.GetViewOptionsState()
+	st := receiver.table.GetViewOptionsState()
 	search := st.GetSearchResultsOptions().Enabled
 	valid = assert.True(t, search) && valid // once false, stays false
 
@@ -516,19 +516,19 @@ func searchItemSelection(t *testing.T, receiver *ItemSelectionPane, query string
 
 // convenience function for obtaining the state in one line
 func getSortSettings(p *ItemSelectionPane) viewoptions.ColumnSorting {
-	st := p.content.GetViewOptionsState()
+	st := p.table.GetViewOptionsState()
 	return st.GetColumnSortingOptions()
 }
 
 // convenience function for obtaining the state in one line
 func getVisibilitySettings(p *ItemSelectionPane) viewoptions.ColumnVisibility {
-	st := p.content.GetViewOptionsState()
+	st := p.table.GetViewOptionsState()
 	return st.GetColumnVisibilityOptions()
 }
 
 // convenience function for obtaining the state in one line
 func getSearchSettings(p *ItemSelectionPane) viewoptions.SearchResults {
-	st := p.content.GetViewOptionsState()
+	st := p.table.GetViewOptionsState()
 	return st.GetSearchResultsOptions()
 }
 
@@ -556,7 +556,7 @@ func simpleSelectTable(sut *ItemSelectionPane, tableARN, tableName string, count
 // convenience function to send a 'ColumnSortingUpdate' message to the
 // system-under-test
 func simpleSortItems(sut *ItemSelectionPane, tableARN string, sortOn string, asc bool) tea.Cmd {
-	cols := sut.content.GetColumns()
+	cols := sut.table.GetColumns()
 	colsS := make([]string, 0, len(cols))
 	for _, c := range cols {
 		colsS = append(colsS, c.Title)

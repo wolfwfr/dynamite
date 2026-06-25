@@ -97,7 +97,7 @@ type ItemSelectionPane struct {
 	AddKeyMap keymaps.AdditionalKeys
 
 	// the underlying table
-	content itemsTable
+	table itemsTable
 
 	// sessions (per table ARN)
 	sessions map[string]SessionData
@@ -169,7 +169,7 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 		scanLimit:      10,
 		queryLimit:     10,
 		pageCancel:     func() {}, // init as noop
-		content:        itemstable.NewItemsTable(),
+		table:          itemstable.NewItemsTable(),
 	}
 
 	{ // spinner
@@ -232,7 +232,7 @@ func (m *ItemSelectionPane) softReset() tea.Cmd {
 	cmd := m.resetQueryParameters() // must come first to reinitialise items in state (which may be used for updating content in other functions)
 	m.resetKeyMap()
 
-	m.content.Reset()
+	m.table.Reset()
 
 	return cmd
 }
@@ -276,7 +276,7 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 		case key.Matches(msg, m.KeyMap.Reload):
 			return m.Reload()
 		case key.Matches(msg, m.KeyMap.ChCols):
-			m.content.SetDynamicColumnWidth(!m.content.GetDynamicColumnWidth())
+			m.table.SetDynamicColumnWidth(!m.table.GetDynamicColumnWidth())
 		case key.Matches(msg, m.KeyMap.Zoom):
 			return m.Zoom()
 		case key.Matches(msg, m.KeyMap.ToggleFmt):
@@ -329,9 +329,9 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 		m.spinner.model, cmd = m.spinner.model.Update(msg)
 		return cmd
 	}
-	cmds = append(cmds, m.content.Update(msg))
+	cmds = append(cmds, m.table.Update(msg))
 
-	if m.content.PaginationEligible() {
+	if m.table.PaginationEligible() {
 		cmds = append(cmds, m.PageNext(false))
 	}
 
@@ -422,7 +422,7 @@ func (m *ItemSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
 		return nil
 	}
 
-	item, idx := m.content.GetSelectedItem()
+	item, idx := m.table.GetSelectedItem()
 
 	// if no item or preview was already instructed to preview this item, skip
 	if item == nil || idx == m.lastPreviewItem && !force {
@@ -478,7 +478,7 @@ func (m *ItemSelectionPane) ProcessPage(msg messages.PageReady) tea.Cmd {
 
 	m.pageKey = page.LastEvaluatedKey
 	_, rang := primaryKeysFromSchema(keysFromIndex(m.tableIndex.activeIndex, details))
-	m.content.AddItems(page.Items, rang != nil)
+	m.table.AddItems(page.Items, rang != nil)
 
 	m.paging = false
 	m.initialised = true
@@ -521,7 +521,7 @@ func (m *ItemSelectionPane) selectTable(tableName string, details types.Describe
 	}
 
 	// resetting state
-	m.content.ResetSearch()
+	m.table.ResetSearch()
 
 	return cmd
 }
@@ -560,7 +560,7 @@ func compileCompleteKeys(table [][]types.KeyValue, existing []string, hasRangeKe
 }
 
 func (m ItemSelectionPane) resolveBrowserURL() string {
-	selection := m.content.GetSelectedRow()
+	selection := m.table.GetSelectedRow()
 	if selection == nil || len(selection.Fields) == 0 || m.selectedTable.TableName == nil {
 		return ""
 	}
@@ -646,16 +646,16 @@ func (m *ItemSelectionPane) applySize(height, width int) {
 }
 
 func (m *ItemSelectionPane) updateKeyMaps() {
-	allowed := m.content.GetAllowedOptions()
+	allowed := m.table.GetAllowedOptions()
 
 	if m.KeyMap.Search.Enabled() && !allowed.SearchAllowed {
-		m.content.ResetSearch()
+		m.table.ResetSearch()
 	}
 	if m.KeyMap.ColSort.Enabled() && !allowed.ColumnSortingAllowed {
-		m.content.ResetColumnSorting()
+		m.table.ResetColumnSorting()
 	}
 	if m.KeyMap.ColVis.Enabled() && !allowed.ColumnVisibilityAllowed {
-		m.content.ResetColumnVisibility()
+		m.table.ResetColumnVisibility()
 	}
 
 	m.KeyMap.Search.SetEnabled(allowed.SearchAllowed)
@@ -673,7 +673,7 @@ func (m *ItemSelectionPane) updateSize() {
 	m.window.height = h
 	m.window.width = w
 	// TODO: fix the '1'; content prints one empty row beyond its allowed height
-	m.content.UpdateSize(h-1-searchBoxH-tableInfoH-ternary(1, 0, m.spinner.active), w)
+	m.table.UpdateSize(h-1-searchBoxH-tableInfoH-ternary(1, 0, m.spinner.active), w)
 	m.search.SetWidth(w)
 	m.queryLimit = h
 	m.scanLimit = h
@@ -696,7 +696,7 @@ func (m *ItemSelectionPane) resetContents() {
 	m.lastPreviewMsg = nil
 
 	m.search.Reset()
-	m.content.Reset()
+	m.table.Reset()
 }
 
 // resetPaging resets any paging related parameters and calcels any lingering
@@ -736,7 +736,7 @@ func (m *ItemSelectionPane) handleResetColumnSortingMessage(msg messages.ColumnS
 	if msg.TableARN != u.IfNotNil(m.selectedTable.TableArn, "") { // expired
 		return nil
 	}
-	m.content.ResetColumnSorting()
+	m.table.ResetColumnSorting()
 	return nil
 }
 
@@ -784,15 +784,15 @@ func (m *ItemSelectionPane) UpdateColumnVisibility(msg messages.ColumnVisibility
 	if msg.TableARN != u.IfNotNil(m.selectedTable.TableArn, "") { // expired
 		return nil
 	}
-	_ = m.content.SetColumnVisibility(msg.AllColumns, msg.Visible)
+	_ = m.table.SetColumnVisibility(msg.AllColumns, msg.Visible)
 	m.updateKeyMaps()
 	return nil
 }
 
 // toggle column visibility dialog & provide current state (in case dialog opens)
 func (m *ItemSelectionPane) toggleColumnVsibilityDialog(msg tea.Msg) tea.Cmd {
-	cols := m.content.GetColumns()
-	st := m.content.GetViewOptionsState()
+	cols := m.table.GetColumns()
+	st := m.table.GetViewOptionsState()
 	vis := st.GetColumnVisibilityOptions().InVisible
 
 	colsS := make([]string, 0, len(cols))
@@ -825,19 +825,19 @@ func (m *ItemSelectionPane) UpdateColumnSorting(msg messages.ColumnSortingUpdate
 	if msg.TableARN != u.IfNotNil(m.selectedTable.TableArn, "") { // expired
 		return nil
 	}
-	_ = m.content.SetColumnSorting(msg.AllColumns, msg.SortingOn, msg.Ascending)
+	_ = m.table.SetColumnSorting(msg.AllColumns, msg.SortingOn, msg.Ascending)
 	m.updateKeyMaps()
 	return nil
 }
 
 // toggle column sorting dialog & provide current state (in case dialog opens)
 func (m *ItemSelectionPane) toggleColumnSortingDialog(msg tea.Msg) tea.Cmd {
-	cols := m.content.GetColumns()
+	cols := m.table.GetColumns()
 	colsS := make([]string, 0, len(cols))
 	for _, c := range cols {
 		colsS = append(colsS, c.Title)
 	}
-	st := m.content.GetViewOptionsState()
+	st := m.table.GetViewOptionsState()
 	sortState := st.GetColumnSortingOptions()
 	sorting := sortState.SortingOn
 	ascending := sortState.Ascending
@@ -913,13 +913,13 @@ func (m *ItemSelectionPane) copy() tea.Cmd {
 		return messages.ToggleColumnCopy{}
 	}
 
-	cols := m.content.GetColumns()
+	cols := m.table.GetColumns()
 	colStr := make([]string, len(cols))
 	for i, c := range cols {
 		colStr[i] = c.Title
 	}
 
-	rowP := m.content.GetSelectedRow()
+	rowP := m.table.GetSelectedRow()
 	if rowP == nil {
 		return nil
 	}
@@ -944,7 +944,7 @@ func (m *ItemSelectionPane) View() string {
 		return m.err.Error()
 	}
 	info := m.renderTableInfo()
-	content := m.content.View()
+	content := m.table.View()
 	content = ternary(content, m.noContentMessage(), !emptyContent(content))
 	rendering := []string{info, content, m.search.View()}
 	if m.spinner.active {
@@ -982,7 +982,7 @@ func (m *ItemSelectionPane) renderTableInfo() string {
 	count := m.tableIndex.indexItemCount
 	indexName := u.IfNotNil(m.tableIndex.activeIndex, "")
 
-	rowcount := int64(len(m.content.GetVisualRows()))
+	rowcount := int64(len(m.table.GetVisualRows()))
 	right := fmt.Sprintf("Count: %d/%d", rowcount, max(count, rowcount))
 	right = ansi.Truncate(right, rightHalf, "…")
 
