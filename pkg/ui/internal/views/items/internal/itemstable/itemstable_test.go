@@ -97,27 +97,10 @@ func genSearchResults(n int, opts ...searchGenOpts) []search.FilteredItem {
 }
 
 func TestCacheInvalidation(t *testing.T) {
-	var (
-	// cacheKey = func(r, c, cw int) string {
-	// 	return fmt.Sprintf("%d-%d-%d", r, c, cw)
-	// }
-	)
-
 	// factory initialising a new system-under-test
 	newSUT := func() *ItemsTable {
 		sut := NewItemsTable()
 		sut.UpdateSize(100, 200) // required for underlying table to properly render items
-
-		// simple delegate that does not consider any kind of styling, only caching
-		// sut.table.SetFieldDelegate(func(row table.Row, col table.Column, colIdx, rowIdx, colW, padL, padR int, selected, inview bool) string {
-		// 	key := cacheKey(rowIdx, colIdx, colW)
-		// 	if f, ok := sut.renderCache[key]; ok { // return from cache if found
-		// 		return f
-		// 	}
-		// 	f := row.Fields[colIdx].Value() // no styling for this test
-		// 	sut.renderCache[key] = f        // store in cache
-		// 	return f                        // return
-		// })
 
 		return sut
 	}

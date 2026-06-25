@@ -15,6 +15,7 @@ import (
 
 	appconfig "github.com/wolfwfr/dynamite/pkg"
 	apitypes "github.com/wolfwfr/dynamite/pkg/ui/internal/adapters/dynamodb/types"
+	"github.com/wolfwfr/dynamite/pkg/ui/internal/components/table"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/items/internal/itemstable/viewoptions"
@@ -172,197 +173,76 @@ func TestItemSelectionPreviews(t *testing.T) {
 	})
 }
 
-// func TestItemSelectionCacheInvalidation(t *testing.T) {
-// 	var (
-// 		tableARN = "table"
-// 	)
-//
-// 	cacheKey := func(r, c, cw int) string {
-// 		return fmt.Sprintf("%d-%d-%d", r, c, cw)
-// 	}
-//
-// 	// factory initialising a new system-under-test
-// 	newSUT := func() *ItemSelectionPane {
-// 		sut := newItemSelectionPane(context.Background(), &appconfig.Config{})
-// 		sut.selectedTable.TableArn = &tableARN
-// 		sut.applySize(100, 200) // required for underlying table to properly render items
-//
-// 		sut.content = itemstable.NewItemsTable()
-//
-// 		// simple delegate that does not consider any kind of styling, only caching
-// 		// sut.content.SetFieldDelegate(func(row table.Row, col table.Column, colIdx, rowIdx, colW, padL, padR int, selected, inview bool) string {
-// 		// 	key := cacheKey(rowIdx, colIdx, colW)
-// 		// 	if f, ok := sut.renderCache[key]; ok { // return from cache if found
-// 		// 		return f
-// 		// 	}
-// 		// 	f := row.Fields[colIdx].Value() // no styling for this test
-// 		// 	sut.renderCache[key] = f        // store in cache
-// 		// 	return f                        // return
-// 		// })
-//
-// 		return sut
-// 	}
-//
-// 	// mustPassInitialCacheCheck fails the test immediately with a 'failed test
-// 	// initialisation' message. It is intended for test setup, not test result
-// 	// verification.
-// 	mustPassInitialCacheCheck := func(t *testing.T, cache map[string]string, table *table.Model, expChecks int) {
-// 		var n int
-// 		cols := table.Columns()
-// 		for ri, r := range table.VisualRows() {
-// 			for ci, c := range r.Fields {
-// 				n++
-// 				cw := cols[ci].Width
-// 				k := cacheKey(ri, ci, cw)
-// 				if v, ok := cache[k]; !ok {
-// 					t.Fatalf("failed test initialisation: render-cache did not contain entryfor key '%s'", k)
-// 				} else if v != c.Value() {
-// 					t.Fatalf("failed test initialisation: render-cache did not contain expected field for key '%s', expected '%s', got '%s'", k, c.Value(), v)
-// 				}
-// 			}
-// 		}
-// 		if n != expChecks {
-// 			t.Fatalf("failed test initialisation: expected '%d' cached field checks but got '%d'", expChecks, n)
-// 		}
-// 	}
-//
-// 	// assertPassCacheCheck asserts cache contents exactly matches the contents
-// 	// of the table.
-// 	assertPassCacheCheck := func(t *testing.T, cache map[string]string, table *table.Model, expChecks int) {
-// 		var n int
-// 		cols := table.Columns()
-// 		for ri, r := range table.VisualRows() {
-// 			for ci, c := range r.Fields {
-// 				n++
-// 				cw := cols[ci].Width
-// 				k := cacheKey(ri, ci, cw)
-// 				v, ok := cache[k]
-// 				require.True(t, ok, "did not find entry for cache-key '%s'", k)
-// 				require.EqualValues(t, c.Value(), v, "did not find expected value for cache-key '%s'", k)
-// 			}
-// 		}
-// 		assert.EqualValues(t, expChecks, n, "expected '%d' cached field checks, got '%d'", expChecks, n)
-// 	}
-//
-// 	t.Run("item-selection-pane should", func(t *testing.T) {
-// 		t.Run("refresh cache when", func(t *testing.T) {
-// 			t.Run("updating search results", func(t *testing.T) {
-// 				skipIf(t, !searchKeyValid, "skipping test due to outdated search key") // skip if testing-keymap needs updating
-// 				sut := newSUT()                                                        // init
-// 				itemsNotMatching := genJSONItems(3)                                    // first half page
-// 				itemsMatching := genJSONItems(3, genOpts{idFmt: "op%d"})               // second half page
-// 				items := mergeItems(itemsNotMatching, itemsMatching)                   // full page
-// 				simpleLoadItems(sut, tableARN, items)                                  // load items
-// 				mustPassInitialCacheCheck(t, sut.renderCache, sut.content, 6*2)        // ensure cache is initialised
-// 				sut.Update(searchKey)                                                  // enable search
-// 				_, ok := searchItemSelection(t, sut, "id=op")                          // matching second 3 only
-// 				require.True(t, ok, "failed to apply search")                          // ensure search is successful
-// 				assertPassCacheCheck(t, sut.renderCache, sut.content, 3*2)             // assert test passed
-// 			})
-// 			t.Run("resetting search", func(t *testing.T) {
-// 				skipIf(t, !searchKeyValid, "skipping test due to outdated search key") // skip if testing-keymap needs updating
-// 				sut := newSUT()                                                        // init
-// 				itemsNotMatching := genJSONItems(3)                                    // first half page
-// 				itemsMatching := genJSONItems(3, genOpts{idFmt: "op%d"})               // second half page
-// 				items := mergeItems(itemsNotMatching, itemsMatching)                   // full page
-// 				simpleLoadItems(sut, tableARN, items)                                  // load items
-// 				mustPassInitialCacheCheck(t, sut.renderCache, sut.content, 6*2)        // ensure cache is initialised
-// 				sut.Update(searchKey)                                                  // enable search
-// 				_, ok := searchItemSelection(t, sut, "id=o")                           // matching second 3 only
-// 				require.True(t, ok, "failed to apply search")                          // ensure search is successful
-// 				sut.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEsc}))                 // escape once to blur search
-// 				sut.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEsc}))                 // escape twice to reset search
-// 				assertPassCacheCheck(t, sut.renderCache, sut.content, 6*2)             // assert test passed
-// 			})
-// 			t.Run("obtaining empty search input", func(t *testing.T) {
-// 				skipIf(t, !searchKeyValid, "skipping test due to outdated search key") // skip if testing-keymap needs updating
-// 				sut := newSUT()                                                        // init
-// 				itemsNotMatching := genJSONItems(3)                                    // first half page
-// 				itemsMatching := genJSONItems(3, genOpts{idFmt: "op%d"})               // second half page
-// 				items := mergeItems(itemsNotMatching, itemsMatching)                   // full page
-// 				simpleLoadItems(sut, tableARN, items)                                  // load items
-// 				mustPassInitialCacheCheck(t, sut.renderCache, sut.content, 6*2)        // ensure cache is initialised
-// 				sut.Update(searchKey)                                                  // enable search
-// 				_, ok := searchItemSelection(t, sut, "id=o")                           // matching second 3 only
-// 				require.True(t, ok, "failed to apply search")                          // ensure search is successful
-// 				sut.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyBackspace}))           // backspace once to trigger empty-input
-// 				assertPassCacheCheck(t, sut.renderCache, sut.content, 6*2)             // assert test passed
-// 			})
-// 			t.Run("updating sort parameters", func(t *testing.T) {
-// 				sut := newSUT()
-// 				items := genJSONItems(3)                                         // page
-// 				simpleLoadItems(sut, tableARN, items)                            // load items
-// 				mustPassInitialCacheCheck(t, sut.renderCache, sut.content, 3*2)  // ensure cache is initialised
-// 				simpleSortItems(sut, tableARN, items.TableKeys[0][0].Key, false) // sort items
-// 				assertPassCacheCheck(t, sut.renderCache, sut.content, 3*2)       // assert test passed
-// 				simpleSortItems(sut, tableARN, "id", true)                       // sort items the other way for good measure
-// 				assertPassCacheCheck(t, sut.renderCache, sut.content, 3*2)       // assert test passed
-// 			})
-// 			t.Run("resetting sort", func(t *testing.T) {
-// 				sut := newSUT()
-// 				items := genJSONItems(3)                                         // page
-// 				simpleLoadItems(sut, tableARN, items)                            // load items
-// 				mustPassInitialCacheCheck(t, sut.renderCache, sut.content, 3*2)  // ensure cache is initialised
-// 				simpleSortItems(sut, tableARN, items.TableKeys[0][0].Key, false) // sort items
-// 				sut.Update(messages.ColumnSortingReset{tableARN})                // reset sorting
-// 				assertPassCacheCheck(t, sut.renderCache, sut.content, 3*2)       // assert test passed
-// 			})
-// 			t.Run("processing a new page (could change the sorting of existing records)", func(t *testing.T) {
-// 				sut := newSUT()
-// 				items1 := genJSONItems(6, genOpts{begin: 3})                                   // page 1
-// 				items2 := genJSONItems(3, genOpts{begin: 0})                                   // page 2
-// 				simpleLoadItems(sut, tableARN, items1)                                         // load items
-// 				mustPassInitialCacheCheck(t, sut.renderCache, sut.content, 3*2)                // ensure cache is initialised
-// 				simpleSortItems(sut, tableARN, items1.TableKeys[0][0].Key, true)               // sort items
-// 				top := sut.content.VisualRows()[0].Fields[0].Value()                           // obtain first item for later verification
-// 				simpleLoadItems(sut, tableARN, items2)                                         // load second page, that puts new items at the top
-// 				newtop := sut.content.VisualRows()[0].Fields[0].Value()                        // obtain first item for later verification
-// 				fatalIf(t, top == newtop, "test initialisation failed: expected new top item") // ensure sorting still in effect
-// 				assertPassCacheCheck(t, sut.renderCache, sut.content, 6*2)                     // assert test passed
-// 			})
-// 		})
-// 		t.Run("clear cache when", func(t *testing.T) {
-// 			t.Run("switching from scan to query", func(t *testing.T) {
-// 				skipIf(t, !queryKeyValid, "skipping test because query-keymap is outdated") // skip when testing-keymap needs updating
-// 				sut := newSUT()                                                             // defaults to scan
-// 				items := genJSONItems(3)                                                    // page
-// 				simpleLoadItems(sut, tableARN, items)                                       // load items
-// 				mustPassInitialCacheCheck(t, sut.renderCache, sut.content, 3*2)             // ensure cache is initialised
-// 				sut.Update(queryKey)                                                        // switch to query mode
-// 				assert.Empty(t, sut.renderCache)                                            // assert cache has been cleared
-// 			})
-// 			t.Run("switching from query to scan", func(t *testing.T) {
-// 				skipIf(t, !queryKeyValid, "skipping test because query-keymap is outdated") // skip when testing-keymap needs updating
-// 				skipIf(t, !scanKeyValid, "skipping test because scan-keymap is outdated")   // skip when testing-keymap needs updating
-// 				sut := newSUT()                                                             // defaults to scan
-// 				sut.Update(queryKey)                                                        // first enable query mode before switching back
-// 				items := genJSONItems(3)                                                    // page
-// 				simpleLoadItems(sut, tableARN, items)                                       // load items
-// 				mustPassInitialCacheCheck(t, sut.renderCache, sut.content, 3*2)             // ensure cache is initialised
-// 				sut.Update(scanKey)                                                         // switch to scan mode
-// 				assert.Empty(t, sut.renderCache)                                            // assert cache has been cleared
-// 			})
-// 			t.Run("changing scan parameters", func(t *testing.T) {
-// 				sut := newSUT()                                                 // defaults to scan
-// 				items := genJSONItems(3)                                        // page
-// 				simpleLoadItems(sut, tableARN, items)                           // load items
-// 				mustPassInitialCacheCheck(t, sut.renderCache, sut.content, 3*2) // ensure cache is initialised
-// 				simpleChangeScanIndex(sut, tableARN, "new")                     // change index
-// 				assert.Empty(t, sut.renderCache)                                // assert cache has been cleared
-// 			})
-// 			t.Run("changing query parameters", func(t *testing.T) {
-// 				skipIf(t, !queryKeyValid, "skipping test because query-keymap is outdated") // skip when testing-keymap needs updating
-// 				sut := newSUT()                                                             // defaults to scan
-// 				sut.Update(queryKey)                                                        // first enable query mode to accept query settings
-// 				items := genJSONItems(3)                                                    // page
-// 				simpleLoadItems(sut, tableARN, items)                                       // load items
-// 				mustPassInitialCacheCheck(t, sut.renderCache, sut.content, 3*2)             // ensure cache is initialised
-// 				simpleChangeQParams(sut, tableARN, "new")                                   // change query index
-// 				assert.Empty(t, sut.renderCache)                                            // assert cache has been cleared
-// 			})
-// 		})
-// 	})
-// }
+func TestItemSelectionResets(t *testing.T) {
+	var (
+		tableARN = "table"
+		viewAll  = viewoptions.Check{
+			SearchAllowed:           true,
+			ColumnSortingAllowed:    true,
+			ColumnVisibilityAllowed: true,
+		}
+	)
+
+	// factory initialising a new system-under-test
+	newSUT := func(t *testing.T) (*ItemSelectionPane, *mocks.MockitemsTable) {
+		sut := newItemSelectionPane(context.Background(), &appconfig.Config{})
+		sut.selectedTable.TableArn = &tableARN
+		sut.applySize(100, 200) // required for underlying table to properly render items
+
+		ctrl := gm.NewController(t)
+		m := mocks.NewMockitemsTable(ctrl)
+		sut.content = m
+
+		return sut, m
+	}
+
+	t.Run("item-selection-pane should", func(t *testing.T) {
+		t.Run("reset column-sorting when receiving column-sorting reset", func(t *testing.T) {
+			sut, tbl := newSUT(t) // initialise
+			tbl.EXPECT().ResetColumnSorting().Times(1)
+			tbl.EXPECT().GetAllowedOptions().Return(viewAll).Times(1)   // expect call to get-view-options for keymap update
+			sut.Update(messages.ColumnSortingReset{TableARN: tableARN}) // send message
+		})
+		t.Run("execute table reset when", func(t *testing.T) {
+			t.Run("switching from scan to query", func(t *testing.T) {
+				skipIf(t, !queryKeyValid, "skipping test because query-keymap is outdated") // skip when testing-keymap needs updating
+				sut, tbl := newSUT(t)                                                       // defaults to scan
+				tbl.EXPECT().Reset().Times(1)                                               // expect call to full table reset
+				tbl.EXPECT().GetAllowedOptions().Return(viewAll).Times(1)                   // expect call to view-options for keymap update
+				sut.Update(queryKey)                                                        // switch to query mode
+			})
+			t.Run("switching from query to scan", func(t *testing.T) {
+				skipIf(t, !queryKeyValid, "skipping test because query-keymap is outdated") // skip when testing-keymap needs updating
+				skipIf(t, !scanKeyValid, "skipping test because scan-keymap is outdated")   // skip when testing-keymap needs updating
+				sut, tbl := newSUT(t)                                                       // defaults to scan
+				tbl.EXPECT().Reset().Times(2)                                               // expect call to full table reset
+				tbl.EXPECT().GetAllowedOptions().Return(viewAll).Times(2)                   // expect call to view-options for keymap update
+				tbl.EXPECT().GetVisualRows().Return([]table.Row{}).AnyTimes()               /// expect calls to get-visual-rows from update-size
+				tbl.EXPECT().UpdateSize(gm.Any(), gm.Any()).AnyTimes()                      // expect calls to update-size
+				sut.Update(queryKey)                                                        // first enable query mode before switching back
+				sut.Update(scanKey)                                                         // switch to scan mode
+			})
+			t.Run("changing scan parameters", func(t *testing.T) {
+				sut, tbl := newSUT(t)                                         // defaults to scan
+				tbl.EXPECT().Reset().Times(2)                                 // expect 2 calls to full table reset (param change sandwiched)
+				tbl.EXPECT().GetAllowedOptions().Return(viewAll).Times(1)     // expect call to view-options for keymap update
+				tbl.EXPECT().GetVisualRows().Return([]table.Row{}).AnyTimes() /// expect calls to get-visual-rows from update-size
+				tbl.EXPECT().UpdateSize(gm.Any(), gm.Any()).AnyTimes()        // expect calls to update-size
+				simpleChangeScanIndex(sut, tableARN, "new")                   // change index
+			})
+			t.Run("changing query parameters", func(t *testing.T) {
+				skipIf(t, !queryKeyValid, "skipping test because query-keymap is outdated") // skip when testing-keymap needs updating
+				sut, tbl := newSUT(t)                                                       // defaults to scan
+				tbl.EXPECT().Reset().Times(4)                                               // expect 2 calls to full table reset (param change sandwiched)
+				tbl.EXPECT().GetAllowedOptions().Return(viewAll).Times(2)                   // expect call to view-options for keymap update
+				tbl.EXPECT().GetVisualRows().Return([]table.Row{}).AnyTimes()               /// expect calls to get-visual-rows from update-size
+				tbl.EXPECT().UpdateSize(gm.Any(), gm.Any()).AnyTimes()                      // expect calls to update-size
+				sut.Update(queryKey)                                                        // first enable query mode to accept query settings
+				simpleChangeQParams(sut, tableARN, "new")                                   // change query index
+			})
+		})
+	})
+}
 
 func TestItemSelectionURLResolution(t *testing.T) {
 	var (

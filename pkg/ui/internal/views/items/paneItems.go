@@ -100,7 +100,7 @@ type ItemSelectionPane struct {
 	AddKeyMap keymaps.AdditionalKeys
 
 	// the underlying table
-	content *itemstable.ItemsTable
+	content itemsTable
 
 	// sessions (per table ARN)
 	sessions map[string]SessionData
@@ -188,33 +188,11 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 	{ // search box
 		p.search = search.NewSearchBox(
 			search.SearchCallbacks{
-				ToSearch: func(col string) []string {
-					cols := p.content.GetColumns()
-					idx := findColumnByTitle(cols, col)
-					return extractColumnFromRows(p.content.GetRows(), idx)
-				},
-				EmptyInput: func() tea.Cmd {
-					p.content.ResetSearch()
-					p.content.SetSearchEnable() // keep enabled
-					p.updateKeyMaps()
-					return p.MaybePreviewItem(true)
-				},
-				Results: func(col string, results []search.FilteredItem) tea.Cmd {
-					p.content.SetSearchResults(col, results)
-					return nil
-				},
-				Reset: func(searchHeight int) tea.Cmd {
-					p.content.ResetSearch()
-					p.updateSize()
-					p.updateKeyMaps()
-					return p.MaybePreviewItem(true)
-				},
-				SearchBoxOpens: func(searchHeight int) tea.Cmd {
-					p.content.SetSearchEnable()
-					p.updateKeyMaps()
-					p.updateSize()
-					return nil
-				},
+				ToSearch:       p.SearchInputCallback,
+				EmptyInput:     p.SearchEmptyInputCallback,
+				Results:        p.SearchResultsCallback,
+				Reset:          p.SearchResetCallback,
+				SearchBoxOpens: p.SearchBoxOpensCallback,
 			},
 		)
 		p.search.SetDivider("=")
