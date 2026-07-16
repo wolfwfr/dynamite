@@ -22,6 +22,7 @@ type queryKeyMap struct {
 	tab   key.Binding
 	shtab key.Binding
 	enter key.Binding
+	exec  key.Binding
 	close key.Binding
 }
 
@@ -206,6 +207,10 @@ func NewQueryDialog(close key.Binding) *Queryialog {
 				key.WithKeys("space", "enter"),
 				key.WithHelp("space/enter", "select"),
 			),
+			exec: key.NewBinding(
+				key.WithKeys("alt+enter"),
+				key.WithHelp("alt+enter", "query!"),
+			),
 			tab: key.NewBinding(
 				key.WithKeys("tab"),
 				key.WithHelp("tab", "next"),
@@ -287,6 +292,7 @@ func (m *Queryialog) ShortHelp() []key.Binding {
 		m.keyMap.tab,
 		m.keyMap.shtab,
 		m.keyMap.enter,
+		m.keyMap.exec,
 	}
 	listHelp := func(l list.Model) []key.Binding {
 		return append(bindings, []key.Binding{
@@ -419,6 +425,8 @@ func (m *Queryialog) Update(msg tea.Msg) tea.Cmd {
 			return m.MoveFocus(1)
 		case key.Matches(msg, m.keyMap.shtab):
 			return m.MoveFocus(-1)
+		case key.Matches(msg, m.keyMap.exec):
+			return m.applyParameters()
 		default:
 			return m.handleNavigation(msg)
 		}
