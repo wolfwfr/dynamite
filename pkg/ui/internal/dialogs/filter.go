@@ -1,0 +1,800 @@
+package dialogs
+
+import (
+	"math"
+	"slices"
+
+	"charm.land/bubbles/v2/help"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/list"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
+
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+
+	headed "github.com/wolfwfr/dynamite/pkg/ui/internal/components/headed_list"
+	regular "github.com/wolfwfr/dynamite/pkg/ui/internal/components/regular_list"
+	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
+	commonstyles "github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
+	u "github.com/wolfwfr/dynamite/pkg/util"
+)
+
+type filterKeyMap struct {
+	tab   key.Binding
+	shtab key.Binding
+	enter key.Binding
+	exec  key.Binding
+	close key.Binding
+	reset key.Binding
+}
+
+type filterDialogFocus int
+
+const (
+	filterAttrNameInput filterDialogFocus = iota // TODO: dropdown or searchable?
+	filterOperatorField
+	filterAttrValueInput1
+	filterAttrValueInput2
+	removeButton
+	addButton
+	applyButton
+)
+
+type filterContent struct {
+	operatorSelection list.Model
+	attrNameInput     textinput.Model
+	attrValueInput1   textinput.Model
+	attrValueInput2   textinput.Model
+}
+
+type filterStateResolved struct {
+	// resolved from AttrDefinitions
+	AttrType string
+}
+
+type FilterStateInit struct {
+	AttrName       string
+	AttrValue1     *string
+	AttrValue2     *string
+	FilterOperator messages.FilterOperator
+}
+
+// the FilterDialog dialog enables the user to specify a filter for the scan or
+// query
+type FilterDialog struct {
+	focus      filterDialogFocus
+	contentIdx int
+
+	keyMap filterKeyMap
+
+	defaultDialogHeight int
+	defaultDialogWidth  int
+
+	window struct {
+		width  int
+		height int
+	}
+
+	dialog struct {
+		width  int
+		height int
+	}
+
+	state struct {
+		// init state is the state at initialisation and after the user commits
+		// (or applies) their changes.
+		init []FilterStateInit
+		// table state is set excusively on initialisation
+		table struct {
+			TableARN        string
+			AttrDefinitions []types.AttributeDefinition
+		}
+		// resolved state is state that is resolved from the user input
+		resolved []filterStateResolved
+	}
+
+	styles filterListStyles
+
+	help help.Model
+
+	content []filterContent
+}
+
+type filterListStyles struct {
+	headed.Styles
+	dialog         lipgloss.Style
+	title          lipgloss.Style
+	content        lipgloss.Style
+	contentLine    lipgloss.Style
+	help           lipgloss.Style
+	helpLine       lipgloss.Style
+	operatordialog lipgloss.Style
+
+	// box at width of content
+	narrowBox        lipgloss.Style
+	narrowBoxFocused lipgloss.Style
+
+	// box at full width of dialog
+	wideBox        lipgloss.Style
+	wideBoxFocused lipgloss.Style
+
+	// titles
+	AttrNameInputTitle  lipgloss.Style
+	AttrValueInputTitle lipgloss.Style
+	OperatorTitle       lipgloss.Style
+
+	// remove filter button
+	removeButton        lipgloss.Style
+	removeButtonFocused lipgloss.Style
+
+	// add filter button
+	addButton        lipgloss.Style
+	addButtonFocused lipgloss.Style
+
+	// apply filter button
+	applyButton        lipgloss.Style
+	applyButtonFocused lipgloss.Style
+}
+
+func newFilterStyles(darkBG bool) filterListStyles {
+	var s filterListStyles
+
+	s.Item = lipgloss.NewStyle().PaddingLeft(4)
+	s.SelectedItem = lipgloss.NewStyle().PaddingLeft(2).Foreground(commonstyles.DialogFocusColour)
+	s.Header = lipgloss.NewStyle().Foreground(commonstyles.SubtleColour)
+
+	s.dialog = commonstyles.DialogStyle
+	s.operatordialog = commonstyles.DialogStyle.Border(lipgloss.RoundedBorder()).Padding(3, 3, 0, 0)
+	s.title = lipgloss.NewStyle().Padding(1, 0, 2, 0)
+	s.content = lipgloss.NewStyle().PaddingTop(1).PaddingBottom(2)
+	s.contentLine = lipgloss.NewStyle().PaddingTop(1)
+	s.help = list.DefaultStyles(darkBG).HelpStyle.Padding(1, 2, 0, 2)
+	s.helpLine = lipgloss.NewStyle().Padding(7, 0, 1, 0)
+
+	// narrow boxes
+	s.narrowBox = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(commonstyles.DialogUnfocusColour).Padding(0, 1, 0, 1)
+	s.narrowBoxFocused = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(commonstyles.DialogFocusColour).Padding(0, 1, 0, 1)
+
+	// wide boxes
+	s.wideBox = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(commonstyles.DialogUnfocusColour)
+	s.wideBoxFocused = s.wideBox.BorderForeground(commonstyles.DialogFocusColour)
+
+	// inputs fields
+	s.AttrNameInputTitle = lipgloss.NewStyle().Foreground(commonstyles.SubtleColour).Padding(0, 0, 0, 1)
+	s.AttrValueInputTitle = lipgloss.NewStyle().Foreground(commonstyles.SubtleColour).Padding(0, 0, 0, 1)
+	s.OperatorTitle = lipgloss.NewStyle().Foreground(commonstyles.SubtleColour).Padding(0, 0, 0, 1)
+
+	// remove button
+	s.removeButton = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(commonstyles.DialogUnfocusColour).Padding(0, 2, 0, 2).Margin(0, 0, 1, 0)
+	s.removeButtonFocused = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(commonstyles.DialogFocusColour).Padding(0, 2, 0, 2).Margin(0, 0, 1, 0)
+
+	// add button
+	s.addButton = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(commonstyles.DialogUnfocusColour).Padding(0, 2, 0, 2).Margin(1, 0, 1, 0)
+	s.addButtonFocused = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(commonstyles.DialogFocusColour).Padding(0, 2, 0, 2).Margin(1, 0, 1, 0)
+
+	// apply button
+	s.applyButton = lipgloss.NewStyle().Border(lipgloss.DoubleBorder()).BorderForeground(commonstyles.DialogUnfocusColour).Padding(0, 2, 0, 2).Margin(1, 0, 1, 0)
+	s.applyButtonFocused = lipgloss.NewStyle().Border(lipgloss.DoubleBorder()).BorderForeground(commonstyles.DialogFocusColour).Padding(0, 2, 0, 2).Margin(1, 0, 1, 0)
+
+	return s
+}
+
+func NewFilterDialog(close key.Binding) *FilterDialog {
+	d := &FilterDialog{
+		keyMap: filterKeyMap{
+			close: close,
+			enter: key.NewBinding(
+				key.WithKeys("space", "enter"),
+				key.WithHelp("space/enter", "select"),
+			),
+			exec: key.NewBinding(
+				key.WithKeys("alt+enter"),
+				key.WithHelp("alt+enter", "apply!"),
+			),
+			tab: key.NewBinding(
+				key.WithKeys("tab"),
+				key.WithHelp("tab", "next"),
+			),
+			shtab: key.NewBinding(
+				key.WithKeys("shift+tab"),
+				key.WithHelp("shift+tab", "previous"),
+			),
+			reset: key.NewBinding(
+				key.WithKeys("ctrl+r"),
+				key.WithHelp("ctrl+r", "reset"),
+			),
+		},
+
+		defaultDialogHeight: 30,
+		defaultDialogWidth:  156,
+
+		help: help.New(),
+	}
+
+	d.focus = -1
+
+	d.styles = newFilterStyles(true)
+
+	d.dialog.width = d.defaultDialogWidth
+	d.dialog.height = d.defaultDialogHeight
+
+	d.window.width = 156
+	d.window.height = 100
+
+	d.content = make([]filterContent, 1)
+
+	d.InitContent()
+
+	d.updateSize()
+	d.updateStyles(true) // default to dark styles.
+
+	return d
+}
+
+func (m *FilterDialog) ShortHelp() []key.Binding {
+	bindings := []key.Binding{
+		m.keyMap.tab,
+		m.keyMap.shtab,
+		m.keyMap.enter,
+		m.keyMap.exec,
+		m.keyMap.reset,
+	}
+	listHelp := func(l list.Model) []key.Binding {
+		return append(bindings, []key.Binding{
+			l.KeyMap.CursorUp,
+			l.KeyMap.CursorDown,
+			l.KeyMap.NextPage,
+			l.KeyMap.PrevPage,
+			l.KeyMap.GoToStart,
+			l.KeyMap.GoToEnd,
+			m.keyMap.close,
+		}...)
+	}
+	inputHelp := func(i textinput.Model) []key.Binding {
+		return append(bindings, []key.Binding{
+			m.keyMap.close,
+		}...)
+	}
+
+	switch m.focus {
+	case filterAttrNameInput:
+		return inputHelp(m.content[m.contentIdx].attrNameInput)
+	case filterOperatorField:
+		return listHelp(m.content[m.contentIdx].operatorSelection)
+	case filterAttrValueInput1:
+		return inputHelp(m.content[m.contentIdx].attrValueInput1)
+	case filterAttrValueInput2:
+		return inputHelp(m.content[m.contentIdx].attrValueInput2)
+	case applyButton:
+		return bindings
+	}
+	return bindings
+}
+
+func (m *FilterDialog) newFilterItemDelegate(s *filterListStyles) regular.ItemDelegate {
+	return regular.ItemDelegate{
+		Styles: &regular.Styles{
+			Item:         m.styles.Styles.Item,         // use same styling
+			SelectedItem: m.styles.Styles.SelectedItem, // use same styling
+		},
+	}
+}
+
+func (m *FilterDialog) updateStyles(isDark bool) {
+	s := newFilterStyles(isDark)
+
+	subwidth := m.dialog.width/2 - 20
+
+	s.wideBox = s.wideBox.Width(subwidth)
+	s.wideBoxFocused = s.wideBoxFocused.Width(subwidth)
+
+	s.AttrNameInputTitle = s.AttrNameInputTitle.Width(subwidth)
+	s.AttrValueInputTitle = s.AttrValueInputTitle.Width(subwidth)
+	s.OperatorTitle = s.OperatorTitle.Width(subwidth)
+
+	// dialog-style is actively resized; retain
+	s.dialog = m.styles.dialog
+
+	m.styles = s
+
+	for i := range m.content {
+		m.content[i].operatorSelection.SetDelegate(m.newFilterItemDelegate(&s))
+	}
+}
+
+func (m *FilterDialog) Init() tea.Cmd {
+	return nil
+}
+
+func (m *FilterDialog) Update(msg tea.Msg) tea.Cmd {
+	switch msg := msg.(type) {
+	case tea.KeyPressMsg:
+		switch {
+		case key.Matches(msg, m.keyMap.exec):
+			return m.applyParameters()
+		case key.Matches(msg, m.keyMap.close):
+			return m.toggleDialog()
+		case key.Matches(msg, m.keyMap.tab):
+			return m.MoveFocus(1)
+		case key.Matches(msg, m.keyMap.shtab):
+			return m.MoveFocus(-1)
+		case key.Matches(msg, m.keyMap.reset):
+			m.ResetState()
+			return nil
+		default:
+			return m.handleNavigation(msg)
+		}
+	case tea.WindowSizeMsg:
+		m.applySize(msg.Height, msg.Width)
+		return nil
+	case messages.InitFilterParameters:
+		return m.SetState(msg)
+	default:
+		return m.handleNavigation(msg)
+	}
+}
+
+func (m *FilterDialog) handleNavigation(msg tea.Msg) tea.Cmd {
+	var cmd tea.Cmd
+	switch m.focus {
+	case filterAttrNameInput:
+		m.content[m.contentIdx].attrNameInput, cmd = m.content[m.contentIdx].attrNameInput.Update(msg)
+	case filterOperatorField:
+		m.content[m.contentIdx].operatorSelection, cmd = m.content[m.contentIdx].operatorSelection.Update(msg)
+	case filterAttrValueInput1:
+		m.content[m.contentIdx].attrValueInput1, cmd = m.content[m.contentIdx].attrValueInput1.Update(msg)
+	case filterAttrValueInput2:
+		m.content[m.contentIdx].attrValueInput2, cmd = m.content[m.contentIdx].attrValueInput2.Update(msg)
+	case removeButton:
+		if msg, ok := msg.(tea.KeyPressMsg); ok && key.Matches(msg, m.keyMap.enter) {
+			cmd = m.RemoveFilterLine(m.contentIdx)
+		}
+	case addButton:
+		if msg, ok := msg.(tea.KeyPressMsg); ok && key.Matches(msg, m.keyMap.enter) {
+			cmd = m.AddFilterLine()
+		}
+	case applyButton:
+		if msg, ok := msg.(tea.KeyPressMsg); ok && key.Matches(msg, m.keyMap.enter) {
+			cmd = m.applyParameters()
+		}
+	}
+
+	return cmd
+}
+
+func (m *FilterDialog) AddFilterLine() tea.Cmd {
+	lines := make([]filterContent, len(m.content)+1)
+	copy(lines, m.content)
+	m.content = lines
+	return m.initContentLine(len(m.content) - 1)
+}
+
+func (m *FilterDialog) RemoveFilterLine(i int) tea.Cmd {
+	m.content = slices.Delete(m.content, i, i+1)
+	m.focus = 0
+	m.contentIdx = max(0, m.contentIdx-1)
+	if len(m.content) == 0 {
+		m.ResetState()
+	}
+	return nil
+}
+
+func (m *FilterDialog) MoveFocus(i int) tea.Cmd {
+	switch m.focus {
+	case filterAttrNameInput:
+		m.content[m.contentIdx].attrNameInput.Blur()
+	case filterOperatorField:
+		// nothing to do
+	case filterAttrValueInput1:
+		m.content[m.contentIdx].attrValueInput1.Blur()
+	case filterAttrValueInput2:
+		m.content[m.contentIdx].attrValueInput2.Blur()
+	case removeButton, addButton, applyButton:
+		// nothing to do
+	}
+
+	// here we will mutate m.focus & m.focusIdx
+	// TODO: refactor & simplify
+	for j := i; j != 0; {
+		// move from apply button
+		if m.focus == applyButton {
+			m.contentIdx = 0
+			m.focus = 0
+			j -= 1
+			if j < 0 {
+				m.focus = addButton
+				m.contentIdx = len(m.content) - 1
+				j += 2 // +1 for having moved focus by 1 & +1 to compensate for earlier -1
+			}
+			continue
+		}
+
+		// move from add button
+		if m.focus == addButton {
+			m.contentIdx = 0
+			m.focus = applyButton
+			j -= 1
+			if j < 0 {
+				m.focus = removeButton
+				m.contentIdx = len(m.content) - 1
+				j += 2 // +1 for having moved focus by 1 & +1 to compensate for earlier -1
+			}
+			continue
+		}
+
+		// move away from current line when receding from first element
+		if m.focus == filterAttrNameInput && j < 0 {
+			atFirstLine := m.contentIdx == 0
+			m.contentIdx -= 1
+			m.focus = u.Ternary(applyButton, removeButton, atFirstLine)
+			j += 1
+			continue
+		}
+
+		// move away from current line when progressing beyond last element
+		if m.focus == removeButton && j > 0 {
+			atLastLine := m.contentIdx == len(m.content)-1
+			m.contentIdx += 1
+			m.focus = u.Ternary(addButton, 0, atLastLine)
+			j -= 1
+			continue
+		}
+
+		origin := m.focus
+		m.focus = u.Clamp(m.focus+filterDialogFocus(j), 0, removeButton)
+		lineDiff := m.focus - origin
+		av2 := m.hasAttrValue2Field()
+		// correct diff when having crossed over invisible element
+		if !av2 && float64(filterAttrValueInput2) < math.Abs(float64(m.focus-origin)) {
+			lineDiff -= 1
+		}
+		// correct when focused on invisible element
+		if !av2 && m.focus == filterAttrValueInput2 {
+			m.focus += filterDialogFocus(u.Ternary(+1, -1, j > 0))
+		}
+		j -= int(lineDiff)
+	}
+
+	// default to false
+	m.keyMap.enter.SetEnabled(false)
+
+	switch m.focus {
+	case filterAttrNameInput:
+		m.content[m.contentIdx].attrNameInput.Focus()
+	case filterOperatorField:
+		// nothing to do
+	case filterAttrValueInput1:
+		m.content[m.contentIdx].attrValueInput1.Focus()
+	case filterAttrValueInput2:
+		m.content[m.contentIdx].attrValueInput2.Focus()
+	case removeButton, addButton, applyButton:
+		m.keyMap.enter.SetEnabled(true)
+	}
+	m.updateSize()
+	m.updateStyles(true)
+	return nil
+}
+
+func (m *FilterDialog) hasAttrValue2Field() bool {
+	if m.contentIdx < 0 || m.contentIdx >= len(m.content) {
+		return false
+	}
+	if m.content[m.contentIdx].operatorSelection.SelectedItem().(regular.ListItem).Value == string(messages.Between_F) {
+		return true
+	}
+	return false
+}
+
+func (m *FilterDialog) ResetState() {
+	m.state.init = make([]FilterStateInit, 1)
+	m.state.init[0].FilterOperator = messages.Equals_F
+
+	m.state.table.TableARN = ""
+	m.state.table.AttrDefinitions = nil
+
+	m.content = make([]filterContent, 1)
+	m.InitContent()
+	m.focus = 0
+	m.contentIdx = 0
+}
+
+func (m *FilterDialog) SetState(msg messages.InitFilterParameters) tea.Cmd {
+	m.ResetState()
+
+	// init table state
+	m.state.table.TableARN = msg.TableARN
+	m.state.table.AttrDefinitions = msg.TableAttrDefinitions
+
+	// init the initial state
+	m.state.init = make([]FilterStateInit, len(msg.State))
+	for i := range msg.State {
+		m.state.init[i].AttrName = msg.State[i].AttrName
+		m.state.init[i].AttrValue1 = msg.State[i].AttrValue1
+		m.state.init[i].AttrValue2 = msg.State[i].AttrValue2
+		m.state.init[i].FilterOperator = msg.State[i].FilterOperator
+	}
+
+	// update list item delegates
+	m.updateSize()
+	m.updateStyles(true)
+
+	// initialise the contents
+	cmd := m.InitContent()
+
+	return cmd
+}
+
+// InitContent relies on resolved & table state to initialise the contents
+func (m *FilterDialog) InitContent() tea.Cmd {
+	var cmds []tea.Cmd
+
+	m.content = make([]filterContent, max(1, len(m.state.init)))
+	for i := range m.content {
+		cmds = append(cmds, m.initContentLine(i))
+	}
+
+	{ // set filter operators
+		operators := m.operators()
+		operatorIdx := map[string]int{}
+		for i, o := range operators {
+			operatorIdx[o.(regular.ListItem).Value] = i
+		}
+		for i := range m.content {
+			if len(m.state.init) > i {
+				m.content[i].operatorSelection.Select(operatorIdx[string(m.state.init[i].FilterOperator)])
+			}
+		}
+	}
+
+	{ // set input fields
+		for i := range m.content {
+			if len(m.state.init) > i {
+				m.content[i].attrNameInput.SetValue(m.state.init[i].AttrName)
+				m.content[i].attrValueInput1.SetValue(u.IfNotNil(m.state.init[i].AttrValue1, ""))
+				m.content[i].attrValueInput2.SetValue(u.IfNotNil(m.state.init[i].AttrValue2, ""))
+			}
+		}
+	}
+
+	m.updateSize()
+	return tea.Batch(cmds...)
+}
+
+func (m *FilterDialog) operators() []list.Item {
+	return []list.Item{
+		regular.ListItem{Value: string(messages.Equals_F)},
+		regular.ListItem{Value: string(messages.NotEquals_F)},
+		regular.ListItem{Value: string(messages.Greater_F)},
+		regular.ListItem{Value: string(messages.GreaterEqual_F)},
+		regular.ListItem{Value: string(messages.Less_F)},
+		regular.ListItem{Value: string(messages.LessEqual_F)},
+		regular.ListItem{Value: string(messages.Between_F)},
+		regular.ListItem{Value: string(messages.Exists_F)},
+		regular.ListItem{Value: string(messages.NotExists_F)},
+		regular.ListItem{Value: string(messages.Contains_F)},
+		regular.ListItem{Value: string(messages.NotContains_F)},
+		regular.ListItem{Value: string(messages.BeginsWith_F)},
+	}
+}
+
+func (m *FilterDialog) initContentLine(i int) (cmd tea.Cmd) {
+	{ // operator selection
+		l := list.New([]list.Item{}, regular.ItemDelegate{}, m.dialog.width, m.dialog.height)
+		l.Title = "Range Key Operator"
+		l.SetShowStatusBar(false)
+		l.SetFilteringEnabled(false)
+		l.SetShowHelp(false)
+		l.SetShowTitle(false)
+
+		m.content[i].operatorSelection = l
+		cmd = m.content[i].operatorSelection.SetItems(m.operators())
+	}
+
+	{ // attribute name input
+		attrNameInput := textinput.New()
+		m.content[i].attrNameInput = attrNameInput
+	}
+	{ // attribute value input 1
+		attrValueInput1 := textinput.New()
+		m.content[i].attrValueInput1 = attrValueInput1
+	}
+	{ // attribute value input 2
+		attrValueInput2 := textinput.New()
+		m.content[i].attrValueInput2 = attrValueInput2
+	}
+	return
+}
+
+func (m *FilterDialog) applyParameters() tea.Cmd {
+	if len(m.content) != len(m.state.init) {
+		return tea.Batch(m.filterParametersUpdate(), m.toggleDialog())
+	}
+	for i := range m.content {
+		if true &&
+			m.content[i].attrNameInput.Value() != m.state.init[i].AttrName ||
+			m.content[i].operatorSelection.SelectedItem().(regular.ListItem).Value != string(m.state.init[i].FilterOperator) ||
+			m.content[i].attrValueInput1.Value() != u.IfNotNil(m.state.init[i].AttrValue1, "") ||
+			m.content[i].attrValueInput2.Value() != u.IfNotNil(m.state.init[i].AttrValue2, "") {
+			return tea.Batch(m.filterParametersUpdate(), m.toggleDialog())
+		}
+	}
+
+	return m.toggleDialog() // no changes
+}
+
+func (m *FilterDialog) filterParametersUpdate() tea.Cmd {
+	state := make([]messages.FilterState, len(m.content))
+	for i := range m.content {
+		state[i].AttrName = m.content[i].attrNameInput.Value()
+		attrValue1 := m.content[i].attrValueInput1.Value()
+		attrValue2 := m.content[i].attrValueInput2.Value()
+		state[i].AttrValue1 = u.Ternary(&attrValue1, nil, attrValue1 != "")
+		state[i].AttrValue2 = u.Ternary(&attrValue2, nil, attrValue2 != "")
+		state[i].FilterOperator = messages.FilterOperator(m.content[i].operatorSelection.SelectedItem().(regular.ListItem).Value)
+	}
+
+	return func() tea.Msg {
+		return messages.FilterParametersChanged{
+			TableARN: m.state.table.TableARN,
+			State:    state,
+		}
+	}
+}
+
+func (m *FilterDialog) toggleDialog() tea.Cmd {
+	return func() tea.Msg {
+		return messages.ToggleFilterParameters{}
+	}
+}
+
+// TODO: set max heights
+func (m *FilterDialog) applySize(height, width int) {
+	m.window.width = width
+	m.window.height = height
+	m.updateSize()
+}
+
+func (m *FilterDialog) updateSize() {
+	// set height of the operator list
+	padding := 3
+	for i := range m.content {
+		m.content[i].operatorSelection.SetHeight(min(len(m.content[i].operatorSelection.Items())+padding, m.window.height))
+	}
+
+	// determine the halfwidth of the list within the dialog
+	width := m.defaultDialogWidth
+
+	// set dialog size
+	m.dialog.height = m.defaultDialogHeight
+	m.dialog.width = width + 2
+
+	// set help size
+	m.help.SetWidth(width)
+
+	m.updateStyles(true)
+
+	// set height & width of dialog itself
+	m.styles.dialog = m.styles.dialog.
+		Height(m.dialog.height).
+		MaxHeight(m.window.height).
+		Width(m.dialog.width)
+}
+
+// TODO: add visual indicator of field-type (S, N, B) specified by attrName
+func (m *FilterDialog) View() string {
+	help := m.renderHelp()
+
+	addButton := m.renderAddButton()
+	applyButton := m.renderApplyButton()
+
+	mainDialog := m.styles.dialog.Render(
+		lipgloss.JoinVertical(lipgloss.Center,
+			lipgloss.JoinVertical(lipgloss.Right,
+				lipgloss.JoinVertical(lipgloss.Center,
+					m.renderTitle(),
+					lipgloss.JoinHorizontal(lipgloss.Top,
+						lipgloss.NewStyle().PaddingRight(0).Render(m.renderContent()),
+					),
+				),
+				addButton,
+			),
+			applyButton,
+			help,
+		),
+	)
+
+	mainLayer := lipgloss.NewLayer(mainDialog)
+	c := lipgloss.NewCompositor(mainLayer)
+	c.AddLayers(mainLayer)
+
+	var subLayerContent string
+	switch m.focus {
+	case filterOperatorField:
+		subLayerContent = m.renderOperatorSelection()
+	}
+	if subLayerContent != "" {
+		l := lipgloss.NewLayer(subLayerContent).
+			X(mainLayer.GetX() + lipgloss.Width(mainDialog) - lipgloss.Width(subLayerContent) - 4).
+			Y(mainLayer.GetY() + lipgloss.Height(mainDialog) - lipgloss.Height(subLayerContent) - 4)
+		c.AddLayers(l)
+	}
+
+	return c.Render()
+}
+
+// noop, unused required to satisfy help.Keymap interface
+func (m *FilterDialog) FullHelp() [][]key.Binding {
+	return [][]key.Binding{}
+}
+
+func (m *FilterDialog) renderTitle() string {
+	return m.styles.title.Render("Filter Parameters")
+}
+
+func (m *FilterDialog) renderContent() string {
+	longestOp := 0
+	opPadding := 4 // 2x border & 2x padding of 1
+	for i := range m.content {
+		longestOp = max(longestOp, len(m.content[i].operatorSelection.SelectedItem().(regular.ListItem).Value))
+	}
+
+	lines := make([]string, len(m.content)+1)
+
+	lines[0] = lipgloss.JoinHorizontal(lipgloss.Top,
+		m.styles.AttrNameInputTitle.Render("Attribute Name"),
+		m.styles.OperatorTitle.Width(longestOp+opPadding).Render(""),
+		m.styles.AttrValueInputTitle.Render("Attribute Value"),
+	)
+
+	for i := range m.content {
+		attrNameStyle := u.Ternary(m.styles.wideBoxFocused, m.styles.wideBox, m.contentIdx == i && m.focus == filterAttrNameInput)
+		attrValue1Style := u.Ternary(m.styles.wideBoxFocused, m.styles.wideBox, m.contentIdx == i && m.focus == filterAttrValueInput1)
+		attrValue2Style := u.Ternary(m.styles.wideBoxFocused, m.styles.wideBox, m.contentIdx == i && m.focus == filterAttrValueInput2)
+		opStyle := u.Ternary(m.styles.narrowBoxFocused, m.styles.narrowBox, m.contentIdx == i && m.focus == filterOperatorField)
+		opStyle = opStyle.Width(longestOp + opPadding)
+		op := m.content[i].operatorSelection.SelectedItem().(regular.ListItem).Value
+		rendering := make([]string, 3)
+		rendering[0] = attrNameStyle.Render(m.content[i].attrNameInput.View())
+		rendering[1] = opStyle.Render(op)
+		rendering[2] = attrValue1Style.Render(m.content[i].attrValueInput1.View())
+		l := i + 1
+		lines[l] = lipgloss.JoinHorizontal(lipgloss.Top,
+			rendering...,
+		)
+		if op == string(messages.Between_F) {
+			lines[l] = lipgloss.JoinVertical(lipgloss.Right,
+				lines[l],
+				attrValue2Style.Render(m.content[i].attrValueInput2.View()),
+			)
+		}
+		lines[l] = lipgloss.JoinHorizontal(lipgloss.Top, lines[l], m.renderRemoveButton(i))
+	}
+	return lipgloss.JoinVertical(lipgloss.Left, lines...)
+}
+
+func (m *FilterDialog) renderHelp() string {
+	return m.styles.help.Render(m.styles.helpLine.Render(m.help.View(m)))
+}
+
+func (m *FilterDialog) renderOperatorSelection() string {
+	return m.styles.operatordialog.Render(m.styles.content.Render(m.content[m.contentIdx].operatorSelection.View()))
+}
+
+func (m *FilterDialog) renderRemoveButton(i int) string {
+	removeButtonStyle := u.Ternary(m.styles.removeButtonFocused, m.styles.removeButton, m.contentIdx == i && m.focus == removeButton)
+
+	return removeButtonStyle.Render("Remove")
+}
+
+func (m *FilterDialog) renderAddButton() string {
+	addButtonStyle := u.Ternary(m.styles.addButtonFocused, m.styles.addButton, m.focus == addButton)
+
+	return addButtonStyle.Render("Add new filter")
+}
+
+func (m *FilterDialog) renderApplyButton() string {
+	applyButtonStyle := u.Ternary(m.styles.applyButtonFocused, m.styles.applyButton, m.focus == applyButton)
+
+	return applyButtonStyle.Render("Apply filter(s)!")
+}

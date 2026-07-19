@@ -1,6 +1,8 @@
 // package util defines various generic go utility functions
 package util
 
+import "cmp"
+
 func Ternary[T any](first, second T, cond bool) T {
 	if cond {
 		return first
@@ -45,7 +47,7 @@ func FindBy[S []E, E comparable](slice S, cond func(i E) bool) int {
 	return -1
 }
 
-func Clamp(v, low, high int) int {
+func Clamp[T cmp.Ordered](v, low, high T) T {
 	return min(max(v, low), high)
 }
 

@@ -20,6 +20,24 @@ const (
 	QueryMode
 )
 
+type FilterOperator string
+
+const (
+	Noop_F         FilterOperator = ""
+	Equals_F       FilterOperator = "equals"
+	NotEquals_F    FilterOperator = "equals"
+	GreaterEqual_F FilterOperator = "greater than or equal"
+	Greater_F      FilterOperator = "greater than"
+	LessEqual_F    FilterOperator = "less than or equal"
+	Less_F         FilterOperator = "less than"
+	Between_F      FilterOperator = "between"
+	Exists_F       FilterOperator = "exists"
+	NotExists_F    FilterOperator = "not exists"
+	Contains_F     FilterOperator = "contains"
+	NotContains_F  FilterOperator = "not contains"
+	BeginsWith_F   FilterOperator = "begins with"
+)
+
 type QueryOperator string
 
 const (
@@ -113,6 +131,7 @@ type ToggleColumnVisibility struct{}
 type ToggleColumnSorting struct{}
 type ToggleScanParameters struct{}
 type ToggleQueryParameters struct{}
+type ToggleFilterParameters struct{}
 type ToggleNotificationDialog struct {
 	Msg      string
 	Error    error
@@ -161,6 +180,19 @@ type InitQueryParameters struct {
 	RangeOrderDescending bool // ascending by default
 }
 
+type FilterState struct {
+	AttrName       string
+	AttrValue1     *string
+	AttrValue2     *string
+	FilterOperator FilterOperator
+}
+
+type InitFilterParameters struct {
+	TableARN             string
+	TableAttrDefinitions []dynamodbtypes.AttributeDefinition
+	State                []FilterState
+}
+
 type InitColumnCopy struct {
 	TableARN   string
 	AllColumns []string // matching by index
@@ -193,6 +225,11 @@ type QueryParametersChanged struct {
 	RangeKeyValue2       *string // used for BETWEEN operator
 	RangeKeyOperator     QueryOperator
 	RangeOrderDescending bool // ascending by default
+}
+
+type FilterParametersChanged struct {
+	TableARN string
+	State    []FilterState
 }
 
 type ColumnSortingReset struct {

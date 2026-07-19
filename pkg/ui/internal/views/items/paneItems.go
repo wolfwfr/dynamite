@@ -289,6 +289,8 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 			return m.ToggleScanParametersDialog()
 		case key.Matches(msg, m.KeyMap.QueryParameters):
 			return m.ToggleQueryParametersDialog()
+		case key.Matches(msg, m.KeyMap.FilterParameters):
+			return m.ToggleFilterParametersDialog()
 		case key.Matches(msg, m.KeyMap.Copy):
 			return m.copy()
 		case key.Matches(msg, m.KeyMap.Browser):
@@ -851,6 +853,22 @@ func (m *ItemSelectionPane) toggleColumnSortingDialog(msg tea.Msg) tea.Cmd {
 		msg.AllColumns = colsS
 		msg.SortingOn = sorting
 		msg.Ascending = ascending
+		return msg
+	}
+	return tea.Batch(toggle, state)
+}
+
+// toggle filter-parameters diagram
+func (m *ItemSelectionPane) ToggleFilterParametersDialog() tea.Cmd {
+	arn := u.IfNotNil(m.selectedTable.TableArn, "")
+	toggle := func() tea.Msg {
+		return messages.ToggleFilterParameters{}
+	}
+	state := func() tea.Msg {
+		msg := messages.InitFilterParameters{}
+		msg.TableARN = arn
+		msg.TableAttrDefinitions = m.selectedTable.AttributeDefinitions
+		msg.State = []messages.FilterState{}
 		return msg
 	}
 	return tea.Batch(toggle, state)

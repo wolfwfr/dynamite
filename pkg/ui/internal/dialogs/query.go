@@ -26,10 +26,6 @@ type queryKeyMap struct {
 	close key.Binding
 }
 
-func (h queryKeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{h.close, h.enter, h.tab}
-}
-
 type queryDialogFocus int
 type rangeOrder string
 
