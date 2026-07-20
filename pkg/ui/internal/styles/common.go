@@ -26,9 +26,9 @@ var (
 
 	FieldNameColour = lipgloss.Color("#B0B0B0")
 	NumberColour    = lipgloss.Color("#F58427")
-	BoolColour      = lipgloss.Color("#F58427")
+	BoolColour      = lipgloss.Color("#D9AF2E")
 	BytesColour     = lipgloss.Color("#F58427")
-	NULLColour      = lipgloss.Color("#F58427")
+	NULLColour      = lipgloss.Color("#A18975")
 	StringColour    = lipgloss.Color("#a7bc85")
 	TokenColour     = SubtleColour3
 	ErrorColour     = lipgloss.Color("#B51010")
