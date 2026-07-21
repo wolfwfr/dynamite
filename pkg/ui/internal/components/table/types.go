@@ -64,9 +64,11 @@ type Field interface {
 
 func (r Row) String() string {
 	res := strings.Builder{}
-	for _, f := range r.Fields {
+	for i, f := range r.Fields {
+		if i > 0 {
+			res.WriteString(" ")
+		}
 		res.WriteString(f.Value())
-		res.WriteString(" ")
 	}
 	return res.String()
 }
