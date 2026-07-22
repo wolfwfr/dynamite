@@ -124,27 +124,33 @@ func (m *Model) ResetCache() {
 
 func (m *Model) MoveContentBoundaries(n int) {
 	m.ResetCache()
-	rows := m.VisualRows()
 
-	m.start = clamp(m.start+n, 0, max(0, len(rows)-m.content.Height()))
-	m.end = min(m.start+m.content.Height(), len(rows))
+	m.start = clamp(m.start+n, 0, max(0, len(m.VisualRows())-m.content.Height()))
+	m.alignEnd()
 }
 
-func (m *Model) updateContentHeight() {
+// alignEnd aligns the end indice to the current start, ensuring it never
+// exceeds the limit defined by the number of visible rows.
+func (m *Model) alignEnd() {
+	m.end = min(m.start+m.content.Height(), len(m.VisualRows()))
+}
+
+// updateContentHeight responds to changes in viewport height by ensuring that
+// the row indices that dictate the viewport's borders are updated such that the
+// existing cursor remains in view and the indices remain within the bounds of
+// the table contents (rows).
+func (m *Model) updateContentHeight(oldHeight, newHeight int) {
 	if m.Height() < 1 || m.cursor < 0 {
 		return
 	}
 	m.ResetCache()
-	oldLen := m.content.TotalLineCount()
-	newLen := m.content.Height()
-	diff := oldLen - newLen
-	if diff < 0 { // increase
+	diff := oldHeight - newHeight
+	if diff < 0 { // size increase
 		m.start = max(m.start+diff, 0)
-	} else { // decrease
-		first := m.cursor - m.start
-		m.start = m.start + clamp(diff, 0, first)
+	} else { // size decrease
+		m.start = min(m.start+diff, m.cursor)
 	}
-	m.end = min(m.start+newLen, len(m.VisualRows()))
+	m.alignEnd()
 }
 
 // UpdateContent updates the list content based on the previously defined
@@ -217,14 +223,13 @@ func (m *Model) SetRows(r []Row) {
 	m.rows = r
 
 	// in case of row count reduction, ensure m.end & cursor are in sync with new set
-	m.end = min(m.end, len(m.VisualRows()))
-	m.start = max(0, m.end-m.Height())
+	m.alignEnd()
+	m.start = max(0, m.end-m.content.Height())
 
 	if m.cursor > len(m.VisualRows())-1 {
 		m.SetCursor(len(m.VisualRows()) - 1)
 	}
 
-	m.updateContentHeight()
 	if m.UpdateContent() {
 		m.UpdateHeader()
 	}
@@ -238,7 +243,6 @@ func (m *Model) AppendRows(r []Row) {
 	copy(rr[len(m.rows):], r)
 	m.rows = rr
 
-	m.updateContentHeight()
 	m.UpdateContent()
 }
 
@@ -259,7 +263,7 @@ func (m *Model) SetVirtualRows(r []Row) {
 
 	// OPTIM: perhaps not ideal to hard-set each time
 	m.start = 0
-	m.end = clamp(m.start+m.content.Height(), m.start, len(r))
+	m.alignEnd()
 
 	if m.cursor > max(0, len(m.VisualRows())-1) {
 		m.SetCursor(len(m.VisualRows()) - 1)
@@ -302,7 +306,7 @@ func (m *Model) SetContent(c []Column, r []Row) {
 	if m.cursor > len(m.VisualRows())-1 {
 		m.SetCursor(len(m.VisualRows()) - 1)
 	}
-	m.updateContentHeight()
+	m.alignEnd()
 	m.UpdateContent()
 	m.UpdateHeader()
 }
@@ -349,8 +353,9 @@ func (m *Model) SetWidth(w int) {
 // SetHeight sets the height of the viewport of the table.
 func (m *Model) SetHeight(h int) {
 	m.ResetCache()
+	old := m.content.Height()
 	m.content.SetHeight(h - m.header.Height())
-	m.updateContentHeight()
+	m.updateContentHeight(old, m.content.Height())
 	if colChanged := m.UpdateContent(); colChanged {
 		m.UpdateHeader()
 	}
