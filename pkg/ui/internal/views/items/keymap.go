@@ -48,6 +48,8 @@ type ItemPaneKeyMap struct {
 	Search           key.Binding
 	Zoom             key.Binding
 	Esc              key.Binding
+	Back             key.Binding
+	Continue         key.Binding
 	ChCols           key.Binding
 	ToggleFmt        key.Binding
 	Scan             key.Binding
@@ -64,13 +66,13 @@ type ItemPaneKeyMap struct {
 
 // ShortHelp implements the KeyMap interface.
 func (km *ItemPaneKeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{km.Search, km.Zoom, km.Reload, km.Esc, km.ToggleFmt, km.Scan, km.ScanParameters, km.Query, km.QueryParameters, km.FilterParameters}
+	return []key.Binding{km.Back, km.Search, km.Zoom, km.Reload, km.Esc, km.ToggleFmt, km.Scan, km.ScanParameters, km.Query, km.QueryParameters, km.FilterParameters}
 }
 
 // FullHelp implements the KeyMap interface.
 func (km *ItemPaneKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{km.Search, km.Zoom, km.Reload, km.Esc, km.ChCols, km.ToggleFmt, km.Scan, km.ScanParameters, km.Query, km.QueryParameters, km.FilterParameters, km.Copy, km.Browser, km.ColVis, km.ColSort},
+		{km.Search, km.Zoom, km.Reload, km.Esc, km.Continue, km.Back, km.ChCols, km.ToggleFmt, km.Scan, km.ScanParameters, km.Query, km.QueryParameters, km.FilterParameters, km.Copy, km.Browser, km.ColVis, km.ColSort},
 	}
 }
 
@@ -91,7 +93,15 @@ func DefaultItemPaneKeyMap() *ItemPaneKeyMap {
 		),
 		Esc: key.NewBinding(
 			key.WithKeys("esc"),
-			key.WithHelp("esc", "cancel/return"),
+			key.WithHelp("esc", "cancel"),
+		),
+		Back: key.NewBinding(
+			key.WithKeys("backspace"),
+			key.WithHelp("backspace", "back"),
+		),
+		Continue: key.NewBinding(
+			key.WithKeys("c"),
+			key.WithHelp("c", "continue paging"),
 		),
 		ChCols: key.NewBinding(
 			key.WithKeys("w"),

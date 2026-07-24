@@ -111,6 +111,7 @@ type Page struct {
 }
 
 type PageReady struct {
+	PageID   uint8
 	TableARN string
 	Index    *string
 	Response *Page

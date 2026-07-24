@@ -133,9 +133,12 @@ type ItemSelectionPane struct {
 
 	lastPreviewItem int                   // index
 	lastPreviewMsg  *messages.PreviewItem // prevents preview message looping
-	pageKey         map[string]dynamotypes.AttributeValue
-	pageCancel      func()
-	paging          bool
+
+	pageLatestID uint8
+	pageIgnore   map[uint8]struct{}
+	pageKey      map[string]dynamotypes.AttributeValue
+	pageCancel   func()
+	paging       bool
 
 	// the currently active table
 	selectedTable types.DescribeTableResponse
@@ -170,6 +173,7 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 		queryLimit:     10,
 		pageCancel:     func() {}, // init as noop
 		table:          itemstable.NewItemsTable(),
+		pageIgnore:     make(map[uint8]struct{}),
 	}
 
 	{ // spinner
@@ -179,7 +183,7 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 			Foreground(lipgloss.Color("205")).
 			PaddingLeft(1)
 		p.spinner.model = sp
-		p.spinner.text = "obtaining next page..."
+		p.spinner.text = "obtaining next page (press Esc to cancel)..."
 	}
 
 	{ // search box
@@ -270,9 +274,13 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 		case key.Matches(msg, m.KeyMap.Esc):
 			if m.search.IsEnabled() {
 				return m.search.Reset()
-			} else {
-				return m.escape()
+			} else if m.paging {
+				return m.cancelPaging()
 			}
+		case key.Matches(msg, m.KeyMap.Continue):
+			return m.continuePaging()
+		case key.Matches(msg, m.KeyMap.Back):
+			return m.escape()
 		case key.Matches(msg, m.KeyMap.Reload):
 			return m.Reload()
 		case key.Matches(msg, m.KeyMap.ChCols):
@@ -333,10 +341,6 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 	}
 	cmds = append(cmds, m.table.Update(msg))
 
-	if m.table.PaginationEligible() {
-		cmds = append(cmds, m.PageNext(false))
-	}
-
 	return tea.Batch(cmds...)
 }
 
@@ -360,12 +364,15 @@ func (m *ItemSelectionPane) PageNext(init bool) tea.Cmd {
 	rang2 := m.queryParameters.rangeKeyValue2
 	rangOp := m.queryParameters.rangeKeyOperator
 	rangOr := m.queryParameters.rangeOrderDescending
+	pageID := m.pageLatestID + 1
+	m.pageLatestID = pageID
 	pageCmd := func() tea.Msg {
 		defer cc()
 		switch mode {
 		case messages.QueryMode:
 			if hash == "" { // prevent impossible query
 				return messages.PageReady{
+					PageID:   pageID,
 					TableARN: u.IfNotNil(table.TableArn, ""),
 					Index:    idx,
 					Response: nil,
@@ -385,6 +392,7 @@ func (m *ItemSelectionPane) PageNext(init bool) tea.Cmd {
 				LastEvaluatedKey: key,
 			})
 			return messages.PageReady{
+				PageID:   pageID,
 				TableARN: u.IfNotNil(table.TableArn, ""),
 				Index:    idx,
 				Response: queryPageToPage(result),
@@ -399,6 +407,7 @@ func (m *ItemSelectionPane) PageNext(init bool) tea.Cmd {
 				LastEvaluatedKey: key,
 			})
 			return messages.PageReady{
+				PageID:   pageID,
 				TableARN: u.IfNotNil(table.TableArn, ""),
 				Index:    idx,
 				Response: scanPageToPage(result),
@@ -461,7 +470,10 @@ func (m *ItemSelectionPane) Zoom() tea.Cmd {
 }
 
 func (m *ItemSelectionPane) ProcessPage(msg messages.PageReady) tea.Cmd {
-	defer func() { m.deactivateSpinner() }()
+	if _, ok := m.pageIgnore[msg.PageID]; ok {
+		delete(m.pageIgnore, msg.PageID)
+		return nil
+	}
 
 	if msg.Err != nil {
 		m.err = msg.Err
@@ -484,7 +496,15 @@ func (m *ItemSelectionPane) ProcessPage(msg messages.PageReady) tea.Cmd {
 
 	m.paging = false
 	m.initialised = true
-	return m.MaybePreviewItem(true)
+
+	cmds := []tea.Cmd{m.MaybePreviewItem(true)}
+
+	m.deactivateSpinner()
+
+	if m.table.PaginationEligible() {
+		cmds = append(cmds, m.PageNext(false))
+	}
+	return tea.Batch(cmds...)
 }
 
 // selectTable processes the select-table message, which indicates that the
@@ -704,9 +724,25 @@ func (m *ItemSelectionPane) resetContents() {
 // resetPaging resets any paging related parameters and calcels any lingering
 // paging calls
 func (m *ItemSelectionPane) resetPaging() {
+	m.pageIgnore[m.pageLatestID] = struct{}{} // ignore any errors from latest page
 	m.pageCancel()
 	m.paging = false
 	m.pageKey = nil
+}
+
+func (m *ItemSelectionPane) cancelPaging() tea.Cmd {
+	m.pageCancel()
+	m.pageIgnore[m.pageLatestID] = struct{}{}
+	m.paging = false
+	m.deactivateSpinner()
+	return nil
+}
+
+func (m *ItemSelectionPane) continuePaging() tea.Cmd {
+	if m.table.PaginationEligible() {
+		return m.PageNext(!m.initialised)
+	}
+	return nil
 }
 
 // resetQueryParameters resets any parameters required for sanning or querying a
@@ -743,7 +779,7 @@ func (m *ItemSelectionPane) handleResetColumnSortingMessage(msg messages.ColumnS
 }
 
 func (m *ItemSelectionPane) escape() tea.Cmd {
-	// cancel pending calls
+	// immediately cancel pending calls
 	m.pageCancel()
 
 	// store session data
@@ -763,6 +799,8 @@ func (m *ItemSelectionPane) escape() tea.Cmd {
 
 	// clean up state
 	reset := m.softReset()
+	m.pageIgnore = make(map[uint8]struct{})
+	m.pageLatestID = 0
 
 	// switch to previous view
 	switchView := func() tea.Msg {
