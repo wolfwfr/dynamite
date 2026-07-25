@@ -291,7 +291,7 @@ func (m *ScanDialog) updateContent() tea.Cmd {
 		items = append(items, headed.Item{
 			Name: g.Name,
 			Meta: map[string]any{metaKey: indexItemMeta{
-				indexType:  lsi,
+				indexType:  gsi,
 				sliceIndex: i,
 			}},
 		})
