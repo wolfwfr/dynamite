@@ -25,7 +25,7 @@ type FilterOperator string
 const (
 	Noop_F         FilterOperator = ""
 	Equals_F       FilterOperator = "equals"
-	NotEquals_F    FilterOperator = "equals"
+	NotEquals_F    FilterOperator = "not equals"
 	GreaterEqual_F FilterOperator = "greater than or equal"
 	Greater_F      FilterOperator = "greater than"
 	LessEqual_F    FilterOperator = "less than or equal"
