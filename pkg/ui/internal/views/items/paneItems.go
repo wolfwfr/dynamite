@@ -20,8 +20,10 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	appconfig "github.com/wolfwfr/dynamite/pkg"
+	"github.com/wolfwfr/dynamite/pkg/logging"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/adapters/dynamodb"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/adapters/dynamodb/types"
+	apitypes "github.com/wolfwfr/dynamite/pkg/ui/internal/adapters/dynamodb/types"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/components/search"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/components/table"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
@@ -44,7 +46,11 @@ const (
 )
 
 type SessionData struct {
-	queryMode   messages.ItemsQueryMode
+	queryMode    messages.ItemsQueryMode
+	filterParams struct {
+		query []apitypes.FilterExpressionParameters
+		scan  []apitypes.FilterExpressionParameters
+	}
 	queryParams struct {
 		index                *string
 		hashKeyValue         string
@@ -172,7 +178,7 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 		dynamodbClient: dynamodb.NewAdapter(),
 		stdTO:          30 * time.Second,
 		KeyMap:         DefaultItemPaneKeyMap(),
-		sessions:       map[string]SessionData{},
+		sessions:       make(map[string]SessionData),
 		queryMode:      messages.ScanMode,
 		previewFormat:  JSONformat,
 		scanLimit:      10,
@@ -333,10 +339,14 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 		return m.ChangeScanIndex(msg)
 	case messages.QueryParametersChanged:
 		return m.ChangeQueryParameters(msg)
+	case messages.FilterParametersChanged:
+		return m.ChangeFilterParameters(msg)
 	case messages.PageReady:
 		return m.ProcessPage(msg)
 	case messages.ColumnSortingReset:
 		return m.handleResetColumnSortingMessage(msg)
+	case messages.ToggleScanParameters:
+		logging.LogDebug(fmt.Sprintf("got scan toggle, will page: %t", m.table.PaginationEligible()))
 	case spinner.TickMsg:
 		if !m.spinner.active {
 			return nil
@@ -352,9 +362,20 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 
 func (m *ItemSelectionPane) PageNext(init bool) tea.Cmd {
 	// don't page when at end of paging and not the initialising call
+	if m.paging {
+		logging.LogDebug("already paging; skip")
+	}
+	if len(m.pageKey) == 0 {
+		if init {
+			logging.LogDebug("no pagekey, but init; proceed!")
+		} else {
+			logging.LogDebug("no pagekey, and not init; skip")
+		}
+	}
 	if (len(m.pageKey) == 0 && !init) || m.paging {
 		return nil
 	}
+	logging.LogDebug("proceeding to page!")
 	m.paging = true
 	mode := m.queryMode
 	table := m.selectedTable
@@ -363,6 +384,8 @@ func (m *ItemSelectionPane) PageNext(init bool) tea.Cmd {
 	ctx, cc := context.WithTimeout(m.ctx, m.stdTO)
 	m.pageCancel = cc
 	client := m.config.Client
+	scanFilter := make([]apitypes.FilterExpressionParameters, len(m.filterParameters.scan))
+	copy(scanFilter, m.filterParameters.scan)
 	scanLimit := m.scanLimit
 	queryLimit := m.queryLimit
 	hash := m.queryParameters.hashKeyValue
@@ -409,6 +432,7 @@ func (m *ItemSelectionPane) PageNext(init bool) tea.Cmd {
 				KeyDetails:       table.AttributeDefinitions,
 				IndexName:        idx,
 				KeySchema:        keysFromIndex(idx, table),
+				FilterParameters: scanFilter,
 				Limit:            scanLimit,
 				LastEvaluatedKey: key,
 			})
@@ -528,6 +552,8 @@ func (m *ItemSelectionPane) selectTable(tableName string, details types.Describe
 		m.queryParameters.rangeKeyValue2 = session.queryParams.rangeKeyValue2
 		m.queryParameters.rangeKeyOperator = session.queryParams.rangeKeyOperator
 		m.queryParameters.rangeOrderDescending = session.queryParams.rangeOrderDescending
+		m.filterParameters.query = session.filterParams.query
+		m.filterParameters.scan = session.filterParams.scan
 		switch session.queryMode {
 		case messages.ScanMode:
 			m.tableIndex.activeIndex = session.scanParams.index
@@ -773,6 +799,8 @@ func (m *ItemSelectionPane) resetQueryParameters() tea.Cmd {
 	m.queryParameters.rangeKeyValue1 = nil
 	m.queryParameters.rangeKeyValue2 = nil
 	m.queryParameters.rangeOrderDescending = false
+	m.filterParameters.query = nil
+	m.filterParameters.scan = nil
 	return cmd
 }
 
@@ -800,6 +828,8 @@ func (m *ItemSelectionPane) escape() tea.Cmd {
 		d.queryParams.rangeKeyOperator = m.queryParameters.rangeKeyOperator
 		d.queryParams.rangeOrderDescending = m.queryParameters.rangeOrderDescending
 		d.scanParams.index = m.scanParameters.index
+		d.filterParams.query = m.filterParameters.query
+		d.filterParams.scan = m.filterParameters.scan
 		m.sessions[*arn] = d
 	}
 

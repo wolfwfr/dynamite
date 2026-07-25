@@ -8,6 +8,25 @@ import (
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
 )
 
+// TODO: revise all the duplication between connector & adapter packages
+type FilterOperator string
+
+const (
+	Noop_F         FilterOperator = ""
+	Equals_F       FilterOperator = "equals"
+	NotEquals_F    FilterOperator = "not equals"
+	GreaterEqual_F FilterOperator = "greater than or equal"
+	Greater_F      FilterOperator = "greater than"
+	LessEqual_F    FilterOperator = "less than or equal"
+	Less_F         FilterOperator = "less than"
+	Between_F      FilterOperator = "between"
+	Exists_F       FilterOperator = "exists"
+	NotExists_F    FilterOperator = "not exists"
+	Contains_F     FilterOperator = "contains"
+	NotContains_F  FilterOperator = "not contains"
+	BeginsWith_F   FilterOperator = "begins with"
+)
+
 type RangeKeyOperator string
 
 const (
@@ -70,11 +89,22 @@ type Items struct {
 	TableKeys  [][]KeyValue                      // TODO: review: should this be part of items?
 }
 
+type ( // FILTER
+	FilterExpressionParameters struct {
+		AttributeName      string
+		AttributeValue1    string
+		AttributeValue2    *string
+		AttributeValueType types.ScalarAttributeType
+		Operator           FilterOperator
+	}
+)
+
 type ( // SCAN
 	ScanParameters struct {
-		KeyDetails []types.AttributeDefinition // table attribute-definitions, describing table & index key attribute types
-		IndexName  *string                     // optional index-name, queries table if nil
-		KeySchema  []types.KeySchemaElement    // keyschema associated with `IndexName` or table
+		KeyDetails       []types.AttributeDefinition // table attribute-definitions, describing table & index key attribute types
+		IndexName        *string                     // optional index-name, queries table if nil
+		KeySchema        []types.KeySchemaElement    // keyschema associated with `IndexName` or table
+		FilterParameters []FilterExpressionParameters
 
 		Limit            int
 		LastEvaluatedKey map[string]types.AttributeValue

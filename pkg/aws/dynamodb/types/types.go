@@ -6,6 +6,24 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
+type FilterOperator string
+
+const (
+	Noop_F         FilterOperator = ""
+	Equals_F       FilterOperator = "equals"
+	NotEquals_F    FilterOperator = "not equals"
+	GreaterEqual_F FilterOperator = "greater than or equal"
+	Greater_F      FilterOperator = "greater than"
+	LessEqual_F    FilterOperator = "less than or equal"
+	Less_F         FilterOperator = "less than"
+	Between_F      FilterOperator = "between"
+	Exists_F       FilterOperator = "exists"
+	NotExists_F    FilterOperator = "not exists"
+	Contains_F     FilterOperator = "contains"
+	NotContains_F  FilterOperator = "not contains"
+	BeginsWith_F   FilterOperator = "begins with"
+)
+
 type RangeKeyOperator string
 
 const (
@@ -57,12 +75,15 @@ type ( // DESCRIBE TABLE
 	}
 )
 
-type Items struct {
-	JSON      []string
-	YAML      []string
-	Raw       []map[string]types.AttributeValue // TODO: review usefullness
-	TableKeys [][]KeyValue                      // TODO: review: should this be part of items?
-}
+type ( // FILTER
+	FilterExpressionParameters struct {
+		AttributeName      string
+		AttributeValue1    string
+		AttributeValue2    *string
+		AttributeValueType types.ScalarAttributeType
+		Operator           FilterOperator
+	}
+)
 
 type ( // SCAN
 	ScanParameters struct {
@@ -72,6 +93,7 @@ type ( // SCAN
 
 		Limit            int
 		LastEvaluatedKey map[string]types.AttributeValue
+		FilterParameters []FilterExpressionParameters
 	}
 	ScanResponse struct {
 		Items            []map[string]types.AttributeValue
