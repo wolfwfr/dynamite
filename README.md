@@ -148,6 +148,7 @@ Among others, Dynamite offers:
 - **Flexible Formatting**: Display your items as JSON or YAML
 - **Quick Copy**: Copy table name, item field or the item JSON/YAML immediately
 - **Scan/Query**: Scan and Query your table, select index, order, and set keys
+- **Filter**: Apply DynamoDB's filter capability to narrow down your search
 - **Open in Browser**: Swiftly open the table or item in your browser and edit
 - **ZOOM**: Don't need the second pane? Zoom in and only display what you need
 
@@ -165,7 +166,6 @@ Among others, Dynamite offers:
 
 ✌️ Other features I have in mind are:
 
-- **DynamoDB Filter**: implement integration with scan/query filter options
 - **CLI Extension**: use CLI flags to hop straight into a table of choice or launch a query.
 - **Pane Configurability**: configure width distribution of the 2 panes
 - **Transforms**: transform column values, e.g. unix timestamps to human readable
