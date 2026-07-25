@@ -20,6 +20,7 @@ import (
 	u "github.com/wolfwfr/dynamite/pkg/util"
 )
 
+// TODO: add up & down arrow keys for navigating rows
 type filterKeyMap struct {
 	tab   key.Binding
 	shtab key.Binding
@@ -33,6 +34,7 @@ type filterDialogFocus int
 
 const (
 	filterAttrNameInput filterDialogFocus = iota // TODO: dropdown or searchable?
+	filterAttrTypeField
 	filterOperatorField
 	filterAttrValueInput1
 	filterAttrValueInput2
@@ -43,18 +45,15 @@ const (
 
 type filterContent struct {
 	operatorSelection list.Model
+	attrTypeSelection list.Model
 	attrNameInput     textinput.Model
 	attrValueInput1   textinput.Model
 	attrValueInput2   textinput.Model
 }
 
-type filterStateResolved struct {
-	// resolved from AttrDefinitions
-	AttrType string
-}
-
 type FilterStateInit struct {
 	AttrName       string
+	AttrType       types.ScalarAttributeType
 	AttrValue1     *string
 	AttrValue2     *string
 	FilterOperator messages.FilterOperator
@@ -87,11 +86,8 @@ type FilterDialog struct {
 		init []FilterStateInit
 		// table state is set excusively on initialisation
 		table struct {
-			TableARN        string
-			AttrDefinitions []types.AttributeDefinition
+			TableARN string
 		}
-		// resolved state is state that is resolved from the user input
-		resolved []filterStateResolved
 	}
 
 	styles filterListStyles
@@ -109,6 +105,7 @@ type filterListStyles struct {
 	contentLine    lipgloss.Style
 	help           lipgloss.Style
 	helpLine       lipgloss.Style
+	attrTypeDialog lipgloss.Style
 	operatordialog lipgloss.Style
 
 	// box at width of content
@@ -122,6 +119,7 @@ type filterListStyles struct {
 	// titles
 	AttrNameInputTitle  lipgloss.Style
 	AttrValueInputTitle lipgloss.Style
+	AttrTypeTitle       lipgloss.Style
 	OperatorTitle       lipgloss.Style
 
 	// remove filter button
@@ -146,6 +144,7 @@ func newFilterStyles(darkBG bool) filterListStyles {
 
 	s.dialog = commonstyles.DialogStyle
 	s.operatordialog = commonstyles.DialogStyle.Border(lipgloss.RoundedBorder()).Padding(3, 3, 0, 0)
+	s.attrTypeDialog = commonstyles.DialogStyle.Border(lipgloss.RoundedBorder()).Padding(3, 3, 0, 0)
 	s.title = lipgloss.NewStyle().Padding(1, 0, 2, 0)
 	s.content = lipgloss.NewStyle().PaddingTop(1).PaddingBottom(2)
 	s.contentLine = lipgloss.NewStyle().PaddingTop(1)
@@ -163,6 +162,7 @@ func newFilterStyles(darkBG bool) filterListStyles {
 	// inputs fields
 	s.AttrNameInputTitle = lipgloss.NewStyle().Foreground(commonstyles.SubtleColour).Padding(0, 0, 0, 1)
 	s.AttrValueInputTitle = lipgloss.NewStyle().Foreground(commonstyles.SubtleColour).Padding(0, 0, 0, 1)
+	s.AttrTypeTitle = lipgloss.NewStyle().Foreground(commonstyles.SubtleColour).Padding(0, 0, 0, 1)
 	s.OperatorTitle = lipgloss.NewStyle().Foreground(commonstyles.SubtleColour).Padding(0, 0, 0, 1)
 
 	// remove button
@@ -260,6 +260,8 @@ func (m *FilterDialog) ShortHelp() []key.Binding {
 	switch m.focus {
 	case filterAttrNameInput:
 		return inputHelp(m.content[m.contentIdx].attrNameInput)
+	case filterAttrTypeField:
+		return listHelp(m.content[m.contentIdx].attrTypeSelection)
 	case filterOperatorField:
 		return listHelp(m.content[m.contentIdx].operatorSelection)
 	case filterAttrValueInput1:
@@ -284,13 +286,14 @@ func (m *FilterDialog) newFilterItemDelegate(s *filterListStyles) regular.ItemDe
 func (m *FilterDialog) updateStyles(isDark bool) {
 	s := newFilterStyles(isDark)
 
-	subwidth := m.dialog.width/2 - 20
+	subwidth := m.dialog.width/2 - 28
 
 	s.wideBox = s.wideBox.Width(subwidth)
 	s.wideBoxFocused = s.wideBoxFocused.Width(subwidth)
 
 	s.AttrNameInputTitle = s.AttrNameInputTitle.Width(subwidth)
 	s.AttrValueInputTitle = s.AttrValueInputTitle.Width(subwidth)
+	s.AttrTypeTitle = s.AttrTypeTitle.Width(10)
 	s.OperatorTitle = s.OperatorTitle.Width(subwidth)
 
 	// dialog-style is actively resized; retain
@@ -299,6 +302,7 @@ func (m *FilterDialog) updateStyles(isDark bool) {
 	m.styles = s
 
 	for i := range m.content {
+		m.content[i].attrTypeSelection.SetDelegate(m.newFilterItemDelegate(&s))
 		m.content[i].operatorSelection.SetDelegate(m.newFilterItemDelegate(&s))
 	}
 }
@@ -340,6 +344,8 @@ func (m *FilterDialog) handleNavigation(msg tea.Msg) tea.Cmd {
 	switch m.focus {
 	case filterAttrNameInput:
 		m.content[m.contentIdx].attrNameInput, cmd = m.content[m.contentIdx].attrNameInput.Update(msg)
+	case filterAttrTypeField:
+		m.content[m.contentIdx].attrTypeSelection, cmd = m.content[m.contentIdx].attrTypeSelection.Update(msg)
 	case filterOperatorField:
 		m.content[m.contentIdx].operatorSelection, cmd = m.content[m.contentIdx].operatorSelection.Update(msg)
 	case filterAttrValueInput1:
@@ -384,6 +390,8 @@ func (m *FilterDialog) MoveFocus(i int) tea.Cmd {
 	switch m.focus {
 	case filterAttrNameInput:
 		m.content[m.contentIdx].attrNameInput.Blur()
+	case filterAttrTypeField:
+		// nothing to do
 	case filterOperatorField:
 		// nothing to do
 	case filterAttrValueInput1:
@@ -462,6 +470,8 @@ func (m *FilterDialog) MoveFocus(i int) tea.Cmd {
 	switch m.focus {
 	case filterAttrNameInput:
 		m.content[m.contentIdx].attrNameInput.Focus()
+	case filterAttrTypeField:
+		// nothing to do
 	case filterOperatorField:
 		// nothing to do
 	case filterAttrValueInput1:
@@ -486,17 +496,15 @@ func (m *FilterDialog) hasAttrValue2Field() bool {
 	return false
 }
 
-func (m *FilterDialog) ResetState() {
-	m.state.init = make([]FilterStateInit, 1)
-	m.state.init[0].FilterOperator = messages.Equals_F
-
-	m.state.table.TableARN = ""
-	m.state.table.AttrDefinitions = nil
-
+func (m *FilterDialog) ResetState() tea.Cmd {
+	var cmds []tea.Cmd
 	m.content = make([]filterContent, 1)
-	m.InitContent()
+	for i := range m.content {
+		cmds = append(cmds, m.initContentLine(i))
+	}
 	m.focus = 0
 	m.contentIdx = 0
+	return tea.Batch(cmds...)
 }
 
 func (m *FilterDialog) SetState(msg messages.InitFilterParameters) tea.Cmd {
@@ -504,12 +512,12 @@ func (m *FilterDialog) SetState(msg messages.InitFilterParameters) tea.Cmd {
 
 	// init table state
 	m.state.table.TableARN = msg.TableARN
-	m.state.table.AttrDefinitions = msg.TableAttrDefinitions
 
 	// init the initial state
 	m.state.init = make([]FilterStateInit, len(msg.State))
 	for i := range msg.State {
 		m.state.init[i].AttrName = msg.State[i].AttrName
+		m.state.init[i].AttrType = msg.State[i].AttrType
 		m.state.init[i].AttrValue1 = msg.State[i].AttrValue1
 		m.state.init[i].AttrValue2 = msg.State[i].AttrValue2
 		m.state.init[i].FilterOperator = msg.State[i].FilterOperator
@@ -532,6 +540,19 @@ func (m *FilterDialog) InitContent() tea.Cmd {
 	m.content = make([]filterContent, max(1, len(m.state.init)))
 	for i := range m.content {
 		cmds = append(cmds, m.initContentLine(i))
+	}
+
+	{ // set filter attr-scalarTypes
+		scalarTypes := m.scalarTypes()
+		typeIdx := map[types.ScalarAttributeType]int{}
+		for i, o := range scalarTypes {
+			typeIdx[o.(regular.ListItem).Meta[scalarTypeMatchKey].(types.ScalarAttributeType)] = i
+		}
+		for i := range m.content {
+			if len(m.state.init) > i {
+				m.content[i].attrTypeSelection.Select(typeIdx[m.state.init[i].AttrType])
+			}
+		}
 	}
 
 	{ // set filter operators
@@ -557,8 +578,19 @@ func (m *FilterDialog) InitContent() tea.Cmd {
 		}
 	}
 
+	m.MoveFocus(0) // ensures focused element can execute side-effects
 	m.updateSize()
 	return tea.Batch(cmds...)
+}
+
+const scalarTypeMatchKey string = "match"
+
+func (m *FilterDialog) scalarTypes() []list.Item {
+	return []list.Item{
+		regular.ListItem{Value: "string", Meta: map[string]any{scalarTypeMatchKey: types.ScalarAttributeTypeS}},
+		regular.ListItem{Value: "number", Meta: map[string]any{scalarTypeMatchKey: types.ScalarAttributeTypeN}},
+		regular.ListItem{Value: "bool  ", Meta: map[string]any{scalarTypeMatchKey: types.ScalarAttributeTypeB}},
+	}
 }
 
 func (m *FilterDialog) operators() []list.Item {
@@ -578,17 +610,28 @@ func (m *FilterDialog) operators() []list.Item {
 	}
 }
 
-func (m *FilterDialog) initContentLine(i int) (cmd tea.Cmd) {
+func (m *FilterDialog) initContentLine(i int) tea.Cmd {
+	cmds := make([]tea.Cmd, 2)
+	{ // scalar type selection
+		l := list.New([]list.Item{}, regular.ItemDelegate{}, m.dialog.width, m.dialog.height)
+		l.SetShowStatusBar(false)
+		l.SetFilteringEnabled(false)
+		l.SetShowHelp(false)
+		l.SetShowTitle(false)
+
+		m.content[i].attrTypeSelection = l
+		cmds[0] = m.content[i].attrTypeSelection.SetItems(m.scalarTypes())
+	}
+
 	{ // operator selection
 		l := list.New([]list.Item{}, regular.ItemDelegate{}, m.dialog.width, m.dialog.height)
-		l.Title = "Range Key Operator"
 		l.SetShowStatusBar(false)
 		l.SetFilteringEnabled(false)
 		l.SetShowHelp(false)
 		l.SetShowTitle(false)
 
 		m.content[i].operatorSelection = l
-		cmd = m.content[i].operatorSelection.SetItems(m.operators())
+		cmds[1] = m.content[i].operatorSelection.SetItems(m.operators())
 	}
 
 	{ // attribute name input
@@ -603,7 +646,8 @@ func (m *FilterDialog) initContentLine(i int) (cmd tea.Cmd) {
 		attrValueInput2 := textinput.New()
 		m.content[i].attrValueInput2 = attrValueInput2
 	}
-	return
+
+	return tea.Batch(cmds...)
 }
 
 func (m *FilterDialog) applyParameters() tea.Cmd {
@@ -613,6 +657,7 @@ func (m *FilterDialog) applyParameters() tea.Cmd {
 	for i := range m.content {
 		if true &&
 			m.content[i].attrNameInput.Value() != m.state.init[i].AttrName ||
+			m.content[i].attrTypeSelection.SelectedItem().(regular.ListItem).Meta[scalarTypeMatchKey].(types.ScalarAttributeType) != m.state.init[i].AttrType ||
 			m.content[i].operatorSelection.SelectedItem().(regular.ListItem).Value != string(m.state.init[i].FilterOperator) ||
 			m.content[i].attrValueInput1.Value() != u.IfNotNil(m.state.init[i].AttrValue1, "") ||
 			m.content[i].attrValueInput2.Value() != u.IfNotNil(m.state.init[i].AttrValue2, "") {
@@ -627,6 +672,7 @@ func (m *FilterDialog) filterParametersUpdate() tea.Cmd {
 	state := make([]messages.FilterState, len(m.content))
 	for i := range m.content {
 		state[i].AttrName = m.content[i].attrNameInput.Value()
+		state[i].AttrType = m.content[i].attrTypeSelection.SelectedItem().(regular.ListItem).Meta[scalarTypeMatchKey].(types.ScalarAttributeType)
 		attrValue1 := m.content[i].attrValueInput1.Value()
 		attrValue2 := m.content[i].attrValueInput2.Value()
 		state[i].AttrValue1 = u.Ternary(&attrValue1, nil, attrValue1 != "")
@@ -656,8 +702,12 @@ func (m *FilterDialog) applySize(height, width int) {
 }
 
 func (m *FilterDialog) updateSize() {
-	// set height of the operator list
+	// set height of the scalar-type list
 	padding := 3
+	for i := range m.content {
+		m.content[i].attrTypeSelection.SetHeight(min(len(m.content[i].attrTypeSelection.Items())+padding, m.window.height))
+	}
+	// set height of the operator list
 	for i := range m.content {
 		m.content[i].operatorSelection.SetHeight(min(len(m.content[i].operatorSelection.Items())+padding, m.window.height))
 	}
@@ -710,6 +760,8 @@ func (m *FilterDialog) View() string {
 
 	var subLayerContent string
 	switch m.focus {
+	case filterAttrTypeField:
+		subLayerContent = m.renderScalarTypeSelection()
 	case filterOperatorField:
 		subLayerContent = m.renderOperatorSelection()
 	}
@@ -743,6 +795,7 @@ func (m *FilterDialog) renderContent() string {
 
 	lines[0] = lipgloss.JoinHorizontal(lipgloss.Top,
 		m.styles.AttrNameInputTitle.Render("Attribute Name"),
+		m.styles.AttrTypeTitle.Render("Type"),
 		m.styles.OperatorTitle.Width(longestOp+opPadding).Render(""),
 		m.styles.AttrValueInputTitle.Render("Attribute Value"),
 	)
@@ -751,13 +804,15 @@ func (m *FilterDialog) renderContent() string {
 		attrNameStyle := u.Ternary(m.styles.wideBoxFocused, m.styles.wideBox, m.contentIdx == i && m.focus == filterAttrNameInput)
 		attrValue1Style := u.Ternary(m.styles.wideBoxFocused, m.styles.wideBox, m.contentIdx == i && m.focus == filterAttrValueInput1)
 		attrValue2Style := u.Ternary(m.styles.wideBoxFocused, m.styles.wideBox, m.contentIdx == i && m.focus == filterAttrValueInput2)
+		scalarTypeStyle := u.Ternary(m.styles.narrowBoxFocused, m.styles.narrowBox, m.contentIdx == i && m.focus == filterAttrTypeField)
 		opStyle := u.Ternary(m.styles.narrowBoxFocused, m.styles.narrowBox, m.contentIdx == i && m.focus == filterOperatorField)
 		opStyle = opStyle.Width(longestOp + opPadding)
 		op := m.content[i].operatorSelection.SelectedItem().(regular.ListItem).Value
-		rendering := make([]string, 3)
+		rendering := make([]string, 4)
 		rendering[0] = attrNameStyle.Render(m.content[i].attrNameInput.View())
-		rendering[1] = opStyle.Render(op)
-		rendering[2] = attrValue1Style.Render(m.content[i].attrValueInput1.View())
+		rendering[1] = scalarTypeStyle.Render(m.content[i].attrTypeSelection.SelectedItem().(regular.ListItem).Value)
+		rendering[2] = opStyle.Render(op)
+		rendering[3] = attrValue1Style.Render(m.content[i].attrValueInput1.View())
 		l := i + 1
 		lines[l] = lipgloss.JoinHorizontal(lipgloss.Top,
 			rendering...,
@@ -775,6 +830,10 @@ func (m *FilterDialog) renderContent() string {
 
 func (m *FilterDialog) renderHelp() string {
 	return m.styles.help.Render(m.styles.helpLine.Render(m.help.View(m)))
+}
+
+func (m *FilterDialog) renderScalarTypeSelection() string {
+	return m.styles.attrTypeDialog.Render(m.styles.content.Render(m.content[m.contentIdx].attrTypeSelection.View()))
 }
 
 func (m *FilterDialog) renderOperatorSelection() string {

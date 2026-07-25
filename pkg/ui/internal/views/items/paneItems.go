@@ -115,6 +115,12 @@ type ItemSelectionPane struct {
 		indexItemCount int64
 	}
 
+	// currently active filter-parameters
+	filterParameters struct {
+		query []apitypes.FilterExpressionParameters
+		scan  []apitypes.FilterExpressionParameters
+	}
+
 	// currently active scan parameters
 	scanParameters struct {
 		index *string
@@ -891,22 +897,6 @@ func (m *ItemSelectionPane) toggleColumnSortingDialog(msg tea.Msg) tea.Cmd {
 		msg.AllColumns = colsS
 		msg.SortingOn = sorting
 		msg.Ascending = ascending
-		return msg
-	}
-	return tea.Batch(toggle, state)
-}
-
-// toggle filter-parameters diagram
-func (m *ItemSelectionPane) ToggleFilterParametersDialog() tea.Cmd {
-	arn := u.IfNotNil(m.selectedTable.TableArn, "")
-	toggle := func() tea.Msg {
-		return messages.ToggleFilterParameters{}
-	}
-	state := func() tea.Msg {
-		msg := messages.InitFilterParameters{}
-		msg.TableARN = arn
-		msg.TableAttrDefinitions = m.selectedTable.AttributeDefinitions
-		msg.State = []messages.FilterState{}
 		return msg
 	}
 	return tea.Batch(toggle, state)
