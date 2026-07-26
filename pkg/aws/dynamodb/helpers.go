@@ -30,33 +30,49 @@ func ToAttrValue(value string, attrType types.ScalarAttributeType) types.Attribu
 	}
 }
 
-func ParseFilterOperator(op apitypes.FilterOperator) string {
+// see: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.OperatorsAndFunctions.html
+const (
+	filterEqual        string = "="
+	filterNotEqual     string = "<>"
+	filterGreaterEqual string = ">="
+	filterGreater      string = ">"
+	filterLessEqual    string = "<="
+	filterLess         string = "<"
+	filterBetween      string = "BETWEEN"
+	filterExists       string = "attribute_exists"
+	filterNotExists    string = "attribute_not_exists"
+	filterBeginsWith   string = "begins_with"
+	filterContains     string = "contains"
+)
+
+func ParseFilterComparator(op apitypes.FilterOperator) string {
 	switch op {
 	case apitypes.Equals_F:
-		return "="
+		return filterEqual
 	case apitypes.NotEquals_F:
-		return "<>"
+		return filterNotEqual
 	case apitypes.GreaterEqual_F:
-		return ">="
+		return filterGreaterEqual
 	case apitypes.Greater_F:
-		return ">"
+		return filterGreater
 	case apitypes.LessEqual_F:
-		return "<="
+		return filterLessEqual
 	case apitypes.Less_F:
-		return "<"
+		return filterLess
 	case apitypes.Between_F:
-		return "BETWEEN"
-	case apitypes.Exists_F:
-		panic("not implemented yet!")
-	case apitypes.NotExists_F:
-		panic("not implemented yet!")
-	case apitypes.Contains_F:
-		panic("not implemented yet!")
-	case apitypes.NotContains_F:
-		panic("not implemented yet!")
-	case apitypes.BeginsWith_F:
-		panic("not implemented yet!")
+		return filterBetween
 	default:
 		return ""
+	}
+}
+
+func filterComparators() []apitypes.FilterOperator {
+	return []apitypes.FilterOperator{
+		apitypes.Equals_F,
+		apitypes.NotEquals_F,
+		apitypes.GreaterEqual_F,
+		apitypes.Greater_F,
+		apitypes.LessEqual_F,
+		apitypes.Less_F,
 	}
 }

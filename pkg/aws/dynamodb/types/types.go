@@ -77,7 +77,7 @@ type ( // DESCRIBE TABLE
 
 type ( // FILTER
 	FilterExpressionParameters struct {
-		AttributeName      string
+		AttributePath      string
 		AttributeValue1    string
 		AttributeValue2    *string
 		AttributeValueType types.ScalarAttributeType

@@ -35,19 +35,19 @@ func TestBuildFilterExpression(t *testing.T) {
 				desc: "asign value alias based on type",
 				params: []apitypes.FilterExpressionParameters{
 					{
-						AttributeName:      "Name",
+						AttributePath:      "Name",
 						AttributeValue1:    "Value",
 						AttributeValueType: "S",
 						Operator:           apitypes.Equals_F,
 					},
 					{
-						AttributeName:      "Name",
+						AttributePath:      "Name",
 						AttributeValue1:    "12.5",
 						AttributeValueType: "N",
 						Operator:           apitypes.Equals_F,
 					},
 					{
-						AttributeName:      "Name",
+						AttributePath:      "Name",
 						AttributeValue1:    "true",
 						AttributeValueType: "B",
 						Operator:           apitypes.Equals_F,
@@ -71,13 +71,13 @@ func TestBuildFilterExpression(t *testing.T) {
 				desc: "use unique expression-names & -values for repeated attribute-names & -values",
 				params: []apitypes.FilterExpressionParameters{
 					{
-						AttributeName:      "Name",
+						AttributePath:      "Name",
 						AttributeValue1:    "Value",
 						AttributeValueType: "S",
 						Operator:           apitypes.Equals_F,
 					},
 					{
-						AttributeName:      "Name",
+						AttributePath:      "Name",
 						AttributeValue1:    "Value",
 						AttributeValueType: "S",
 						Operator:           apitypes.NotEquals_F,
@@ -95,13 +95,13 @@ func TestBuildFilterExpression(t *testing.T) {
 				desc: "increment alias number for both names and values",
 				params: []apitypes.FilterExpressionParameters{
 					{
-						AttributeName:      "NameX",
+						AttributePath:      "NameX",
 						AttributeValue1:    "ValueX",
 						AttributeValueType: "S",
 						Operator:           apitypes.Equals_F,
 					},
 					{
-						AttributeName:      "NameY",
+						AttributePath:      "NameY",
 						AttributeValue1:    "ValueY",
 						AttributeValueType: "S",
 						Operator:           apitypes.Equals_F,

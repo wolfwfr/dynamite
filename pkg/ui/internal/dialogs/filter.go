@@ -566,7 +566,7 @@ func (m *FilterDialog) SetState(msg messages.InitFilterParameters) tea.Cmd {
 	// init the initial state
 	m.state.init = make([]FilterStateInit, len(msg.State))
 	for i := range msg.State {
-		m.state.init[i].AttrName = msg.State[i].AttrName
+		m.state.init[i].AttrName = msg.State[i].AttrPath
 		m.state.init[i].AttrType = msg.State[i].AttrType
 		m.state.init[i].AttrValue1 = msg.State[i].AttrValue1
 		m.state.init[i].AttrValue2 = msg.State[i].AttrValue2
@@ -727,7 +727,7 @@ func (m *FilterDialog) applyParameters() tea.Cmd {
 func (m *FilterDialog) filterParametersUpdate() tea.Cmd {
 	state := make([]messages.FilterState, len(m.content))
 	for i := range m.content {
-		state[i].AttrName = m.content[i].attrNameInput.Value()
+		state[i].AttrPath = m.content[i].attrNameInput.Value()
 		state[i].AttrType = m.content[i].attrTypeSelection.SelectedItem().(regular.ListItem).Meta[scalarTypeMatchKey].(types.ScalarAttributeType)
 		attrValue1 := m.content[i].attrValueInput1.Value()
 		attrValue2 := m.content[i].attrValueInput2.Value()

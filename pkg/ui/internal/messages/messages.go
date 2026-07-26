@@ -182,7 +182,7 @@ type InitQueryParameters struct {
 }
 
 type FilterState struct {
-	AttrName       string
+	AttrPath       string
 	AttrType       dynamodbtypes.ScalarAttributeType
 	AttrValue1     *string // empty string has meaning, therefore pointer
 	AttrValue2     *string

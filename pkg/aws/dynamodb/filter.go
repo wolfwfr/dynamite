@@ -2,11 +2,22 @@ package dynamodb
 
 import (
 	"fmt"
+	"slices"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+
 	apitypes "github.com/wolfwfr/dynamite/pkg/aws/dynamodb/types"
 	"github.com/wolfwfr/dynamite/pkg/util"
 )
+
+// NOTE: not supported at this time:
+// - NOT
+// - OR
+// - IN
+// - size
+// - attribute_type()
+// see: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.OperatorsAndFunctions.html
 
 func buildFilterExpression(params []apitypes.FilterExpressionParameters) (expr *string, exprNames map[string]string, exprVals map[string]types.AttributeValue) {
 	if len(params) == 0 {
@@ -20,31 +31,72 @@ func buildFilterExpression(params []apitypes.FilterExpressionParameters) (expr *
 
 	var exprr string
 	for i, p := range params {
+		// TODO: use strings.Builder
 		var s string
-		if p.AttributeName == "" || p.AttributeValue1 == "" || p.Operator == apitypes.Noop_F || p.Operator == apitypes.Between_F && util.IfNotNil(p.AttributeValue2, "") == "" {
+		if p.AttributePath == "" || p.Operator == apitypes.Noop_F || p.Operator == apitypes.Between_F && util.IfNotNil(p.AttributeValue2, "") == "" {
 			continue
 		}
 
-		attrNameAlias := nameAliasConstructor(p.AttributeName)
-		attrValueAlias := valueAliasConstructor(p.AttributeValue1, p.AttributeValueType)
-		exprNames[attrNameAlias] = p.AttributeName
-		exprVals[attrValueAlias] = ToAttrValue(p.AttributeValue1, p.AttributeValueType)
+		var (
+			pathAlias      string
+			attrValueAlias string
+		)
+
+		pathEle := strings.Split(p.AttributePath, ".")
+		pathAliases := make([]string, len(pathEle))
+		for i, e := range pathEle {
+			attrNameAlias := nameAliasConstructor(e)
+			exprNames[attrNameAlias] = e
+			pathAliases[i] = attrNameAlias
+		}
+		pathAlias = strings.Join(pathAliases, ".")
+
+		if p.AttributeValue1 != "" {
+			attrValueAlias = valueAliasConstructor(p.AttributeValue1, p.AttributeValueType)
+			exprVals[attrValueAlias] = ToAttrValue(p.AttributeValue1, p.AttributeValueType)
+		}
 
 		if i > 0 {
 			s = " AND " // TODO: consider supporting 'OR' operator
 		}
 
-		s = fmt.Sprintf("%s%s %s %s", s, attrNameAlias, ParseFilterOperator(p.Operator), attrValueAlias)
-
-		if p.Operator == apitypes.Between_F {
+		switch {
+		case slices.Contains(filterComparators(), p.Operator):
+			s = fmt.Sprintf("%s%s %s %s", s, pathAlias, ParseFilterComparator(p.Operator), attrValueAlias)
+		case p.Operator == apitypes.Between_F:
 			attrVal2 := util.IfNotNil(p.AttributeValue2, "")
 			attrValue2Alias := valueAliasConstructor(attrVal2, p.AttributeValueType)
 			exprVals[attrValue2Alias] = ToAttrValue(attrVal2, p.AttributeValueType)
-			s = fmt.Sprintf("%s AND %s", s, attrValue2Alias)
+			s = fmt.Sprintf("%s%s %s %s AND %s", s, pathAlias, ParseFilterComparator(p.Operator), attrValueAlias, attrValue2Alias)
+		case p.Operator == apitypes.Exists_F:
+			s = fmt.Sprintf("%s%s(%s)", s, filterExists, pathAlias)
+		case p.Operator == apitypes.NotExists_F:
+			s = fmt.Sprintf("%s%s(%s)", s, filterNotExists, pathAlias)
+		case p.Operator == apitypes.Contains_F:
+			s = fmt.Sprintf("%s%s(%s,%s)", s, filterContains, pathAlias, attrValueAlias)
+		case p.Operator == apitypes.NotContains_F:
+			s = fmt.Sprintf("%sNOT %s(%s,%s)", s, filterContains, pathAlias, attrValueAlias)
+		case p.Operator == apitypes.BeginsWith_F:
+			s = fmt.Sprintf("%s%s(%s,%s)", s, filterBeginsWith, pathAlias, attrValueAlias)
+		default:
+			// TODO: debug logging or error
+			continue
 		}
 		exprr = fmt.Sprintf("%s%s", exprr, s)
 	}
 	expr = &exprr
+
+	// ensure nil if empty; required by dynamodb API
+	if expr != nil && len(*expr) == 0 {
+		expr = nil
+	}
+	if len(exprNames) == 0 {
+		exprNames = nil
+	}
+	if len(exprVals) == 0 {
+		exprVals = nil
+	}
+
 	return
 }
 

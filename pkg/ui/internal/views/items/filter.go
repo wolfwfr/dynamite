@@ -16,12 +16,12 @@ func (m *ItemSelectionPane) ChangeFilterParameters(msg messages.FilterParameters
 	params := make([]apitypes.FilterExpressionParameters, 0, len(msg.State))
 
 	for _, st := range msg.State {
-		if st.AttrName == "" || st.AttrValue1 == nil {
+		if st.AttrPath == "" {
 			continue
 		}
 		p := apitypes.FilterExpressionParameters{
-			AttributeName:      st.AttrName,
-			AttributeValue1:    *st.AttrValue1,
+			AttributePath:      st.AttrPath,
+			AttributeValue1:    u.IfNotNil(st.AttrValue1, ""), // allowed nil on 'exists' or 'not_exists' operator
 			AttributeValue2:    st.AttrValue2,
 			AttributeValueType: st.AttrType,
 			Operator:           apitypes.FilterOperator(st.FilterOperator),
@@ -60,7 +60,7 @@ func (m *ItemSelectionPane) ToggleFilterParametersDialog() tea.Cmd {
 		st := make([]messages.FilterState, len(params))
 		for i, p := range params {
 			st[i] = messages.FilterState{
-				AttrName:       p.AttributeName,
+				AttrPath:       p.AttributePath,
 				AttrType:       p.AttributeValueType,
 				AttrValue1:     &p.AttributeValue1,
 				AttrValue2:     p.AttributeValue2,
