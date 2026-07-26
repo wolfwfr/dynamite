@@ -22,8 +22,10 @@ import (
 
 // TODO: add up & down arrow keys for navigating rows
 type filterKeyMap struct {
-	tab   key.Binding
-	shtab key.Binding
+	right key.Binding
+	up    key.Binding
+	down  key.Binding
+	left  key.Binding
 	enter key.Binding
 	exec  key.Binding
 	close key.Binding
@@ -190,6 +192,14 @@ func NewFilterDialog(close key.Binding) *FilterDialog {
 	d := &FilterDialog{
 		keyMap: filterKeyMap{
 			close: close,
+			up: key.NewBinding(
+				key.WithKeys("up"),
+				key.WithHelp("↑", "up"),
+			),
+			down: key.NewBinding(
+				key.WithKeys("down"),
+				key.WithHelp("↓", "down"),
+			),
 			enter: key.NewBinding(
 				key.WithKeys("space", "enter"),
 				key.WithHelp("space/enter", "select"),
@@ -198,13 +208,13 @@ func NewFilterDialog(close key.Binding) *FilterDialog {
 				key.WithKeys("alt+enter"),
 				key.WithHelp("alt+enter", "apply!"),
 			),
-			tab: key.NewBinding(
-				key.WithKeys("tab"),
-				key.WithHelp("tab", "next"),
+			right: key.NewBinding(
+				key.WithKeys("tab", "right"),
+				key.WithHelp("tab/→", "right"),
 			),
-			shtab: key.NewBinding(
-				key.WithKeys("shift+tab"),
-				key.WithHelp("shift+tab", "previous"),
+			left: key.NewBinding(
+				key.WithKeys("shift+tab", "left"),
+				key.WithHelp("shift+tab/←", "left"),
 			),
 			reset: key.NewBinding(
 				key.WithKeys("ctrl+r"),
@@ -240,8 +250,10 @@ func NewFilterDialog(close key.Binding) *FilterDialog {
 
 func (m *FilterDialog) ShortHelp() []key.Binding {
 	bindings := []key.Binding{
-		m.keyMap.tab,
-		m.keyMap.shtab,
+		m.keyMap.right,
+		m.keyMap.left,
+		m.keyMap.up,
+		m.keyMap.down,
 		m.keyMap.enter,
 		m.keyMap.exec,
 		m.keyMap.reset,
@@ -330,10 +342,14 @@ func (m *FilterDialog) Update(msg tea.Msg) tea.Cmd {
 			if m.safeToClose(msg) {
 				return m.toggleDialog()
 			}
-		case key.Matches(msg, m.keyMap.tab):
-			return m.MoveFocus(1)
-		case key.Matches(msg, m.keyMap.shtab):
-			return m.MoveFocus(-1)
+		case key.Matches(msg, m.keyMap.right):
+			return m.MoveFocus(1, horizontal)
+		case key.Matches(msg, m.keyMap.left):
+			return m.MoveFocus(-1, horizontal)
+		case key.Matches(msg, m.keyMap.up):
+			return m.MoveFocus(-1, vertical)
+		case key.Matches(msg, m.keyMap.down):
+			return m.MoveFocus(1, vertical)
 		case key.Matches(msg, m.keyMap.reset):
 			m.ResetState()
 			return nil
@@ -427,7 +443,14 @@ func (m *FilterDialog) RemoveFilterLine(i int) tea.Cmd {
 	return nil
 }
 
-func (m *FilterDialog) MoveFocus(i int) tea.Cmd {
+type direction int
+
+const (
+	horizontal direction = iota
+	vertical
+)
+
+func (m *FilterDialog) MoveFocus(i int, dir direction) tea.Cmd {
 	switch m.focus {
 	case filterAttrNameInput:
 		m.content[m.contentIdx].attrNameInput.Blur()
@@ -443,62 +466,10 @@ func (m *FilterDialog) MoveFocus(i int) tea.Cmd {
 		// nothing to do
 	}
 
-	// here we will mutate m.focus & m.focusIdx
-	// TODO: refactor & simplify
-	for j := i; j != 0; {
-		// move from apply button
-		if m.focus == applyButton {
-			m.contentIdx = 0
-			m.focus = 0
-			j -= 1
-			if j < 0 {
-				m.focus = addButton
-				m.contentIdx = len(m.content) - 1
-				j += 2 // +1 for having moved focus by 1 & +1 to compensate for earlier -1
-			}
-			continue
-		}
-
-		// move from add button
-		if m.focus == addButton {
-			m.contentIdx = 0
-			m.focus = applyButton
-			j -= 1
-			if j < 0 {
-				m.focus = removeButton
-				m.contentIdx = len(m.content) - 1
-				j += 2 // +1 for having moved focus by 1 & +1 to compensate for earlier -1
-			}
-			continue
-		}
-
-		// move away from current line when receding from first element
-		if m.focus == filterAttrNameInput && j < 0 {
-			atFirstLine := m.contentIdx == 0
-			m.contentIdx -= 1
-			m.focus = u.Ternary(applyButton, removeButton, atFirstLine)
-			j += 1
-			continue
-		}
-
-		// move away from current line when progressing beyond last element
-		if m.focus == removeButton && j > 0 {
-			atLastLine := m.contentIdx == len(m.content)-1
-			m.contentIdx += 1
-			m.focus = u.Ternary(addButton, 0, atLastLine)
-			j -= 1
-			continue
-		}
-
-		diff := u.Ternary(+1, -1, j >= 0)
-		next := m.focus + filterDialogFocus(diff)
-		// NOTE: relies on the assumption that the first and last line element
-		// will never be hidden
-		for !m.hasContentLineField(next, m.contentIdx) {
-			next += filterDialogFocus(diff)
-		}
-		m.focus = next
-		j -= diff
+	if dir == vertical {
+		m.recalculateFocusVertically(i)
+	} else {
+		m.recalculateFocusHorizontally(i)
 	}
 
 	// default to false
@@ -521,6 +492,119 @@ func (m *FilterDialog) MoveFocus(i int) tea.Cmd {
 	m.updateSize()
 	m.updateStyles(true)
 	return nil
+}
+
+// recalculateFocusHorizontally moves the focus variables in the horizontal
+// direction, but does not execute side-effects based on the actual movement of
+// the focus.
+func (m *FilterDialog) recalculateFocusHorizontally(i int) {
+	// TODO: refactor & simplify
+	for i != 0 {
+		// move from apply button
+		if m.focus == applyButton {
+			m.contentIdx = 0
+			m.focus = 0
+			i -= 1
+			if i < 0 {
+				m.focus = addButton
+				m.contentIdx = len(m.content) - 1
+				i += 2 // +1 for having moved focus by 1 & +1 to compensate for earlier -1
+			}
+			continue
+		}
+
+		// move from add button
+		if m.focus == addButton {
+			m.contentIdx = 0
+			m.focus = applyButton
+			i -= 1
+			if i < 0 {
+				m.focus = removeButton
+				m.contentIdx = len(m.content) - 1
+				i += 2 // +1 for having moved focus by 1 & +1 to compensate for earlier -1
+			}
+			continue
+		}
+
+		// move away from current line when receding from first element
+		if m.focus == filterAttrNameInput && i < 0 {
+			atFirstLine := m.contentIdx == 0
+			m.contentIdx -= 1
+			m.focus = u.Ternary(applyButton, removeButton, atFirstLine)
+			i += 1
+			continue
+		}
+
+		// move away from current line when progressing beyond last element
+		if m.focus == removeButton && i > 0 {
+			atLastLine := m.contentIdx == len(m.content)-1
+			m.contentIdx += 1
+			m.focus = u.Ternary(addButton, 0, atLastLine)
+			i -= 1
+			continue
+		}
+
+		diff := u.Ternary(+1, -1, i >= 0)
+		next := m.focus + filterDialogFocus(diff)
+		// NOTE: relies on the assumption that the first and last line element
+		// will never be hidden
+		for !m.hasContentLineField(next, m.contentIdx) {
+			next += filterDialogFocus(diff)
+		}
+		m.focus = next
+		i -= diff
+	}
+}
+
+// recalculateFocusVertically moves the focus variables in the vertical
+// direction, but does not execute side-effects based on the actual movement of
+// the focus.
+// TODO: refactor
+func (m *FilterDialog) recalculateFocusVertically(i int) {
+	incr := u.Ternary(+1, -1, i > 0)
+	incrF := filterDialogFocus(incr)
+	for i != 0 {
+		switch m.focus {
+		case addButton:
+			m.focus += incrF
+			m.contentIdx = u.Ternary(m.contentIdx, len(m.content)-1, i > 0)
+		case applyButton:
+			m.focus = u.Ternary(filterAttrNameInput, addButton, i > 0)
+			m.contentIdx = u.Ternary(0, m.contentIdx, i > 0)
+		default:
+			if m.contentIdx < 0 || m.contentIdx >= len(m.content) {
+				return // TODO: log; bug
+			}
+			if m.contentIdx == 0 && i < 0 {
+				m.contentIdx = -1
+				m.focus = applyButton
+			} else if m.focus == filterAttrValueInput2 && i < 0 {
+				m.focus -= 1
+			} else if m.focus == filterAttrValueInput1 && m.hasContentLineField(filterAttrValueInput2, m.contentIdx) && i > 0 {
+				m.focus += 1
+			} else if m.contentIdx == len(m.content)-1 && i > 0 {
+				m.contentIdx = -1
+				m.focus = addButton
+			} else {
+				m.contentIdx += incr
+				var d filterDialogFocus = 0
+				var found = m.hasContentLineField(m.focus, m.contentIdx)
+				for !found {
+					d++
+					c1 := u.Clamp(m.focus-d, filterAttrNameInput, removeButton)
+					c2 := u.Clamp(m.focus+d, filterAttrNameInput, removeButton)
+					if m.hasContentLineField(c1, m.contentIdx) {
+						found = true
+						m.focus = c1
+					} else if m.hasContentLineField(c2, m.contentIdx) {
+						found = true
+						m.focus = c2
+					}
+				}
+			}
+		}
+		i -= incr
+	}
 }
 
 func (m *FilterDialog) hasContentLineField(f filterDialogFocus, i int) bool {
@@ -628,7 +712,7 @@ func (m *FilterDialog) InitContent() tea.Cmd {
 		}
 	}
 
-	m.MoveFocus(0) // ensures focused element can execute side-effects
+	m.MoveFocus(0, horizontal) // ensures focused element can execute side-effects
 	m.updateSize()
 	m.initInputPlaceholders()
 	return tea.Batch(cmds...)
