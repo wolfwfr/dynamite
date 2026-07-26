@@ -1,7 +1,6 @@
 package dialogs
 
 import (
-	"math"
 	"slices"
 	"strings"
 
@@ -117,6 +116,9 @@ type filterListStyles struct {
 	wideBox        lipgloss.Style
 	wideBoxFocused lipgloss.Style
 
+	// ignored fields
+	ignored lipgloss.Style
+
 	// titles
 	AttrNameInputTitle  lipgloss.Style
 	AttrValueInputTitle lipgloss.Style
@@ -159,6 +161,9 @@ func newFilterStyles(darkBG bool) filterListStyles {
 	// wide boxes
 	s.wideBox = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(commonstyles.DialogUnfocusColour)
 	s.wideBoxFocused = s.wideBox.BorderForeground(commonstyles.DialogFocusColour)
+
+	// ignored fields
+	s.ignored = lipgloss.NewStyle().Foreground(commonstyles.DialogUnfocusColour).Padding(1, 1, 0, 1)
 
 	// inputs fields
 	s.AttrNameInputTitle = lipgloss.NewStyle().Foreground(commonstyles.SubtleColour).Padding(0, 0, 0, 1)
@@ -473,19 +478,15 @@ func (m *FilterDialog) MoveFocus(i int) tea.Cmd {
 			continue
 		}
 
-		origin := m.focus
-		m.focus = u.Clamp(m.focus+filterDialogFocus(j), 0, removeButton)
-		lineDiff := m.focus - origin
-		av2 := m.hasAttrValue2Field()
-		// correct diff when having crossed over invisible element
-		if !av2 && float64(filterAttrValueInput2) < math.Abs(float64(m.focus-origin)) {
-			lineDiff -= 1
+		diff := u.Ternary(+1, -1, j >= 0)
+		next := m.focus + filterDialogFocus(diff)
+		// NOTE: relies on the assumption that the first and last line element
+		// will never be hidden
+		for !m.hasContentLineField(next, m.contentIdx) {
+			next += filterDialogFocus(diff)
 		}
-		// correct when focused on invisible element
-		if !av2 && m.focus == filterAttrValueInput2 {
-			m.focus += filterDialogFocus(u.Ternary(+1, -1, j > 0))
-		}
-		j -= int(lineDiff)
+		m.focus = next
+		j -= diff
 	}
 
 	// default to false
@@ -510,11 +511,24 @@ func (m *FilterDialog) MoveFocus(i int) tea.Cmd {
 	return nil
 }
 
-func (m *FilterDialog) hasAttrValue2Field() bool {
-	if m.contentIdx < 0 || m.contentIdx >= len(m.content) {
+func (m *FilterDialog) hasContentLineField(f filterDialogFocus, i int) bool {
+	if i < 0 || i >= len(m.content) {
 		return false
 	}
-	if m.content[m.contentIdx].operatorSelection.SelectedItem().(regular.ListItem).Value == string(messages.Between_F) {
+	op := m.content[i].operatorSelection.SelectedItem().(regular.ListItem).Value
+
+	switch f {
+	case filterAttrNameInput:
+		return true
+	case filterAttrTypeField:
+		return op != string(messages.Exists_F) && op != string(messages.NotExists_F)
+	case filterOperatorField:
+		return true
+	case filterAttrValueInput1:
+		return op != string(messages.Exists_F) && op != string(messages.NotExists_F)
+	case filterAttrValueInput2:
+		return op == string(messages.Between_F)
+	case removeButton:
 		return true
 	}
 	return false
@@ -824,12 +838,14 @@ func (m *FilterDialog) renderContent() string {
 	field2Titles := make(map[string]struct{})
 
 	for i := range m.content {
-		attrNameStyle := u.Ternary(m.styles.wideBoxFocused, m.styles.wideBox, m.contentIdx == i && m.focus == filterAttrNameInput)
-		attrValue1Style := u.Ternary(m.styles.wideBoxFocused, m.styles.wideBox, m.contentIdx == i && m.focus == filterAttrValueInput1)
-		attrValue2Style := u.Ternary(m.styles.wideBoxFocused, m.styles.wideBox, m.contentIdx == i && m.focus == filterAttrValueInput2)
-		scalarTypeStyle := u.Ternary(m.styles.narrowBoxFocused, m.styles.narrowBox, m.contentIdx == i && m.focus == filterAttrTypeField)
+		var (
+			attrNameStyle   = m.selectContentLineFieldStyle(filterAttrNameInput, i)
+			attrValue1Style = m.selectContentLineFieldStyle(filterAttrValueInput1, i)
+			attrValue2Style = m.selectContentLineFieldStyle(filterAttrValueInput2, i)
+			scalarTypeStyle = m.selectContentLineFieldStyle(filterAttrTypeField, i)
+			opStyle         = m.selectContentLineFieldStyle(filterOperatorField, i)
+		)
 
-		opStyle := u.Ternary(m.styles.narrowBoxFocused, m.styles.narrowBox, m.contentIdx == i && m.focus == filterOperatorField)
 		opStyle = opStyle.Width(longestOp + opPadding)
 		op := m.content[i].operatorSelection.SelectedItem().(regular.ListItem).Value
 
@@ -846,7 +862,7 @@ func (m *FilterDialog) renderContent() string {
 		lines[l] = lipgloss.JoinHorizontal(lipgloss.Top,
 			rendering...,
 		)
-		if op == string(messages.Between_F) {
+		if m.hasContentLineField(filterAttrValueInput2, i) {
 			lines[l] = lipgloss.JoinVertical(lipgloss.Right,
 				lines[l],
 				attrValue2Style.Render(m.content[i].attrValueInput2.View()),
@@ -877,6 +893,45 @@ func (m *FilterDialog) renderContent() string {
 	)
 
 	return lipgloss.JoinVertical(lipgloss.Left, lines...)
+}
+
+func (m *FilterDialog) selectContentLineFieldStyle(f filterDialogFocus, i int) lipgloss.Style {
+	var (
+		fieldLen int
+		style    lipgloss.Style
+
+		boxAddW  = 2 // border width
+		nBoxPadW = m.styles.narrowBox.GetPaddingLeft() + m.styles.narrowBox.GetPaddingRight()
+		wBoxPadW = m.styles.wideBox.GetPaddingLeft() + m.styles.wideBox.GetPaddingRight()
+		hasField = m.hasContentLineField(f, i)
+	)
+
+	if i < 0 || i >= len(m.content) {
+		return style
+	}
+
+	switch f {
+	case filterAttrNameInput:
+		style = u.Ternary(m.styles.wideBoxFocused, m.styles.wideBox, m.contentIdx == i && m.focus == f)
+		fieldLen = lipgloss.Width(m.content[i].attrNameInput.View()) + wBoxPadW
+	case filterAttrTypeField:
+		style = u.Ternary(m.styles.narrowBoxFocused, m.styles.narrowBox, m.contentIdx == i && m.focus == f)
+		fieldLen = len(m.content[i].attrTypeSelection.SelectedItem().(regular.ListItem).Value) + nBoxPadW
+	case filterOperatorField:
+		style = u.Ternary(m.styles.narrowBoxFocused, m.styles.narrowBox, m.contentIdx == i && m.focus == f)
+		fieldLen = len(m.content[i].operatorSelection.SelectedItem().(regular.ListItem).Value) + nBoxPadW
+	case filterAttrValueInput1:
+		style = u.Ternary(m.styles.wideBoxFocused, m.styles.wideBox, m.contentIdx == i && m.focus == f)
+		fieldLen = lipgloss.Width(m.content[i].attrValueInput1.View()) + wBoxPadW
+	case filterAttrValueInput2:
+		style = u.Ternary(m.styles.wideBoxFocused, m.styles.wideBox, m.contentIdx == i && m.focus == f)
+		fieldLen = lipgloss.Width(m.content[i].attrValueInput2.View()) + wBoxPadW
+	}
+
+	if !hasField {
+		return m.styles.ignored.Width(fieldLen + boxAddW).Transform(func(string) string { return u.RepeatString("─", fieldLen) })
+	}
+	return style
 }
 
 func (m *FilterDialog) mapOperatorInput1Name(op string) string {

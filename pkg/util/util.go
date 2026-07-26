@@ -1,7 +1,10 @@
 // package util defines various generic go utility functions
 package util
 
-import "cmp"
+import (
+	"cmp"
+	"strings"
+)
 
 func Ternary[T any](first, second T, cond bool) T {
 	if cond {
@@ -45,6 +48,14 @@ func FindBy[S []E, E comparable](slice S, cond func(i E) bool) int {
 		}
 	}
 	return -1
+}
+
+func RepeatString(str string, c int) string {
+	b := strings.Builder{}
+	for range c {
+		b.WriteString(str)
+	}
+	return b.String()
 }
 
 func Clamp[T cmp.Ordered](v, low, high T) T {
