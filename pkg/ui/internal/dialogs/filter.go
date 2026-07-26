@@ -327,7 +327,9 @@ func (m *FilterDialog) Update(msg tea.Msg) tea.Cmd {
 		case key.Matches(msg, m.keyMap.exec):
 			return m.applyParameters()
 		case key.Matches(msg, m.keyMap.close):
-			return m.toggleDialog()
+			if m.safeToClose(msg) {
+				return m.toggleDialog()
+			}
 		case key.Matches(msg, m.keyMap.tab):
 			return m.MoveFocus(1)
 		case key.Matches(msg, m.keyMap.shtab):
@@ -343,9 +345,19 @@ func (m *FilterDialog) Update(msg tea.Msg) tea.Cmd {
 		return nil
 	case messages.InitFilterParameters:
 		return m.SetState(msg)
-	default:
-		return m.handleNavigation(msg)
 	}
+	return m.handleNavigation(msg)
+}
+
+// safeToClose returns false when the key-press is a single alphanumeric
+// character & an input-field is focused. This prevents closing the dialog
+// accidentally when typing a key mapped to 'close' into a text-box.
+func (m *FilterDialog) safeToClose(msg tea.KeyPressMsg) bool {
+	bts := []byte(msg.String())
+	if (m.focus == filterAttrNameInput || m.focus == filterAttrValueInput1 || m.focus == filterAttrValueInput2) && alphanum.Match(bts) && singleChar.Match(bts) {
+		return false
+	}
+	return true
 }
 
 func (m *FilterDialog) handleNavigation(msg tea.Msg) tea.Cmd {
