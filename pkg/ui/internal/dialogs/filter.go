@@ -675,14 +675,17 @@ func (m *FilterDialog) initContentLine(i int) tea.Cmd {
 
 	{ // attribute name input
 		attrNameInput := textinput.New()
+		attrNameInput.SetWidth(30)
 		m.content[i].attrNameInput = attrNameInput
 	}
 	{ // attribute value input 1
 		attrValueInput1 := textinput.New()
+		attrValueInput1.SetWidth(30)
 		m.content[i].attrValueInput1 = attrValueInput1
 	}
 	{ // attribute value input 2
 		attrValueInput2 := textinput.New()
+		attrValueInput2.SetWidth(30)
 		m.content[i].attrValueInput2 = attrValueInput2
 	}
 
