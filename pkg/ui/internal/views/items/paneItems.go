@@ -20,7 +20,6 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	appconfig "github.com/wolfwfr/dynamite/pkg"
-	"github.com/wolfwfr/dynamite/pkg/logging"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/adapters/dynamodb"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/adapters/dynamodb/types"
 	apitypes "github.com/wolfwfr/dynamite/pkg/ui/internal/adapters/dynamodb/types"
@@ -345,8 +344,6 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 		return m.ProcessPage(msg)
 	case messages.ColumnSortingReset:
 		return m.handleResetColumnSortingMessage(msg)
-	case messages.ToggleScanParameters:
-		logging.LogDebug(fmt.Sprintf("got scan toggle, will page: %t", m.table.PaginationEligible()))
 	case spinner.TickMsg:
 		if !m.spinner.active {
 			return nil
@@ -362,20 +359,9 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 
 func (m *ItemSelectionPane) PageNext(init bool) tea.Cmd {
 	// don't page when at end of paging and not the initialising call
-	if m.paging {
-		logging.LogDebug("already paging; skip")
-	}
-	if len(m.pageKey) == 0 {
-		if init {
-			logging.LogDebug("no pagekey, but init; proceed!")
-		} else {
-			logging.LogDebug("no pagekey, and not init; skip")
-		}
-	}
 	if (len(m.pageKey) == 0 && !init) || m.paging {
 		return nil
 	}
-	logging.LogDebug("proceeding to page!")
 	m.paging = true
 	mode := m.queryMode
 	table := m.selectedTable
