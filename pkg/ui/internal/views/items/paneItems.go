@@ -145,11 +145,12 @@ type ItemSelectionPane struct {
 	lastPreviewItem int                   // index
 	lastPreviewMsg  *messages.PreviewItem // prevents preview message looping
 
-	pageLatestID uint8
-	pageIgnore   map[uint8]struct{}
-	pageKey      map[string]dynamotypes.AttributeValue
-	pageCancel   func()
-	paging       bool
+	pageLatestID   uint8
+	pageIgnore     map[uint8]struct{}
+	pageKey        map[string]dynamotypes.AttributeValue
+	pageCancel     func()
+	pagingCanceled bool // explicitly canceled by user
+	paging         bool
 
 	// the currently active table
 	selectedTable types.DescribeTableResponse
@@ -353,6 +354,10 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 		return cmd
 	}
 	cmds = append(cmds, m.table.Update(msg))
+
+	if !m.pagingCanceled && m.table.PaginationEligible() {
+		return m.PageNext(false)
+	}
 
 	return tea.Batch(cmds...)
 }
@@ -745,6 +750,7 @@ func (m *ItemSelectionPane) resetPaging() {
 	m.pageIgnore[m.pageLatestID] = struct{}{} // ignore any errors from latest page
 	m.pageCancel()
 	m.paging = false
+	m.pagingCanceled = false
 	m.pageKey = nil
 }
 
@@ -752,11 +758,13 @@ func (m *ItemSelectionPane) cancelPaging() tea.Cmd {
 	m.pageCancel()
 	m.pageIgnore[m.pageLatestID] = struct{}{}
 	m.paging = false
+	m.pagingCanceled = true
 	m.deactivateSpinner()
 	return nil
 }
 
 func (m *ItemSelectionPane) continuePaging() tea.Cmd {
+	m.pagingCanceled = false
 	if m.table.PaginationEligible() {
 		return m.PageNext(!m.initialised)
 	}
