@@ -3,6 +3,7 @@ package dialogs
 import (
 	"math"
 	"slices"
+	"strings"
 
 	"charm.land/bubbles/v2/help"
 	"charm.land/bubbles/v2/key"
@@ -33,7 +34,7 @@ type filterKeyMap struct {
 type filterDialogFocus int
 
 const (
-	filterAttrNameInput filterDialogFocus = iota // TODO: dropdown or searchable?
+	filterAttrNameInput filterDialogFocus = iota
 	filterAttrTypeField
 	filterOperatorField
 	filterAttrValueInput1
@@ -304,6 +305,9 @@ func (m *FilterDialog) updateStyles(isDark bool) {
 	for i := range m.content {
 		m.content[i].attrTypeSelection.SetDelegate(m.newFilterItemDelegate(&s))
 		m.content[i].operatorSelection.SetDelegate(m.newFilterItemDelegate(&s))
+		m.content[i].attrNameInput.SetWidth(subwidth - 2 - len(m.content[i].attrNameInput.Prompt) - 1)
+		m.content[i].attrValueInput1.SetWidth(subwidth - 2 - len(m.content[i].attrValueInput1.Prompt) - 1)
+		m.content[i].attrValueInput2.SetWidth(subwidth - 2 - len(m.content[i].attrValueInput2.Prompt) - 1)
 	}
 }
 
@@ -366,7 +370,27 @@ func (m *FilterDialog) handleNavigation(msg tea.Msg) tea.Cmd {
 		}
 	}
 
+	if m.focus == filterOperatorField {
+		m.updateInputPlaceholders(m.contentIdx)
+	}
+
 	return cmd
+}
+
+func (m *FilterDialog) updateInputPlaceholders(i int) {
+	if i < 0 || i >= len(m.content) {
+		return
+	}
+	op := m.content[i].operatorSelection.SelectedItem().(regular.ListItem).Value
+	m.content[i].attrNameInput.Placeholder = m.mapOperatorInput1Name(op)
+	m.content[i].attrValueInput1.Placeholder = m.mapOperatorInput2Name(op)
+	m.content[i].attrValueInput2.Placeholder = m.mapOperatorInput2Name(op)
+}
+
+func (m *FilterDialog) initInputPlaceholders() {
+	for i := range m.content {
+		m.updateInputPlaceholders(i)
+	}
 }
 
 func (m *FilterDialog) AddFilterLine() tea.Cmd {
@@ -580,6 +604,7 @@ func (m *FilterDialog) InitContent() tea.Cmd {
 
 	m.MoveFocus(0) // ensures focused element can execute side-effects
 	m.updateSize()
+	m.initInputPlaceholders()
 	return tea.Batch(cmds...)
 }
 
@@ -646,6 +671,8 @@ func (m *FilterDialog) initContentLine(i int) tea.Cmd {
 		attrValueInput2 := textinput.New()
 		m.content[i].attrValueInput2 = attrValueInput2
 	}
+
+	m.updateInputPlaceholders(len(m.content) - 1)
 
 	return tea.Batch(cmds...)
 }
@@ -793,26 +820,28 @@ func (m *FilterDialog) renderContent() string {
 
 	lines := make([]string, len(m.content)+1)
 
-	lines[0] = lipgloss.JoinHorizontal(lipgloss.Top,
-		m.styles.AttrNameInputTitle.Render("Attribute Name"),
-		m.styles.AttrTypeTitle.Render("Type"),
-		m.styles.OperatorTitle.Width(longestOp+opPadding).Render(""),
-		m.styles.AttrValueInputTitle.Render("Attribute Value"),
-	)
+	field1Titles := make(map[string]struct{})
+	field2Titles := make(map[string]struct{})
 
 	for i := range m.content {
 		attrNameStyle := u.Ternary(m.styles.wideBoxFocused, m.styles.wideBox, m.contentIdx == i && m.focus == filterAttrNameInput)
 		attrValue1Style := u.Ternary(m.styles.wideBoxFocused, m.styles.wideBox, m.contentIdx == i && m.focus == filterAttrValueInput1)
 		attrValue2Style := u.Ternary(m.styles.wideBoxFocused, m.styles.wideBox, m.contentIdx == i && m.focus == filterAttrValueInput2)
 		scalarTypeStyle := u.Ternary(m.styles.narrowBoxFocused, m.styles.narrowBox, m.contentIdx == i && m.focus == filterAttrTypeField)
+
 		opStyle := u.Ternary(m.styles.narrowBoxFocused, m.styles.narrowBox, m.contentIdx == i && m.focus == filterOperatorField)
 		opStyle = opStyle.Width(longestOp + opPadding)
 		op := m.content[i].operatorSelection.SelectedItem().(regular.ListItem).Value
+
+		field1Titles[m.mapOperatorInput1Name(op)] = struct{}{}
+		field2Titles[m.mapOperatorInput2Name(op)] = struct{}{}
+
 		rendering := make([]string, 4)
 		rendering[0] = attrNameStyle.Render(m.content[i].attrNameInput.View())
 		rendering[1] = scalarTypeStyle.Render(m.content[i].attrTypeSelection.SelectedItem().(regular.ListItem).Value)
 		rendering[2] = opStyle.Render(op)
 		rendering[3] = attrValue1Style.Render(m.content[i].attrValueInput1.View())
+
 		l := i + 1
 		lines[l] = lipgloss.JoinHorizontal(lipgloss.Top,
 			rendering...,
@@ -825,7 +854,65 @@ func (m *FilterDialog) renderContent() string {
 		}
 		lines[l] = lipgloss.JoinHorizontal(lipgloss.Top, lines[l], m.renderRemoveButton(i))
 	}
+
+	field1Title := make([]string, 0)
+	field2Title := make([]string, 0)
+
+	for n := range field1Titles {
+		field1Title = append(field1Title, n)
+	}
+	for n := range field2Titles {
+		field2Title = append(field2Title, n)
+	}
+
+	slices.Sort(field1Title)
+	slices.Sort(field2Title)
+
+	// title bar
+	lines[0] = lipgloss.JoinHorizontal(lipgloss.Top,
+		m.styles.AttrNameInputTitle.Render(strings.Join(field1Title, " / ")),
+		m.styles.AttrTypeTitle.Render("Type"),
+		m.styles.OperatorTitle.Width(longestOp+opPadding).Render(""),
+		m.styles.AttrValueInputTitle.Render(strings.Join(field2Title, " / ")),
+	)
+
 	return lipgloss.JoinVertical(lipgloss.Left, lines...)
+}
+
+func (m *FilterDialog) mapOperatorInput1Name(op string) string {
+	name := []string{
+		string(messages.Equals_F),
+		string(messages.NotEquals_F),
+		string(messages.Greater_F),
+		string(messages.GreaterEqual_F),
+		string(messages.Less_F),
+		string(messages.LessEqual_F),
+		string(messages.Between_F),
+	}
+	path := []string{
+		string(messages.Exists_F),
+		string(messages.NotExists_F),
+		string(messages.Contains_F),
+		string(messages.NotContains_F),
+		string(messages.BeginsWith_F),
+	}
+	if slices.Contains(name, op) {
+		return "Attribute Name"
+	}
+	if slices.Contains(path, op) {
+		return "Path"
+	}
+	return ""
+}
+
+func (m *FilterDialog) mapOperatorInput2Name(op string) string {
+	if op == "" {
+		return ""
+	}
+	if op == string(messages.BeginsWith_F) {
+		return "Substring"
+	}
+	return "Attribute Value"
 }
 
 func (m *FilterDialog) renderHelp() string {
