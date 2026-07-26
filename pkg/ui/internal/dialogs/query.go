@@ -420,7 +420,9 @@ func (m *Queryialog) Update(msg tea.Msg) tea.Cmd {
 	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, m.keyMap.close):
-			return m.toggleDialog()
+			if m.safeToClose(msg) {
+				return m.toggleDialog()
+			}
 		case key.Matches(msg, m.keyMap.tab):
 			return m.MoveFocus(1)
 		case key.Matches(msg, m.keyMap.shtab):
@@ -435,9 +437,19 @@ func (m *Queryialog) Update(msg tea.Msg) tea.Cmd {
 		return nil
 	case messages.InitQueryParameters:
 		return m.SetState(msg)
-	default:
-		return m.handleNavigation(msg)
 	}
+	return m.handleNavigation(msg)
+}
+
+// safeToClose returns false when the key-press is a single alphanumeric
+// character & an input-field is focused. This prevents closing the dialog
+// accidentally when typing a key mapped to 'close' into a text-box.
+func (m *Queryialog) safeToClose(msg tea.KeyPressMsg) bool {
+	bts := []byte(msg.String())
+	if (m.focus == queryHashKeyInput || m.focus == queryRangeKeyInput1 || m.focus == queryRangeKeyInput2) && alphanum.Match(bts) && singleChar.Match(bts) {
+		return false
+	}
+	return true
 }
 
 func (m *Queryialog) handleNavigation(msg tea.Msg) tea.Cmd {
