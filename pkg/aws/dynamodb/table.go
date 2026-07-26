@@ -5,11 +5,11 @@ import (
 	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 
 	apitypes "github.com/wolfwfr/dynamite/pkg/aws/dynamodb/types"
+	"github.com/wolfwfr/dynamite/pkg/util"
 )
-
-// TODO: add filters everywhere
 
 type dynamodbClient interface {
 	ListTables(context.Context, *dynamodb.ListTablesInput, ...func(*dynamodb.Options)) (*dynamodb.ListTablesOutput, error)
@@ -120,13 +120,28 @@ func QueryTable(client dynamodbClient, ctx context.Context, table string, params
 	if params.IndexName != nil && *params.IndexName != "" {
 		index = params.IndexName
 	}
+
+	fex, fnm, fvl := buildFilterExpression(params.FilterParameters)
+
+	var rem1 map[string]string
+	names, rem1 = util.MergeMapsSafe(names, fnm)
+	if len(rem1) > 0 {
+		panic("BUG: expression_attribute_names name-collision; Please report to maintainer")
+	}
+	var rem2 map[string]types.AttributeValue
+	values, rem2 = util.MergeMapsSafe(values, fvl)
+	if len(rem2) > 0 {
+		panic("BUG: expression_attribute_values name-collision; Please report to maintainer")
+	}
+
 	ascendingOrder := !params.Descending
 	p := dynamodb.QueryInput{
 		TableName:                 &table,
 		Limit:                     toPtr(int32(params.Limit)),
 		KeyConditionExpression:    &keys,
-		ExpressionAttributeValues: values,
+		FilterExpression:          fex,
 		ExpressionAttributeNames:  names,
+		ExpressionAttributeValues: values,
 		Select:                    "ALL_ATTRIBUTES",
 		IndexName:                 index,
 		ExclusiveStartKey:         params.LastEvaluatedKey,

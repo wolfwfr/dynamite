@@ -3,6 +3,7 @@ package util
 
 import (
 	"cmp"
+	"reflect"
 	"strings"
 )
 
@@ -56,6 +57,44 @@ func RepeatString(str string, c int) string {
 		b.WriteString(str)
 	}
 	return b.String()
+}
+
+// MergeMaps takes two maps and returns an identically typed map containing all
+// keys present in the specified inputs and their associated values, where the
+// values contained in the first argument take precedence.
+func MergeMaps[K comparable, T any](m1, m2 map[K]T) (merged map[K]T) {
+	merged = make(map[K]T)
+	for k, v := range m1 {
+		merged[k] = v
+	}
+	for k, v := range m2 {
+		if _, ok := merged[k]; ok {
+			continue
+		}
+		merged[k] = v
+	}
+	return
+}
+
+// MergeMapsSafe takes two maps and returns two identically typed maps. The
+// first containing all keys present in the specified inputs and their
+// associated values, where the values contained in the first argument take
+// precedence. The second map contains all key-value pairs of the map in the
+// second argument that could not be safely merged without violating the
+// precedence rule.
+func MergeMapsSafe[K comparable, T any](m1, m2 map[K]T) (merged map[K]T, remainder map[K]T) {
+	merged = make(map[K]T)
+	remainder = make(map[K]T)
+	for k, v := range m1 {
+		merged[k] = v
+	}
+	for k, v := range m2 {
+		if vv, ok := merged[k]; ok && !reflect.DeepEqual(v, vv) {
+			remainder[k] = v
+		}
+		merged[k] = v
+	}
+	return
 }
 
 func Clamp[T cmp.Ordered](v, low, high T) T {

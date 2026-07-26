@@ -103,9 +103,10 @@ type ( // SCAN
 
 type ( // QUERY
 	QueryParameters struct {
-		KeyDetails []types.AttributeDefinition // table attribute-definitions, describing table & index key attribute types
-		IndexName  *string                     // optional index-name, queries table if nil
-		KeySchema  []types.KeySchemaElement    // keyschema associated with `IndexName` or table
+		KeyDetails       []types.AttributeDefinition // table attribute-definitions, describing table & index key attribute types
+		IndexName        *string                     // optional index-name, queries table if nil
+		KeySchema        []types.KeySchemaElement    // keyschema associated with `IndexName` or table
+		FilterParameters []FilterExpressionParameters
 
 		HashKeyValue     string  // required
 		RangeKeyValue1   *string // optional

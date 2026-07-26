@@ -377,6 +377,8 @@ func (m *ItemSelectionPane) PageNext(init bool) tea.Cmd {
 	client := m.config.Client
 	scanFilter := make([]apitypes.FilterExpressionParameters, len(m.filterParameters.scan))
 	copy(scanFilter, m.filterParameters.scan)
+	queryFilter := make([]apitypes.FilterExpressionParameters, len(m.filterParameters.query))
+	copy(queryFilter, m.filterParameters.query)
 	scanLimit := m.scanLimit
 	queryLimit := m.queryLimit
 	hash := m.queryParameters.hashKeyValue
@@ -403,6 +405,7 @@ func (m *ItemSelectionPane) PageNext(init bool) tea.Cmd {
 				KeyDetails:       table.AttributeDefinitions,
 				IndexName:        idx,
 				KeySchema:        keysFromIndex(idx, table),
+				FilterParameters: queryFilter,
 				HashKeyValue:     hash,
 				RangeKeyValue1:   rang1,
 				RangeKeyValue2:   rang2,

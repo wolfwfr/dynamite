@@ -119,6 +119,7 @@ func (a *Adapter) QueryTable(client *dynamodb.Client, ctx context.Context, table
 		KeyDetails:       params.KeyDetails,
 		IndexName:        params.IndexName,
 		KeySchema:        params.KeySchema,
+		FilterParameters: convertFilterParameters(params.FilterParameters),
 		Limit:            params.Limit,
 		LastEvaluatedKey: params.LastEvaluatedKey,
 		HashKeyValue:     params.HashKeyValue,
