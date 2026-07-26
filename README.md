@@ -191,4 +191,8 @@ operations as a non-goal
 
 **Scrolling down doesn't automatically retrieve the next page**
 
-If not all pages have been retrieved, it is possible that pagination is disabled because of an enabled search (key: `/`) or because page-retrieval had been explicitly canceled by pressing the `Esc` key during page-retrieval. Re-enable pagination with the `c` key, or view the help menu (key: `?`) for the appropriate key-binding.
+If not all pages have been retrieved, it is possible that pagination is disabled because of an enabled search (default key: `/`) or because page-retrieval had been explicitly canceled by pressing the `Esc` key during page-retrieval. Re-enable pagination with the `c` key, or view the help menu (default key: `?`) for the appropriate key-binding.
+
+**My scan or query is not returning the expected results**
+
+If filter parameters were left enabled, then they will affect your search results. Check for the `FILTER` box in the bottom-left corner, if it is depicted, then filters are being applied. Open the filter-parameters dialog (default key: `ctrl+f`), reset (default key: `ctrl+r`), and commit (default key: `alt+enter`). This should remove any applied filters to your current operation. Note that Dynamite maintains a separate set of filter-parameters for scan- & query-modes and stores a session per table that restores any scan-, query-, and filter-parameters when re-selecting that table within the same Dynamite session.
