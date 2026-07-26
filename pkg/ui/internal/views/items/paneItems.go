@@ -536,7 +536,7 @@ func (m *ItemSelectionPane) ProcessPage(msg messages.PageReady) tea.Cmd {
 // default to scanning the first page of items.
 func (m *ItemSelectionPane) selectTable(tableName string, details types.DescribeTableResponse) tea.Cmd {
 	m.selectedTable = details
-	var cmd tea.Cmd
+	cmds := make([]tea.Cmd, 0)
 	if session, remembered := m.sessions[*details.TableArn]; remembered {
 		// restore session parameters
 		m.scanParameters.index = session.scanParams.index
@@ -551,10 +551,10 @@ func (m *ItemSelectionPane) selectTable(tableName string, details types.Describe
 		switch session.queryMode {
 		case messages.ScanMode:
 			m.tableIndex.activeIndex = session.scanParams.index
-			cmd = m.enableScanMode(true)
+			cmds = append(cmds, m.enableScanMode(true))
 		case messages.QueryMode:
 			m.tableIndex.activeIndex = session.queryParams.index
-			cmd = m.enableQueryMode(true)
+			cmds = append(cmds, m.enableQueryMode(true))
 		}
 		if m.tableIndex.activeIndex == nil {
 			m.tableIndex.indexItemCount = *details.ItemCount
@@ -565,13 +565,13 @@ func (m *ItemSelectionPane) selectTable(tableName string, details types.Describe
 		// defaults on newly opened table
 		m.tableIndex.activeIndex = nil
 		m.tableIndex.indexItemCount = *details.ItemCount
-		cmd = m.enableScanMode(true)
+		cmds = append(cmds, m.enableScanMode(true))
 	}
 
 	// resetting state
 	m.table.ResetSearch()
 
-	return cmd
+	return tea.Batch(cmds...)
 }
 
 // compileCompleteKeys takes a table of key-value pairs, observes all keys and

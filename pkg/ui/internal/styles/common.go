@@ -34,6 +34,7 @@ var (
 	ErrorColour     = lipgloss.Color("#B51010")
 
 	RegionBoxBg         = lipgloss.Color("#80380E")
+	FilterBoxBg         = lipgloss.Color("#681FA1")
 	QueryModeBoxQeuryBg = lipgloss.Color("#046645")
 	QueryModeBoxScanBg  = lipgloss.Color("#0E3080")
 	QueryModeBoxAdminBg = lipgloss.Color("#0E5680")

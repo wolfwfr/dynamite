@@ -30,7 +30,7 @@ func (m *ItemSelectionPane) enableScanMode(force bool) tea.Cmd {
 			NewMode: messages.ScanMode,
 		}
 	}
-	return tea.Batch(switchM, m.PageNext(true))
+	return tea.Batch(switchM, filterParamMessage(len(m.filterParameters.scan) > 0), m.PageNext(true))
 }
 
 func (m *ItemSelectionPane) ToggleScanParametersDialog() tea.Cmd {

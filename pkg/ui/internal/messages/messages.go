@@ -248,4 +248,8 @@ type SwitchQueryMode struct {
 	NewMode ItemsQueryMode
 }
 
+type TableFiltersEnabled struct {
+	Enabled bool
+}
+
 type CopyItem struct{}

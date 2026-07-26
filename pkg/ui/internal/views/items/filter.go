@@ -40,7 +40,15 @@ func (m *ItemSelectionPane) ChangeFilterParameters(msg messages.FilterParameters
 		m.filterParameters.scan = params
 	}
 
-	return m.PageNext(true)
+	return tea.Batch(m.PageNext(true), filterParamMessage(len(params) > 0))
+}
+
+func filterParamMessage(enabled bool) tea.Cmd {
+	return func() tea.Msg {
+		return messages.TableFiltersEnabled{
+			Enabled: enabled,
+		}
+	}
 }
 
 // toggle filter-parameters diagram

@@ -31,9 +31,9 @@ func (m *ItemSelectionPane) enableQueryMode(force bool) tea.Cmd {
 		}
 	}
 	if m.queryParameters.hashKeyValue == "" {
-		return tea.Batch(switchM, m.ToggleQueryParametersDialog())
+		return tea.Batch(switchM, filterParamMessage(len(m.filterParameters.query) > 0), m.ToggleQueryParametersDialog())
 	}
-	return tea.Batch(switchM, m.PageNext(true))
+	return tea.Batch(switchM, filterParamMessage(len(m.filterParameters.query) > 0), m.PageNext(true))
 }
 
 func (m *ItemSelectionPane) ToggleQueryParametersDialog() tea.Cmd {
