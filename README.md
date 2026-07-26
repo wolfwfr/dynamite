@@ -184,3 +184,11 @@ operations as a non-goal
 
 - **[Sacha](https://github.com/Sachamama/sacha)** another 2-pane TUI that also integrates with S3, EC2, Lambda, and more!
 - **[ddv](https://github.com/lusingander/ddv)** a blazing fast dynamo-DB viewer for the terminal, written in Rust
+
+<br/>
+
+## 🩼 Troubleshooting
+
+**Scrolling down doesn't automatically retrieve the next page**
+
+If not all pages have been retrieved, it is possible that pagination is disabled because of an enabled search (key: `/`) or because page-retrieval had been explicitly canceled by pressing the `Esc` key during page-retrieval. Re-enable pagination with the `c` key, or view the help menu (key: `?`) for the appropriate key-binding.
