@@ -15,7 +15,7 @@ func (m *ItemSelectionPane) enableQueryMode(force bool) tea.Cmd {
 		return nil
 	}
 
-	m.resetContents()
+	reset := m.resetContents()
 
 	m.queryMode = messages.QueryMode
 	m.tableIndex.activeIndex = m.queryParameters.index
@@ -31,9 +31,9 @@ func (m *ItemSelectionPane) enableQueryMode(force bool) tea.Cmd {
 		}
 	}
 	if m.queryParameters.hashKeyValue == "" {
-		return tea.Batch(switchM, filterParamMessage(len(m.filterParameters.query) > 0), m.ToggleQueryParametersDialog())
+		return tea.Batch(reset, switchM, filterParamMessage(len(m.filterParameters.query) > 0), m.ToggleQueryParametersDialog())
 	}
-	return tea.Batch(switchM, filterParamMessage(len(m.filterParameters.query) > 0), m.PageNext(true))
+	return tea.Batch(reset, switchM, filterParamMessage(len(m.filterParameters.query) > 0), m.PageNext(true))
 }
 
 func (m *ItemSelectionPane) ToggleQueryParametersDialog() tea.Cmd {

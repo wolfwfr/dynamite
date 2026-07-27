@@ -30,7 +30,7 @@ func (m *ItemSelectionPane) ChangeFilterParameters(msg messages.FilterParameters
 	}
 
 	// cancel paging, and refresh table contents
-	m.resetContents()
+	reset := m.resetContents()
 
 	mode := m.queryMode
 	if mode == messages.QueryMode {
@@ -40,7 +40,7 @@ func (m *ItemSelectionPane) ChangeFilterParameters(msg messages.FilterParameters
 		m.filterParameters.scan = params
 	}
 
-	return tea.Batch(m.PageNext(true), filterParamMessage(len(params) > 0))
+	return tea.Batch(reset, m.PageNext(true), filterParamMessage(len(params) > 0))
 }
 
 func filterParamMessage(enabled bool) tea.Cmd {

@@ -252,4 +252,8 @@ type TableFiltersEnabled struct {
 	Enabled bool
 }
 
+type TablePaginationSuspended struct {
+	Suspended bool
+}
+
 type CopyItem struct{}

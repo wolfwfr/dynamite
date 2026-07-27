@@ -64,13 +64,22 @@ var filterModeBlock = lipgloss.NewStyle().
 	Margin(0, 1, 0, 0).
 	Height(1)
 
+var pageSuspendBlock = lipgloss.NewStyle().
+	Strikethrough(true).
+	Background(commonstyles.PageSuspendBoxBg).
+	Align(lipgloss.Left, lipgloss.Top).
+	Padding(0, 1, 0, 1).
+	Margin(0, 1, 0, 0).
+	Height(1)
+
 type Model struct {
 	// ActiveView determines tea.Msg forwarding
 	activeView View
 
 	QueryMode messages.ItemsQueryMode
 
-	FiltersEnabled bool
+	FiltersEnabled  bool
+	PagingSuspended bool
 
 	KeyMap KeyMap
 
@@ -252,6 +261,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m, cmd = m.SwitchQueryMode(msg)
 	case messages.TableFiltersEnabled:
 		m, cmd = m.UpdateTableFilterMode(msg)
+	case messages.TablePaginationSuspended:
+		m, cmd = m.UpdatePaginationSuspended(msg)
 	}
 
 	var fwdCmd tea.Cmd
@@ -342,6 +353,11 @@ func (m Model) SwitchQueryMode(msg messages.SwitchQueryMode) (Model, tea.Cmd) {
 
 func (m Model) UpdateTableFilterMode(msg messages.TableFiltersEnabled) (Model, tea.Cmd) {
 	m.FiltersEnabled = msg.Enabled
+	return m, nil
+}
+
+func (m Model) UpdatePaginationSuspended(msg messages.TablePaginationSuspended) (Model, tea.Cmd) {
+	m.PagingSuspended = msg.Suspended
 	return m, nil
 }
 
@@ -517,9 +533,11 @@ func (m Model) View() tea.View {
 	// assemble gutter
 	region := regionBlock.Render(m.config.Region)
 	queryMode := u.Ternary("QUERY", "SCAN", m.QueryMode == messages.QueryMode)
+	// TODO: refactor blocks to be managed more directly by view
 	query := u.Ternary(queryModeBlock.Render(queryMode), "", m.activeView == items_view)
 	filter := u.Ternary(filterModeBlock.Render("FILTER"), "", m.FiltersEnabled && m.activeView == items_view)
-	gutter := lipgloss.JoinHorizontal(lipgloss.Left, region, query, filter, " ", help)
+	pageSus := u.Ternary(pageSuspendBlock.Render("PAGING"), "", m.PagingSuspended && m.activeView == items_view)
+	gutter := lipgloss.JoinHorizontal(lipgloss.Left, region, query, filter, pageSus, " ", help)
 
 	page = lipgloss.JoinVertical(lipgloss.Top, page, gutter)
 

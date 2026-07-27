@@ -35,6 +35,7 @@ var (
 
 	RegionBoxBg         = lipgloss.Color("#80380E")
 	FilterBoxBg         = lipgloss.Color("#681FA1")
+	PageSuspendBoxBg    = lipgloss.Color("#5E5E5E")
 	QueryModeBoxQeuryBg = lipgloss.Color("#046645")
 	QueryModeBoxScanBg  = lipgloss.Color("#0E3080")
 	QueryModeBoxAdminBg = lipgloss.Color("#0E5680")
