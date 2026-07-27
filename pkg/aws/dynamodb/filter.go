@@ -29,10 +29,8 @@ func buildFilterExpression(params []apitypes.FilterExpressionParameters) (expr *
 	nameAliasConstructor := newExpressionNameAliasConstructor()
 	valueAliasConstructor := newExpressionValueAliasConstructor()
 
-	var exprr string
+	var exprr strings.Builder
 	for i, p := range params {
-		// TODO: use strings.Builder
-		var s string
 		if p.AttributePath == "" || p.Operator == apitypes.Noop_F || p.Operator == apitypes.Between_F && util.IfNotNil(p.AttributeValue2, "") == "" {
 			continue
 		}
@@ -57,34 +55,34 @@ func buildFilterExpression(params []apitypes.FilterExpressionParameters) (expr *
 		}
 
 		if i > 0 {
-			s = " AND " // TODO: consider supporting 'OR' operator
+			exprr.WriteString(" AND ") // TODO: consider supporting 'OR' operator
 		}
 
 		switch {
 		case slices.Contains(filterComparators(), p.Operator):
-			s = fmt.Sprintf("%s%s %s %s", s, pathAlias, ParseFilterComparator(p.Operator), attrValueAlias)
+			exprr.WriteString(fmt.Sprintf("%s %s %s", pathAlias, ParseFilterComparator(p.Operator), attrValueAlias))
 		case p.Operator == apitypes.Between_F:
 			attrVal2 := util.IfNotNil(p.AttributeValue2, "")
 			attrValue2Alias := valueAliasConstructor(attrVal2, p.AttributeValueType)
 			exprVals[attrValue2Alias] = ToAttrValue(attrVal2, p.AttributeValueType)
-			s = fmt.Sprintf("%s%s %s %s AND %s", s, pathAlias, ParseFilterComparator(p.Operator), attrValueAlias, attrValue2Alias)
+			exprr.WriteString(fmt.Sprintf("%s %s %s AND %s", pathAlias, ParseFilterComparator(p.Operator), attrValueAlias, attrValue2Alias))
 		case p.Operator == apitypes.Exists_F:
-			s = fmt.Sprintf("%s%s(%s)", s, filterExists, pathAlias)
+			exprr.WriteString(fmt.Sprintf("%s(%s)", filterExists, pathAlias))
 		case p.Operator == apitypes.NotExists_F:
-			s = fmt.Sprintf("%s%s(%s)", s, filterNotExists, pathAlias)
+			exprr.WriteString(fmt.Sprintf("%s(%s)", filterNotExists, pathAlias))
 		case p.Operator == apitypes.Contains_F:
-			s = fmt.Sprintf("%s%s(%s,%s)", s, filterContains, pathAlias, attrValueAlias)
+			exprr.WriteString(fmt.Sprintf("%s(%s,%s)", filterContains, pathAlias, attrValueAlias))
 		case p.Operator == apitypes.NotContains_F:
-			s = fmt.Sprintf("%sNOT %s(%s,%s)", s, filterContains, pathAlias, attrValueAlias)
+			exprr.WriteString(fmt.Sprintf("NOT %s(%s,%s)", filterContains, pathAlias, attrValueAlias))
 		case p.Operator == apitypes.BeginsWith_F:
-			s = fmt.Sprintf("%s%s(%s,%s)", s, filterBeginsWith, pathAlias, attrValueAlias)
+			exprr.WriteString(fmt.Sprintf("%s(%s,%s)", filterBeginsWith, pathAlias, attrValueAlias))
 		default:
 			// TODO: debug logging or error
 			continue
 		}
-		exprr = fmt.Sprintf("%s%s", exprr, s)
 	}
-	expr = &exprr
+	str := exprr.String()
+	expr = &str
 
 	// ensure nil if empty; required by dynamodb API
 	if expr != nil && len(*expr) == 0 {
