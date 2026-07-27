@@ -407,6 +407,65 @@ func TestLoadSessions(t *testing.T) {
 	})
 }
 
+func TestPagination(t *testing.T) {
+	var (
+		tableARN  = "table"
+		tableName = "table-name"
+	)
+
+	// factory initialising a new system-under-test
+	newSUT := func(m *mocks.MockdynamodbClient) *ItemSelectionPane {
+		sut := newItemSelectionPane(context.Background(), &appconfig.Config{})
+		sut.dynamodbClient = m
+		sut.selectedTable.TableArn = &tableARN
+		sut.selectedTable.TableName = &tableName
+		return sut
+	}
+
+	t.Run("item-selection-pane next-page method should", func(t *testing.T) {
+		t.Run("return page when paging is not canceled and not initialising", func(t *testing.T) {
+			ctrl := gm.NewController(t)                                                                        // init mock controller
+			db := mocks.NewMockdynamodbClient(ctrl)                                                            // init mocked DynamoDB client
+			sut := newSUT(db)                                                                                  // init
+			sut.initialised = true                                                                             // setup; set initialised to true
+			sut.pageKey = map[string]dynamodbtypes.AttributeValue{"a": &dynamodbtypes.AttributeValueMemberS{}} // setup; fake a pagination-key
+			db.EXPECT().
+				ScanTable(gm.Any(), gm.Any(), gm.Any(), gm.Any()).
+				Return(&apitypes.ScanResponse{}, nil).
+				Times(1)
+			cmd := sut.PageNext(false)                          // call to sut function
+			msgs := tu.ExtractMessages[messages.PageReady](cmd) // execute pagination
+			assert.Len(t, msgs, 1)                              // require at least one page
+		})
+		t.Run("return nil when paging is canceled", func(t *testing.T) {
+			ctrl := gm.NewController(t)                                                                        // init mock controller
+			db := mocks.NewMockdynamodbClient(ctrl)                                                            // init mocked DynamoDB client
+			sut := newSUT(db)                                                                                  // init
+			sut.initialised = true                                                                             // setup; set initialised to true
+			sut.pageKey = map[string]dynamodbtypes.AttributeValue{"a": &dynamodbtypes.AttributeValueMemberS{}} // setup; fake a pagination-key
+			sut.cancelPaging()                                                                                 // cancel paging
+			cmd := sut.PageNext(false)                                                                         // call to sut function
+			msgs := tu.ExtractMessages[messages.PageReady](cmd)                                                // execute pagination
+			assert.Len(t, msgs, 0)                                                                             // require at least one page
+		})
+		t.Run("return page when paging was canceled and continued", func(t *testing.T) {
+			ctrl := gm.NewController(t)                                                                        // init mock controller
+			db := mocks.NewMockdynamodbClient(ctrl)                                                            // init mocked DynamoDB client
+			sut := newSUT(db)                                                                                  // init
+			sut.initialised = true                                                                             // setup; set initialised to true
+			sut.pageKey = map[string]dynamodbtypes.AttributeValue{"a": &dynamodbtypes.AttributeValueMemberS{}} // setup; fake a pagination-key
+			db.EXPECT().
+				ScanTable(gm.Any(), gm.Any(), gm.Any(), gm.Any()).
+				Return(&apitypes.ScanResponse{}, nil).
+				Times(1)
+			sut.cancelPaging()                                  // cancel paging
+			cmd := sut.continuePaging()                         // continue paging
+			msgs := tu.ExtractMessages[messages.PageReady](cmd) // execute pagination
+			assert.Len(t, msgs, 1)                              // require at least one page
+		})
+	})
+}
+
 func TestSearch(t *testing.T) {
 	var (
 		tableARN  = "table"

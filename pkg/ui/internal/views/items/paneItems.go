@@ -365,7 +365,7 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 
 func (m *ItemSelectionPane) PageNext(init bool) tea.Cmd {
 	// don't page when at end of paging and not the initialising call
-	if (len(m.pageKey) == 0 && !init) || m.paging {
+	if (len(m.pageKey) == 0 && !init) || (m.pagingCanceled && !init) || m.paging {
 		return nil
 	}
 	m.paging = true
