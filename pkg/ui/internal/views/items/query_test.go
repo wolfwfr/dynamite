@@ -98,6 +98,7 @@ func TestQuery(t *testing.T) {
 					IndexName:        &someIndex,
 					KeySchema:        gsi[0].KeySchema,
 					HashKeyValue:     hkValue,
+					FilterParameters: []apitypes.FilterExpressionParameters{},
 					RangeKeyValue1:   &rkValue1,
 					RangeKeyValue2:   &rkValue2,
 					RangeKeyOperator: apitypes.RangeBetween,

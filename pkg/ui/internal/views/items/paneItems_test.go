@@ -33,12 +33,14 @@ var (
 	queryKeyValid  bool
 	scanKeyValid   bool
 	exitKeyValid   bool
+	backKeyValid   bool
 	reloadKeyValid bool
 
 	searchKey = tea.KeyPressMsg(tea.Key{Text: "/"})
 	queryKey  = tea.KeyPressMsg(tea.Key{Text: "q", Mod: tea.ModShift, Code: 'q'})
 	scanKey   = tea.KeyPressMsg(tea.Key{Text: "s", Mod: tea.ModShift, Code: 's'})
 	exitKey   = tea.KeyPressMsg(tea.Key{Code: tea.KeyEsc})
+	backKey   = tea.KeyPressMsg(tea.Key{Code: tea.KeyBackspace})
 	reloadKey = tea.KeyPressMsg(tea.Key{Text: "ctrl+r", Mod: tea.ModCtrl})
 )
 
@@ -52,6 +54,7 @@ func validateItemSelectionKeys() {
 	keymap.Query.SetEnabled(true)
 	keymap.Scan.SetEnabled(true)
 	keymap.Esc.SetEnabled(true)
+	keymap.Back.SetEnabled(true)
 	keymap.Reload.SetEnabled(true)
 
 	// test matching
@@ -59,6 +62,7 @@ func validateItemSelectionKeys() {
 	queryKeyValid = key.Matches(queryKey, keymap.Query)
 	scanKeyValid = key.Matches(scanKey, keymap.Scan)
 	exitKeyValid = key.Matches(exitKey, keymap.Esc)
+	backKeyValid = key.Matches(backKey, keymap.Back)
 	reloadKeyValid = key.Matches(reloadKey, keymap.Reload)
 }
 
@@ -68,6 +72,7 @@ func TestKeyMapValid(t *testing.T) {
 	assert.True(t, queryKeyValid)
 	assert.True(t, scanKeyValid)
 	assert.True(t, exitKeyValid)
+	assert.True(t, backKeyValid)
 	assert.True(t, reloadKeyValid)
 }
 
@@ -309,12 +314,12 @@ func TestLoadSessions(t *testing.T) {
 
 	t.Run("item-selection-pane should", func(t *testing.T) {
 		t.Run("store & restore scan parameters when exiting item-selection view in scan-mode", func(t *testing.T) {
-			skipIf(t, !exitKeyValid, "skipping due to outdated keymap")   // skip if keymap needs updating
+			skipIf(t, !backKeyValid, "skipping due to outdated keymap")   // skip if keymap needs updating
 			sut := newSUT()                                               // init sut
 			sut.scanParameters.index = &someIndex                         // set params; index
-			sut.Update(exitKey)                                           // exit view
+			sut.Update(backKey)                                           // exit view
 			simpleSelectTable(sut, tableARN2, tableName2, 10)             // select table 2 in between
-			sut.Update(exitKey)                                           // exit again
+			sut.Update(backKey)                                           // exit again
 			simpleSelectTable(sut, tableARN1, tableName1, 10)             // re-enter table 1
 			assert.EqualValues(t, someIndex, *sut.scanParameters.index)   // assert restored; index
 			assert.EqualValues(t, someIndex, *sut.tableIndex.activeIndex) // assert restored; active index
@@ -331,7 +336,7 @@ func TestLoadSessions(t *testing.T) {
 			assert.EqualValues(t, someIndex, *sut.tableIndex.activeIndex) // assert restored; active index
 		})
 		t.Run("store & restore query parameters when exiting item-selection view in query-mode", func(t *testing.T) {
-			skipIf(t, !exitKeyValid, "skipping due to outdated keymap")                   // skip if keymap needs updating
+			skipIf(t, !backKeyValid, "skipping due to outdated keymap")                   // skip if keymap needs updating
 			skipIf(t, !queryKeyValid, "skipping due to outdated keymap")                  // skip if keymap needs updating
 			sut := newSUT()                                                               // init sut
 			sut.Update(queryKey)                                                          // switch to query-mode
@@ -341,10 +346,10 @@ func TestLoadSessions(t *testing.T) {
 			sut.queryParameters.rangeKeyValue2 = &rkValue2                                // set params; range-key value 2
 			sut.queryParameters.rangeOrderDescending = true                               // set params; range-order
 			sut.queryParameters.rangeKeyOperator = messages.Between                       // set params; range operator
-			sut.Update(exitKey)                                                           // exit view
+			sut.Update(backKey)                                                           // exit view
 			simpleSelectTable(sut, tableARN2, tableName2, 10)                             // select table 2 in between
 			sut.Update(queryKey)                                                          // switch to query-mode again
-			sut.Update(exitKey)                                                           // exit again
+			sut.Update(backKey)                                                           // exit again
 			simpleSelectTable(sut, tableARN1, tableName1, 10)                             // re-enter table 1
 			assert.EqualValues(t, sut.queryMode, messages.QueryMode)                      // assert re-enter straight into query-mode this time
 			assert.EqualValues(t, someIndex, *sut.queryParameters.index)                  // assert restored; index

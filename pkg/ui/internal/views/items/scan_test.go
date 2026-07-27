@@ -90,6 +90,7 @@ func TestScan(t *testing.T) {
 					KeyDetails:       AttributeDefinitions,
 					IndexName:        &someIndex,
 					KeySchema:        gsi[0].KeySchema,
+					FilterParameters: []apitypes.FilterExpressionParameters{},
 					Limit:            10,
 					LastEvaluatedKey: nil,
 				}).
