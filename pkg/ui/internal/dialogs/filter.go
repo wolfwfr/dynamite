@@ -193,12 +193,12 @@ func NewFilterDialog(close key.Binding) *FilterDialog {
 		keyMap: filterKeyMap{
 			close: close,
 			up: key.NewBinding(
-				key.WithKeys("up"),
-				key.WithHelp("↑", "up"),
+				key.WithKeys("shift+up"),
+				key.WithHelp("Shift+↑", "up"),
 			),
 			down: key.NewBinding(
-				key.WithKeys("down"),
-				key.WithHelp("↓", "down"),
+				key.WithKeys("shift+down"),
+				key.WithHelp("shift+↓", "down"),
 			),
 			enter: key.NewBinding(
 				key.WithKeys("space", "enter"),
@@ -209,12 +209,12 @@ func NewFilterDialog(close key.Binding) *FilterDialog {
 				key.WithHelp("alt+enter", "apply!"),
 			),
 			right: key.NewBinding(
-				key.WithKeys("tab", "right"),
-				key.WithHelp("tab/→", "right"),
+				key.WithKeys("tab", "shift+right"),
+				key.WithHelp("tab", "right"),
 			),
 			left: key.NewBinding(
-				key.WithKeys("shift+tab", "left"),
-				key.WithHelp("shift+tab/←", "left"),
+				key.WithKeys("shift+tab", "shift+left"),
+				key.WithHelp("shift+tab", "left"),
 			),
 			reset: key.NewBinding(
 				key.WithKeys("ctrl+r"),
@@ -252,8 +252,10 @@ func (m *FilterDialog) ShortHelp() []key.Binding {
 	bindings := []key.Binding{
 		m.keyMap.right,
 		m.keyMap.left,
-		m.keyMap.up,
-		m.keyMap.down,
+		key.NewBinding(
+			key.WithKeys(""),
+			key.WithHelp("shift+(↑/↓/←/→)", "navigate"),
+		),
 		m.keyMap.enter,
 		m.keyMap.exec,
 		m.keyMap.reset,
