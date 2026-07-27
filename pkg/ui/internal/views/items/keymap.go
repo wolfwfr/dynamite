@@ -130,8 +130,8 @@ func DefaultItemPaneKeyMap() *ItemPaneKeyMap {
 			key.WithDisabled(), // defautl to scan mode
 		),
 		FilterParameters: key.NewBinding(
-			key.WithKeys("ctrl+f"),
-			key.WithHelp("ctrl+f", "filter params"),
+			key.WithKeys("f"),
+			key.WithHelp("f", "filter params"),
 		),
 		Copy: key.NewBinding(
 			key.WithKeys("y"),

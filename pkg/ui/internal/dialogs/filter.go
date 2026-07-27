@@ -859,8 +859,10 @@ func (m *FilterDialog) updateSize() {
 	m.dialog.height = m.defaultDialogHeight
 	m.dialog.width = width + 2
 
+	borderW := 2
+
 	// set help size
-	m.help.SetWidth(width)
+	m.help.SetWidth(width - borderW)
 
 	m.updateStyles(true)
 
