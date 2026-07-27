@@ -82,7 +82,15 @@ func TestScan(t *testing.T) {
 			sut.Update(scanKey)                                          // ensure scan-mode is active
 			sut.tableIndex.activeIndex = &someIndex                      // set params; active index
 			sut.scanParameters.index = &someIndex                        // set params; index
-			sut.scanLimit = 10                                           // set params; query limit
+			filter := []apitypes.FilterExpressionParameters{{
+				AttributePath:      "name",
+				AttributeValue1:    "Henry",
+				AttributeValue2:    nil,
+				AttributeValueType: dynamodbtypes.ScalarAttributeTypeS,
+				Operator:           "EqualValues",
+			}}
+			sut.filterParameters.scan = filter
+			sut.scanLimit = 10 // set params; query limit
 
 			// define expected call to DynamoDB client
 			db.EXPECT().
@@ -90,7 +98,7 @@ func TestScan(t *testing.T) {
 					KeyDetails:       AttributeDefinitions,
 					IndexName:        &someIndex,
 					KeySchema:        gsi[0].KeySchema,
-					FilterParameters: []apitypes.FilterExpressionParameters{},
+					FilterParameters: filter,
 					Limit:            10,
 					LastEvaluatedKey: nil,
 				}).

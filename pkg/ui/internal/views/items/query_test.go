@@ -89,7 +89,15 @@ func TestQuery(t *testing.T) {
 			sut.queryParameters.rangeKeyValue2 = &rkValue2               // set params; range-key value 2
 			sut.queryParameters.rangeOrderDescending = true              // set params; range-order
 			sut.queryParameters.rangeKeyOperator = messages.Between      // set params; range operator
-			sut.queryLimit = 10                                          // set params; query limit
+			filter := []apitypes.FilterExpressionParameters{{
+				AttributePath:      "name",
+				AttributeValue1:    "Henry",
+				AttributeValue2:    nil,
+				AttributeValueType: dynamodbtypes.ScalarAttributeTypeS,
+				Operator:           "EqualValues",
+			}}
+			sut.filterParameters.query = filter
+			sut.queryLimit = 10 // set params; query limit
 
 			// define expected call to DynamoDB client
 			db.EXPECT().
@@ -98,7 +106,7 @@ func TestQuery(t *testing.T) {
 					IndexName:        &someIndex,
 					KeySchema:        gsi[0].KeySchema,
 					HashKeyValue:     hkValue,
-					FilterParameters: []apitypes.FilterExpressionParameters{},
+					FilterParameters: filter,
 					RangeKeyValue1:   &rkValue1,
 					RangeKeyValue2:   &rkValue2,
 					RangeKeyOperator: apitypes.RangeBetween,
