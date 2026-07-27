@@ -785,7 +785,7 @@ func (m *FilterDialog) initContentLine(i int) tea.Cmd {
 		m.content[i].attrValueInput2 = attrValueInput2
 	}
 
-	m.updateInputPlaceholders(len(m.content) - 1)
+	m.updateInputPlaceholders(i)
 
 	return tea.Batch(cmds...)
 }
