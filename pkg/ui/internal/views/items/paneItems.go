@@ -145,6 +145,7 @@ type ItemSelectionPane struct {
 	lastPreviewItem int                   // index
 	lastPreviewMsg  *messages.PreviewItem // prevents preview message looping
 
+	pageCount      int
 	pageLatestID   uint8
 	pageIgnore     map[uint8]struct{}
 	pageKey        map[string]dynamotypes.AttributeValue
@@ -195,7 +196,6 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 			Foreground(lipgloss.Color("205")).
 			PaddingLeft(1)
 		p.spinner.model = sp
-		p.spinner.text = "obtaining next page (press Esc to cancel)..."
 	}
 
 	{ // search box
@@ -224,6 +224,7 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 }
 
 func (m *ItemSelectionPane) activateSpinner() tea.Cmd {
+	m.spinner.text = fmt.Sprintf("obtaining next page (%d) (press Esc to cancel)...", m.pageCount+1)
 	m.spinner.active = true
 	m.updateSize()
 	return m.spinner.model.Tick
@@ -514,6 +515,8 @@ func (m *ItemSelectionPane) ProcessPage(msg messages.PageReady) tea.Cmd {
 		return nil
 	}
 
+	m.pageCount += 1
+
 	m.pageKey = page.LastEvaluatedKey
 	_, rang := primaryKeysFromSchema(keysFromIndex(m.tableIndex.activeIndex, details))
 	m.table.AddItems(page.Items, rang != nil)
@@ -755,6 +758,7 @@ func (m *ItemSelectionPane) resetPaging() {
 	m.paging = false
 	m.pagingCanceled = false
 	m.pageKey = nil
+	m.pageCount = 0
 }
 
 func (m *ItemSelectionPane) cancelPaging() tea.Cmd {
