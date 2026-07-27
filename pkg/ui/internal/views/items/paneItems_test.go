@@ -383,6 +383,27 @@ func TestLoadSessions(t *testing.T) {
 			assert.EqualValues(t, messages.Between, sut.queryParameters.rangeKeyOperator) // assert restored; range-key operator
 			assert.EqualValues(t, someIndex, *sut.tableIndex.activeIndex)                 // assert restored; active index
 		})
+		t.Run("store & restore filter parameters when exiting item-selection view", func(t *testing.T) {
+			skipIf(t, !backKeyValid, "skipping due to outdated keymap") // skip if keymap needs updating
+			sut := newSUT()                                             // init sut
+			queryfilter := []apitypes.FilterExpressionParameters{{      // specify some filter-parameter-set
+				AttributePath:      "name",
+				AttributeValue1:    "Henry",
+				AttributeValue2:    nil,
+				AttributeValueType: dynamodbtypes.ScalarAttributeTypeS,
+				Operator:           "EqualValues",
+			}}
+			scanfilter := queryfilter
+			scanfilter[0].AttributeValue1 = "Roger"                        // change params for scan
+			sut.filterParameters.query = queryfilter                       // set params
+			sut.filterParameters.scan = scanfilter                         // set params
+			sut.Update(backKey)                                            // exit view
+			simpleSelectTable(sut, tableARN2, tableName2, 10)              // select table 2 in between
+			sut.Update(backKey)                                            // exit again
+			simpleSelectTable(sut, tableARN1, tableName1, 10)              // re-enter table 1
+			assert.EqualValues(t, queryfilter, sut.filterParameters.query) // assert restored; index
+			assert.EqualValues(t, scanfilter, sut.filterParameters.scan)   // assert restored; active index
+		})
 	})
 }
 
