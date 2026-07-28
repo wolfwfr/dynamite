@@ -339,6 +339,8 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 		return m.UpdateColumnVisibility(msg)
 	case messages.ColumnSortingUpdate:
 		return m.UpdateColumnSorting(msg)
+	case messages.ColumnTransformUpdate:
+		return m.UpdateColumnTransform(msg)
 	case messages.ScanIndexChanged:
 		return m.ChangeScanIndex(msg)
 	case messages.QueryParametersChanged:
@@ -904,6 +906,15 @@ func (m *ItemSelectionPane) toggleColumnVsibilityDialog(msg tea.Msg) tea.Cmd {
 		return msg
 	}
 	return tea.Batch(toggle, state)
+}
+
+func (m *ItemSelectionPane) UpdateColumnTransform(msg messages.ColumnTransformUpdate) tea.Cmd {
+	if msg.TableARN != u.IfNotNil(m.selectedTable.TableArn, "") { // expired
+		return nil
+	}
+	_ = m.table.SetColumnTransform(msg.AllColumns, msg.Transform)
+	m.updateKeyMaps()
+	return nil
 }
 
 // toggle column transform dialog & provide current state (in case dialog opens)

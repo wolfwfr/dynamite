@@ -251,10 +251,6 @@ type ColumnSortingReset struct {
 	TableARN string
 }
 
-type ColumnTransformReset struct {
-	TableARN string
-}
-
 type SwitchRegion struct {
 	OldRegion string
 	NewRegion string

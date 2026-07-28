@@ -159,6 +159,8 @@ func (m *TransformDialog) Update(msg tea.Msg) tea.Cmd {
 			return m.toggleDialog()
 		case key.Matches(msg, m.keyMap.enter):
 			return m.selectItem()
+		case key.Matches(msg, m.keyMap.reset):
+			return m.Reset()
 		}
 	case tea.WindowSizeMsg:
 		m.applySize(msg.Height, msg.Width)
@@ -179,6 +181,13 @@ func (m *TransformDialog) SetState(msg messages.InitColumnTransform) tea.Cmd {
 	m.state.AllColumns = msg.AllColumns
 	m.state.Transform = msg.Transform
 	return m.updateContent()
+}
+
+func (m *TransformDialog) Reset() tea.Cmd {
+	for i := range m.state.Transform {
+		m.state.Transform[i] = false
+	}
+	return tea.Batch(m.updateContent(), m.UpdateMessage())
 }
 
 func (m *TransformDialog) updateContent() tea.Cmd {

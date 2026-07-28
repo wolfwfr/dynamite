@@ -50,7 +50,7 @@ func (t *ItemsTable) SetColumnSorting(cols []string, sortingOn string, ascending
 	return true
 }
 
-// SetColumnSorting updates the column-visibility state. Changes to column
+// SetColumnVisibility updates the column-visibility state. Changes to column
 // visibility only affect the columns and do not affect table rows. The function
 // returns a boolean that indicates whether the mutation was accepted and
 // successfully applied.
@@ -92,6 +92,45 @@ func (t *ItemsTable) SetColumnVisibility(cols []string, visible []bool) bool {
 	}
 
 	t.updateTable(tablecols, nil, nil)
+
+	return true
+}
+
+// SetColumnTransform updates the column-transform state. Changes to column
+// transform affect the column suffix and the (virtual) rows being displayed.
+// The function returns a boolean that indicates whether the mutation was
+// accepted and successfully applied.
+func (t *ItemsTable) SetColumnTransform(cols []string, transformed []bool) bool {
+	// map visible → transformedM
+	transformedM := make(map[string]struct{})
+	for i, c := range cols {
+		if transformed[i] {
+			transformedM[c] = struct{}{}
+		}
+	}
+
+	// ensure visibility is reset when
+	if len(transformed) == 0 {
+		t.ResetColumnTransform()
+		return false
+	}
+
+	// update internal state
+	var ok bool
+	if t.viewOptions, ok = t.viewOptions.Set().ColumnTransform().SetAll(viewoptions.ColumnTransform{
+		Enabled:     true,
+		Transformed: transformedM,
+	}).Do(); !ok {
+		return false
+	}
+
+	panic("implement me!")
+	// for i, c := range tablecols {
+	// 	_, isInvisible := transformedM[c.Title]
+	// 	tablecols[i].InVisible = isInvisible
+	// }
+
+	// t.updateTable(tablecols, nil, nil)
 
 	return true
 }

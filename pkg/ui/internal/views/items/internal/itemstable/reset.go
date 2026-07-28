@@ -33,6 +33,13 @@ func (t *ItemsTable) ResetColumnSorting() {
 	t.updateTable(assembleColumns(t.viewOptions, t.ColumnAttributes), parseRows(t.ColumnAttributes, t.Items.TableKeys), nil)
 }
 
+// ResetColumnTransform resets column-transform related state parameters and updates
+// the table contents
+func (t *ItemsTable) ResetColumnTransform() {
+	t.viewOptions.ResetColumnTransformState()
+	t.updateTable(assembleColumns(t.viewOptions, t.ColumnAttributes), parseRows(t.ColumnAttributes, t.Items.TableKeys), nil)
+}
+
 // ResetSearch resets search related state parameters and updates the table
 // contents
 func (t *ItemsTable) ResetSearch() {

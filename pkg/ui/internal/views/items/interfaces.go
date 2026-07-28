@@ -41,6 +41,7 @@ type itemsTable interface {
 
 	SetColumnSorting(cols []string, sortingOn string, ascending bool) bool
 	SetColumnVisibility(cols []string, visible []bool) bool
+	SetColumnTransform(cols []string, transformed []bool) bool
 	SetSearchEnable() bool
 	SetSearchResults(col string, results []search.FilteredItem) bool
 	SetDynamicColumnWidth(b bool)
