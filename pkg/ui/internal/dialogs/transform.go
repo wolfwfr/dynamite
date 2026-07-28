@@ -101,7 +101,7 @@ func NewTransformDialog(close key.Binding) *TransformDialog {
 
 	{ // list
 		l := list.New([]list.Item{}, checkbox.ItemDelegate{}, c.dialog.width, c.dialog.height)
-		l.Title = "Column Visibility " // space for even length (helps with keeping centered alignment stable)
+		l.Title = "Column Unix Time Transform" // space for even length (helps with keeping centered alignment stable)
 		l.SetShowStatusBar(false)
 		l.SetFilteringEnabled(true)
 		l.SetShowFilter(false)

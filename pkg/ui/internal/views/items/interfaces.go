@@ -21,6 +21,7 @@ type dynamodbClient interface {
 
 type itemsTable interface {
 	GetColumns() []table.Column
+	GetColumnTypes() []itemstable.ColumnAttributes
 	GetRows() []table.Row
 	GetVirtualRows() []table.Row
 	GetVisualRows() []table.Row

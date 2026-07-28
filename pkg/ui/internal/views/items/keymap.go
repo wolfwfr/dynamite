@@ -61,6 +61,7 @@ type ItemPaneKeyMap struct {
 	Browser          key.Binding
 	ColVis           key.Binding
 	ColSort          key.Binding
+	ColTransform     key.Binding
 	Reload           key.Binding
 }
 
@@ -72,7 +73,7 @@ func (km *ItemPaneKeyMap) ShortHelp() []key.Binding {
 // FullHelp implements the KeyMap interface.
 func (km *ItemPaneKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{km.Search, km.Zoom, km.Reload, km.Esc, km.Continue, km.Back, km.ChCols, km.ToggleFmt, km.Scan, km.ScanParameters, km.Query, km.QueryParameters, km.FilterParameters, km.Copy, km.Browser, km.ColVis, km.ColSort},
+		{km.Search, km.Zoom, km.Reload, km.Esc, km.Continue, km.Back, km.ChCols, km.ToggleFmt, km.Scan, km.ScanParameters, km.Query, km.QueryParameters, km.FilterParameters, km.Copy, km.Browser, km.ColVis, km.ColSort, km.ColTransform},
 	}
 }
 
@@ -149,6 +150,10 @@ func DefaultItemPaneKeyMap() *ItemPaneKeyMap {
 			key.WithKeys("o"),
 			key.WithHelp("o", "configure column order (excl search)"),
 		),
+		ColTransform: key.NewBinding(
+			key.WithKeys("t"),
+			key.WithHelp("t", "transform unix timestamps"),
+		),
 	}
 }
 
@@ -164,6 +169,7 @@ type ItemViewKeyMap struct {
 type DialogKeyMaps struct {
 	ColumnVisibility key.Binding
 	ColumnSorting    key.Binding
+	ColumnTransform  key.Binding
 	ScanParams       key.Binding
 	QueryParams      key.Binding
 	FilterParams     key.Binding
@@ -174,6 +180,7 @@ func (m *ItemSelection) DialogKeyMaps() DialogKeyMaps {
 	return DialogKeyMaps{
 		ColumnVisibility: m.itemsPane.KeyMap.ColVis,
 		ColumnSorting:    m.itemsPane.KeyMap.ColSort,
+		ColumnTransform:  m.itemsPane.KeyMap.ColTransform,
 		ScanParams:       m.itemsPane.KeyMap.ScanParameters,
 		QueryParams:      m.itemsPane.KeyMap.QueryParameters,
 		FilterParams:     m.itemsPane.KeyMap.FilterParameters,

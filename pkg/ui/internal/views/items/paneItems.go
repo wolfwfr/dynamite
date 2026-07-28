@@ -20,6 +20,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	appconfig "github.com/wolfwfr/dynamite/pkg"
+	"github.com/wolfwfr/dynamite/pkg/common"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/adapters/dynamodb"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/adapters/dynamodb/types"
 	apitypes "github.com/wolfwfr/dynamite/pkg/ui/internal/adapters/dynamodb/types"
@@ -320,6 +321,8 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 			return m.toggleColumnVsibilityDialog(msg)
 		case key.Matches(msg, m.KeyMap.ColSort):
 			return m.toggleColumnSortingDialog(msg)
+		case key.Matches(msg, m.KeyMap.ColTransform):
+			return m.toggleColumnTransformDialog(msg)
 		default:
 			if match, call := m.AddKeyMap.Matches(msg); match {
 				return call
@@ -898,6 +901,34 @@ func (m *ItemSelectionPane) toggleColumnVsibilityDialog(msg tea.Msg) tea.Cmd {
 		msg.TableARN = arn
 		msg.AllColumns = colsS
 		msg.Visible = visB
+		return msg
+	}
+	return tea.Batch(toggle, state)
+}
+
+// toggle column transform dialog & provide current state (in case dialog opens)
+func (m *ItemSelectionPane) toggleColumnTransformDialog(msg tea.Msg) tea.Cmd {
+	cols := m.table.GetColumnTypes()
+	st := m.table.GetViewOptionsState()
+	trans := st.GetColumnTransformOptions().Transformed
+
+	colsS := make([]string, 0, len(cols))
+	transB := make([]bool, 0, len(cols))
+	for _, c := range cols {
+		colsS = u.Ternary(append(colsS, c.Title), colsS, c.Type == common.DynamoDBAttributeTypeN)
+		_, isTransformed := trans[c.Title]
+		transB = append(transB, isTransformed)
+	}
+	colsS = slices.Clip(colsS)
+	arn := u.IfNotNil(m.selectedTable.TableArn, "")
+	toggle := func() tea.Msg {
+		return messages.ToggleColumnTransform{}
+	}
+	state := func() tea.Msg {
+		msg := messages.InitColumnTransform{}
+		msg.TableARN = arn
+		msg.AllColumns = colsS
+		msg.Transform = transB
 		return msg
 	}
 	return tea.Batch(toggle, state)
