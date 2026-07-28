@@ -5,14 +5,15 @@ import (
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/components/table"
 )
 
-func parseRows(cols []string, tableKeys [][]apitypes.KeyValue) []table.Row {
+func parseRows(cols []ColumnAttributes, tableKeys [][]apitypes.KeyValue) []table.Row {
 	rows := make([]table.Row, len(tableKeys))
 	for i, k := range tableKeys {
 		raw := make([]string, len(cols))
 		styled := make([]string, len(cols))
 		fields := make([]table.Field, len(cols))
 		var x int
-		for j, key := range cols {
+		for j, attrs := range cols {
+			key := attrs.Title
 			if key == k[x].Key { // matching key
 				raw[j] = k[x].Value
 				styled[j] = k[x].ValueStyling.Render(k[x].Value)

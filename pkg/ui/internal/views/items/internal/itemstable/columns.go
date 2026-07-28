@@ -11,13 +11,14 @@ import (
 // assembleColumns returns a set of table columns that incorporates modulations
 // based on the item-selection-pane state, such as the state of column
 // visibility and sorting.
-func assembleColumns(state view.ViewOptions, allColumnTitles []string) []table.Column {
+func assembleColumns(state view.ViewOptions, columnAttributes []ColumnAttributes) []table.Column {
 	var (
-		cols    = make([]table.Column, len(allColumnTitles))
+		cols    = make([]table.Column, len(columnAttributes))
 		visopts = state.GetColumnVisibilityOptions()
 	)
 
-	for i, title := range allColumnTitles {
+	for i, attrs := range columnAttributes {
+		title := attrs.Title
 		col := table.Column{Title: title, Width: u.Clamp(len(title), 16, 32)}
 
 		// visibility

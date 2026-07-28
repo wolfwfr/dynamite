@@ -8,7 +8,7 @@ import (
 // Reset completely resets all internal state parameters and empties the table
 func (t *ItemsTable) Reset() {
 	t.Items = types.Items{}
-	t.ColumnTitles = []string{}
+	t.ColumnAttributes = make([]ColumnAttributes, 0)
 
 	t.viewOptions.ResetColumnSortingState()
 	t.viewOptions.ResetColumnVisibilityState()
@@ -23,14 +23,14 @@ func (t *ItemsTable) Reset() {
 // updates the table contents
 func (t *ItemsTable) ResetColumnVisibility() {
 	t.viewOptions.ResetColumnVisibilityState()
-	t.updateTable(assembleColumns(t.viewOptions, t.ColumnTitles), nil, nil)
+	t.updateTable(assembleColumns(t.viewOptions, t.ColumnAttributes), nil, nil)
 }
 
 // ResetColumnSorting resets column-sorting related state parameters and updates
 // the table contents
 func (t *ItemsTable) ResetColumnSorting() {
 	t.viewOptions.ResetColumnSortingState()
-	t.updateTable(assembleColumns(t.viewOptions, t.ColumnTitles), parseRows(t.ColumnTitles, t.Items.TableKeys), nil)
+	t.updateTable(assembleColumns(t.viewOptions, t.ColumnAttributes), parseRows(t.ColumnAttributes, t.Items.TableKeys), nil)
 }
 
 // ResetSearch resets search related state parameters and updates the table
@@ -38,7 +38,7 @@ func (t *ItemsTable) ResetColumnSorting() {
 func (t *ItemsTable) ResetSearch() {
 	t.viewOptions.ResetSearchState()
 	t.table.ResetVirtualRows()
-	t.updateTable(nil, t.sortRows(t.table.Columns(), parseRows(t.ColumnTitles, t.Items.TableKeys)), nil)
+	t.updateTable(nil, t.sortRows(t.table.Columns(), parseRows(t.ColumnAttributes, t.Items.TableKeys)), nil)
 }
 
 // clearCache completely removes any cached state

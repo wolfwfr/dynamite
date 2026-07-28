@@ -6,6 +6,7 @@ import (
 
 	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 
+	"github.com/wolfwfr/dynamite/pkg/common"
 	apitypes "github.com/wolfwfr/dynamite/pkg/ui/internal/adapters/dynamodb/types"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/components/table"
 	commonstyles "github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
@@ -37,9 +38,14 @@ type ItemsTable struct {
 
 	viewOptions view.ViewOptions
 
-	// ColumnTitles represents a unique set of dynamo-db item keys that
+	// ColumnAttributes represents a unique set of dynamo-db item keys that
 	// exhaustively cover all keys in the currently paged set of items
-	ColumnTitles []string
+	ColumnAttributes []ColumnAttributes
+}
+
+type ColumnAttributes struct {
+	Title string
+	Type  common.DynamoDBAttributeType
 }
 
 // TODO: refactor dynamodb.Items and add single Item

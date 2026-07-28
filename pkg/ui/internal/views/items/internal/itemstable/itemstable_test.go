@@ -268,6 +268,15 @@ func TestRowItemIndexIntegrity(t *testing.T) {
 		}
 	}
 
+	// helper to extract column titles
+	extractColTitles := func(in []ColumnAttributes) []string {
+		res := make([]string, len(in))
+		for i := range in {
+			res[i] = in[i].Title
+		}
+		return res
+	}
+
 	t.Run("row-item-indexing should", func(t *testing.T) {
 		t.Run("remain consequtive on append", func(t *testing.T) {
 			sut := newSUT()                                     // init
@@ -279,16 +288,17 @@ func TestRowItemIndexIntegrity(t *testing.T) {
 			assertRowIndexing(t, rows, []int{0, 1, 2, 3, 4, 5}) // assert
 		})
 		t.Run("remain consequtive on append, when sorting", func(t *testing.T) {
-			sut := newSUT()                                                    // init
-			firstPage := genJSONItems(3)                                       // define first page
-			secondPage := genJSONItems(6, genOpts{begin: 3})                   // define second page
-			sut.AddItems(firstPage, false)                                     // add first page to table
-			columnTitles := compileUniqueKeys(firstPage.TableKeys, nil, false) // obtain unique keys from generated items
-			b := sut.SetColumnSorting(columnTitles, "id", false)               // set column sorting
-			require.True(t, b)                                                 // ensure sorting was applied
-			sut.AddItems(secondPage, false)                                    // add second page to table
-			rows := sut.table.Rows()                                           // obtain current rows
-			assertRowIndexing(t, rows, []int{5, 4, 3, 2, 1, 0})                // assert
+			sut := newSUT()                                                                  // init
+			firstPage := genJSONItems(3)                                                     // define first page
+			secondPage := genJSONItems(6, genOpts{begin: 3})                                 // define second page
+			sut.AddItems(firstPage, false)                                                   // add first page to table
+			columnAttrs := compileUniqueKeys(firstPage.TableKeys, firstPage.Raw, nil, false) // obtain unique keys from generated items
+			columnTitles := extractColTitles(columnAttrs)                                    // extract column titles
+			b := sut.SetColumnSorting(columnTitles, "id", false)                             // set column sorting
+			require.True(t, b)                                                               // ensure sorting was applied
+			sut.AddItems(secondPage, false)                                                  // add second page to table
+			rows := sut.table.Rows()                                                         // obtain current rows
+			assertRowIndexing(t, rows, []int{5, 4, 3, 2, 1, 0})                              // assert
 		})
 	})
 }
