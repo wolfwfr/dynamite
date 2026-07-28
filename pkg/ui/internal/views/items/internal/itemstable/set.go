@@ -4,6 +4,7 @@ import (
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/components/search"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/components/table"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/items/internal/itemstable/viewoptions"
+	u "github.com/wolfwfr/dynamite/pkg/util"
 )
 
 // NOTE: each view-options-update-handler below (i.e. each set-handler) is
@@ -124,13 +125,14 @@ func (t *ItemsTable) SetColumnTransform(cols []string, transformed []bool) bool 
 		return false
 	}
 
-	panic("implement me!")
-	// for i, c := range tablecols {
-	// 	_, isInvisible := transformedM[c.Title]
-	// 	tablecols[i].InVisible = isInvisible
-	// }
-
-	// t.updateTable(tablecols, nil, nil)
+	tablecols := t.table.Columns()
+	// prepare table column update
+	for i, c := range tablecols {
+		c.Suffix = getColumnSuffix(t.viewOptions, c.Title)
+		tablecols[i] = c
+	}
+	t.updateTable(tablecols, parseRows(t.ColumnAttributes, t.Items.TableKeys, t.CompileTransforms()), nil)
+	t.RebuildSearchResults()
 
 	return true
 }
@@ -175,6 +177,30 @@ func (t *ItemsTable) SetSearchResults(col string, results []search.FilteredItem)
 	}
 
 	t.updateTable(nil, nil, filtered)
+	return true
+}
+
+// RebuildSearchResults can be used when the underlying rowset has changed but
+// did not affect search results or search order. Calling this function will
+// re-execute the existing search state and store the resulting virtual rows.
+// The function returns true when successfully executed or false when the
+// underlying rows were found to be incompatible with the current state of
+// search results.
+func (t *ItemsTable) RebuildSearchResults() bool {
+	var (
+		viewopts = t.viewOptions.GetSearchResultsOptions()
+		rows     = t.table.Rows()
+		filtered = make([]table.Row, len(viewopts.MatchedItems))
+	)
+
+	for i, matchedIndex := range viewopts.MatchedItems {
+		if matchedIndex >= len(rows) {
+			return false
+		}
+		filtered[i] = rows[matchedIndex]
+	}
+
+	t.updateTable(nil, nil, u.Ternary(filtered, nil, len(filtered) > 0))
 	return true
 }
 

@@ -318,7 +318,7 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 		case key.Matches(msg, m.KeyMap.Browser):
 			return m.openInBrowser(m.resolveBrowserURL())
 		case key.Matches(msg, m.KeyMap.ColVis):
-			return m.toggleColumnVsibilityDialog(msg)
+			return m.toggleColumnVisibilityDialog(msg)
 		case key.Matches(msg, m.KeyMap.ColSort):
 			return m.toggleColumnSortingDialog(msg)
 		case key.Matches(msg, m.KeyMap.ColTransform):
@@ -882,7 +882,7 @@ func (m *ItemSelectionPane) UpdateColumnVisibility(msg messages.ColumnVisibility
 }
 
 // toggle column visibility dialog & provide current state (in case dialog opens)
-func (m *ItemSelectionPane) toggleColumnVsibilityDialog(msg tea.Msg) tea.Cmd {
+func (m *ItemSelectionPane) toggleColumnVisibilityDialog(msg tea.Msg) tea.Cmd {
 	cols := m.table.GetColumns()
 	st := m.table.GetViewOptionsState()
 	vis := st.GetColumnVisibilityOptions().InVisible
@@ -926,11 +926,15 @@ func (m *ItemSelectionPane) toggleColumnTransformDialog(msg tea.Msg) tea.Cmd {
 	colsS := make([]string, 0, len(cols))
 	transB := make([]bool, 0, len(cols))
 	for _, c := range cols {
-		colsS = u.Ternary(append(colsS, c.Title), colsS, c.Type == common.DynamoDBAttributeTypeN)
+		if c.Type != common.DynamoDBAttributeTypeN {
+			continue
+		}
+		colsS = append(colsS, c.Title)
 		_, isTransformed := trans[c.Title]
 		transB = append(transB, isTransformed)
 	}
 	colsS = slices.Clip(colsS)
+	transB = slices.Clip(transB)
 	arn := u.IfNotNil(m.selectedTable.TableArn, "")
 	toggle := func() tea.Msg {
 		return messages.ToggleColumnTransform{}

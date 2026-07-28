@@ -134,11 +134,11 @@ func (t *ItemsTable) AddItems(items apitypes.Items, hasRangeKey bool) {
 	switch {
 	case columnUpdate: // update columns & ALL rows
 		cols = assembleColumns(t.viewOptions, columnTitles)
-		rows = parseRows(columnTitles, t.Items.TableKeys)
+		rows = parseRows(columnTitles, t.Items.TableKeys, t.CompileTransforms())
 	case appendOnly: // update with new rows (append)
-		rows = parseRows(columnTitles, t.Items.TableKeys)
+		rows = parseRows(columnTitles, t.Items.TableKeys, t.CompileTransforms())
 	default: // update ALL rows but no columns
-		rows = parseRows(columnTitles, t.Items.TableKeys)
+		rows = parseRows(columnTitles, t.Items.TableKeys, t.CompileTransforms())
 	}
 
 	t.updateTable(cols, rows, virt)

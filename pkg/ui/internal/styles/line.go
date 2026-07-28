@@ -216,7 +216,7 @@ func (l LineStyle) AppendString(in string, style textStyle, opts ...StringStyleO
 }
 
 // AppendStringLG takes a string and appends the specified lipgloss style for
-// each of the specified string's runes, by taiking the relevant text-related
+// each of the specified string's runes, by taking the relevant text-related
 // styling. The specified string is only required to determine
 // the rune-count, the particular content is irrelevant. AppendString returns
 // the new line-style object.

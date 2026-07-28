@@ -1,0 +1,47 @@
+package itemstable
+
+import (
+	"strconv"
+	"strings"
+	"time"
+
+	"charm.land/lipgloss/v2"
+
+	"github.com/wolfwfr/dynamite/pkg/common"
+	"github.com/wolfwfr/dynamite/pkg/ui/internal/components/table"
+	"github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
+)
+
+func (i *ItemsTable) CompileTransforms() []transform {
+	opts := i.viewOptions.GetColumnTransformOptions()
+	if len(opts.Transformed) == 0 {
+		return make([]transform, 0)
+	}
+
+	res := make([]transform, 1)
+	res[0] = func(rowIndex int, cols []ColumnAttributes, row table.Row) table.Row {
+		for i, f := range row.Fields {
+			if _, ok := opts.Transformed[cols[i].Title]; !ok {
+				continue
+			}
+			if cols[i].Type != common.DynamoDBAttributeTypeS && cols[i].Type != common.DynamoDBAttributeTypeN {
+				continue
+			}
+			v := f.Value()
+			v = strings.TrimSuffix(strings.TrimPrefix(v, "\""), "\"")
+			unix, err := strconv.Atoi(v)
+			if err != nil {
+				continue // TODO: debug log
+			}
+			u := time.Unix(int64(unix), 0) // TODO: support distinction between unix & milli-unix
+			tr := u.Format("2006-01-02 15:04:05 Z07:00")
+			st := styles.LineStyle{}.AppendStringLG(tr, lipgloss.NewStyle().Foreground(styles.StringColour))
+			row.Fields[i] = EnrichedField{
+				RawValue: tr,
+				Style:    &st,
+			}
+		}
+		return row
+	}
+	return res
+}

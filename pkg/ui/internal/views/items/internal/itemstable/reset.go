@@ -30,14 +30,15 @@ func (t *ItemsTable) ResetColumnVisibility() {
 // the table contents
 func (t *ItemsTable) ResetColumnSorting() {
 	t.viewOptions.ResetColumnSortingState()
-	t.updateTable(assembleColumns(t.viewOptions, t.ColumnAttributes), parseRows(t.ColumnAttributes, t.Items.TableKeys), nil)
+	t.updateTable(assembleColumns(t.viewOptions, t.ColumnAttributes), parseRows(t.ColumnAttributes, t.Items.TableKeys, t.CompileTransforms()), nil)
 }
 
 // ResetColumnTransform resets column-transform related state parameters and updates
 // the table contents
 func (t *ItemsTable) ResetColumnTransform() {
 	t.viewOptions.ResetColumnTransformState()
-	t.updateTable(assembleColumns(t.viewOptions, t.ColumnAttributes), parseRows(t.ColumnAttributes, t.Items.TableKeys), nil)
+	t.updateTable(assembleColumns(t.viewOptions, t.ColumnAttributes), parseRows(t.ColumnAttributes, t.Items.TableKeys, t.CompileTransforms()), nil)
+	t.RebuildSearchResults() // to reflect changes in virtual rows too
 }
 
 // ResetSearch resets search related state parameters and updates the table
@@ -45,7 +46,7 @@ func (t *ItemsTable) ResetColumnTransform() {
 func (t *ItemsTable) ResetSearch() {
 	t.viewOptions.ResetSearchState()
 	t.table.ResetVirtualRows()
-	t.updateTable(nil, t.sortRows(t.table.Columns(), parseRows(t.ColumnAttributes, t.Items.TableKeys)), nil)
+	t.updateTable(nil, t.sortRows(t.table.Columns(), parseRows(t.ColumnAttributes, t.Items.TableKeys, t.CompileTransforms())), nil)
 }
 
 // clearCache completely removes any cached state

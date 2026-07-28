@@ -2,6 +2,7 @@ package itemstable
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/components/table"
 	view "github.com/wolfwfr/dynamite/pkg/ui/internal/views/items/internal/itemstable/viewoptions"
@@ -36,15 +37,21 @@ func assembleColumns(state view.ViewOptions, columnAttributes []ColumnAttributes
 
 func getColumnSuffix(state view.ViewOptions, colTitle string) string {
 	sortopts := state.GetColumnSortingOptions()
+	tranopts := state.GetColumnTransformOptions()
 	var (
 		sortEnabled = sortopts.Enabled
 		sortingOn   = sortopts.SortingOn
 		sortasc     = sortopts.Ascending
+		transformed = tranopts.Transformed
 	)
+	var suffix strings.Builder
 	if sortEnabled && sortingOn == colTitle {
-		return fmt.Sprintf(" (%s)", u.Ternary("↑", "↓", sortasc))
+		suffix.WriteString(fmt.Sprintf(" (%s)", u.Ternary("↑", "↓", sortasc)))
 	}
-	return ""
+	if _, ok := transformed[colTitle]; ok {
+		suffix.WriteString(" (⇒)")
+	}
+	return suffix.String()
 }
 
 func findColumnByTitle(cols []table.Column, title string) int {
