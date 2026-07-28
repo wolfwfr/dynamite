@@ -33,8 +33,16 @@ func (i *ItemsTable) CompileTransforms() []transform {
 			if err != nil {
 				continue // TODO: debug log
 			}
-			u := time.Unix(int64(unix), 0) // TODO: support distinction between unix & milli-unix
-			tr := u.Format("2006-01-02 15:04:05 Z07:00")
+			// NOTE: best effort distinction between unix and smaller formats
+			threshold := time.Date(1e4, time.January, 1, 0, 0, 0, 0, time.UTC).Unix()
+			maxIterations := 3
+			iter := 1
+			for int64(unix) > threshold && iter < maxIterations {
+				iter++
+				unix = unix/1000
+			}
+			u := time.Unix(int64(unix), 0) 
+			tr := u.Format("2006-01-02 15:04:05 Z07:00") // TODO: support custom formats
 			st := styles.LineStyle{}.AppendStringLG(tr, lipgloss.NewStyle().Foreground(styles.TimestampColour))
 			row.Fields[i] = EnrichedField{
 				RawValue: tr,
