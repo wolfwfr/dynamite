@@ -43,6 +43,8 @@ func genJSONItems(n int, opts ...genOpts) apitypes.Items {
 	ln := n - b
 	res.JSON = make([]string, ln)
 	res.JSONStyled = make([]styles.ObjectStyle, ln)
+	res.YAML = make([]string, ln)
+	res.YAMLStyled = make([]styles.ObjectStyle, ln)
 	res.Raw = make([]map[string]dynamodbtypes.AttributeValue, ln)
 	res.TableKeys = make([][]apitypes.KeyValue, ln)
 
@@ -54,6 +56,9 @@ func genJSONItems(n int, opts ...genOpts) apitypes.Items {
   "configured": true
 }`
 		res.JSONStyled[i] = styles.ObjectStyle{}
+
+		res.YAML[i] = res.JSON[i]             // mock populate
+		res.YAMLStyled[i] = res.JSONStyled[i] // mock populate
 
 		res.Raw[i] = map[string]dynamodbtypes.AttributeValue{
 			"id":         &dynamodbtypes.AttributeValueMemberS{Value: id},
@@ -98,6 +103,57 @@ func genSearchResults(n int, opts ...searchGenOpts) []search.FilteredItem {
 	return res
 }
 
+func TestGetSelectedRow(t *testing.T) {
+	// factory initialising a new system-under-test
+	newSUT := func() *ItemsTable {
+		sut := NewItemsTable()
+		sut.UpdateSize(100, 200) // required for underlying table to properly render items
+
+		return sut
+	}
+
+	col := table.Column{
+		Title: "hello",
+		Width: 10,
+	}
+
+	row := table.Row{
+		Fields:   []table.Field{EnrichedField{RawValue: "goodbye"}},
+		Metadata: map[string]any{ItemIndexMetaKey: 0},
+	}
+
+	t.Run("items-table should", func(t *testing.T) {
+		t.Run("return nil when there is no content", func(t *testing.T) {
+			sut := newSUT()
+			res, _ := sut.GetSelectedItem() // test call
+			assert.Nil(t, res)
+		})
+		t.Run("return selected row when depicting content", func(t *testing.T) {
+			sut := newSUT()
+			sut.Items = genJSONItems(1)                                 // generate and populate items
+			sut.table.SetContent([]table.Column{col}, []table.Row{row}) // set initial content
+			res, _ := sut.GetSelectedItem()                             // test call
+			assert.NotNil(t, res)
+		})
+		t.Run("return no selected row when virtual-rows were set and were empty (i.e. active search with no results)", func(t *testing.T) {
+			sut := newSUT()
+			sut.Items = genJSONItems(1)                                 // generate and populate items
+			sut.table.SetContent([]table.Column{col}, []table.Row{row}) // set initial content
+			sut.table.SetVirtualRows([]table.Row{})                     // set virtual row
+			res, _ := sut.GetSelectedItem()                             // test call
+			assert.Nil(t, res)
+		})
+		t.Run("return selected row when virtual-rows were set and were not empty (i.e. active search with results)", func(t *testing.T) {
+			sut := newSUT()
+			sut.Items = genJSONItems(1)                                 // generate and populate items
+			sut.table.SetContent([]table.Column{col}, []table.Row{row}) // set initial content
+			sut.table.SetVirtualRows([]table.Row{row})                  // set virtual row
+			res, _ := sut.GetSelectedItem()                             // test call
+			assert.NotNil(t, res)
+		})
+	})
+}
+
 func TestCacheInvalidation(t *testing.T) {
 	// factory initialising a new system-under-test
 	newSUT := func() *ItemsTable {
@@ -131,7 +187,7 @@ func TestCacheInvalidation(t *testing.T) {
 		assert.EqualValues(t, n, len(cache), "cache contained more values than allowed by table: expected '%d', got '%d'", n, len(cache))
 	}
 
-	t.Run("item-selection-pane should", func(t *testing.T) {
+	t.Run("items-table should", func(t *testing.T) {
 		t.Run("refresh cache when", func(t *testing.T) {
 			t.Run("setting search results", func(t *testing.T) {
 				sut := newSUT()                                                      // init

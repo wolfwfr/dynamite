@@ -165,15 +165,14 @@ func (t *ItemsTable) GetSelectedRow() *table.Row {
 
 func (t *ItemsTable) GetSelectedItem() (*Item, int) {
 	var (
-		search = t.viewOptions.GetSearchResultsOptions()
-		items  = t.Items
+		items = t.Items
+		row   = t.table.SelectedRow()
 	)
 
-	if len(items.Raw) == 0 || search.Enabled && len(search.MatchedItems) == 0 {
+	if len(items.Raw) == 0 || row == nil {
 		return nil, 0
 	}
 
-	row := t.table.SelectedRow()
 	idx := row.Metadata[ItemIndexMetaKey].(int)
 
 	return &Item{
