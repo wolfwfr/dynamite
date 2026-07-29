@@ -52,7 +52,6 @@ func compileUniqueKeys(table [][]apitypes.KeyValue, rawItems []map[string]types.
 		}
 		return 1 // equal is not possible in this context
 	})
-	// slices.Sort(toSort)
 	copy(res[sortLenOffset:], toSort)
 
 	return res
