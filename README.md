@@ -130,7 +130,8 @@ dynamite --aws_profile="my-profile"
 - **Tab** between panes to shift focus for navigation or scrolling
 - **Select** a table with `Enter`
 - **Search** with `/`
-- **Escape** search, dialogs, or the item-view with `Esc`
+- **Escape** search-mode and dialogs with `Esc`
+- **Move Back** to the tables view with `Backspace`
 - **Much more**: see the help menu (with `?`)
 
 <br/>
