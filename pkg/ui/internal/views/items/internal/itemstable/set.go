@@ -47,7 +47,10 @@ func (t *ItemsTable) SetColumnSorting(cols []string, sortingOn string, ascending
 		tablecols[i] = c
 	}
 
-	t.updateTable(tablecols, t.table.Rows(), t.table.VirtualRows())
+	// NOTE: parsing rows anew assures a consistent input to update-table &
+	// sort-rows, preventing sort-rows from regurgitating its own output on when
+	// changing sorting without resets; leads to more consistent outputs.
+	t.updateTable(tablecols, parseRows(t.ColumnAttributes, t.Items.TableKeys, t.CompileTransforms()), nil)
 	return true
 }
 
