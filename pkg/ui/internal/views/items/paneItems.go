@@ -581,39 +581,6 @@ func (m *ItemSelectionPane) selectTable(tableName string, details types.Describe
 	return tea.Batch(cmds...)
 }
 
-// compileCompleteKeys takes a table of key-value pairs, observes all keys and
-// compiles a complete, in-order list of all unique key observed.
-// This ensures that when individual table rows have keys missing, the final
-// result still contains these keys when they are present in other rows in the
-// specified table.
-func compileCompleteKeys(table [][]types.KeyValue, existing []string, hasRangeKey bool) []string {
-	res := make([]string, 0)
-	seen := map[string]struct{}{}
-	if len(existing) > 0 {
-		res = existing
-	}
-	for _, e := range existing {
-		seen[e] = struct{}{}
-	}
-	for _, row := range table {
-		for _, col := range row {
-			key := col.Key
-			if _, ok := seen[key]; !ok {
-				res = append(res, key)
-				seen[key] = struct{}{}
-			}
-		}
-	}
-
-	sortLenOffset := ternary(2, 1, hasRangeKey)
-	toSort := make([]string, len(res)-sortLenOffset)
-	copy(toSort, res[sortLenOffset:])
-	slices.Sort(toSort)
-	copy(res[sortLenOffset:], toSort)
-
-	return res
-}
-
 func (m ItemSelectionPane) resolveBrowserURL() string {
 	selection := m.table.GetSelectedRow()
 	if selection == nil || len(selection.Fields) == 0 || m.selectedTable.TableName == nil {
