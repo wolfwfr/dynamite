@@ -53,7 +53,8 @@ func (s *DoableSetter) Do() (ViewOptions, bool) {
 	if s.t == setNone ||
 		s.t == setSearch && !c.SearchAllowed ||
 		s.t == setSort && !c.ColumnSortingAllowed ||
-		s.t == setVis && !c.ColumnVisibilityAllowed {
+		s.t == setVis && !c.ColumnVisibilityAllowed ||
+		s.t == setTransform && !c.ColumnTransformAllowed {
 		return s.p.v, false
 	}
 

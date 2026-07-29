@@ -712,10 +712,14 @@ func (m *ItemSelectionPane) updateKeyMaps() {
 	if m.KeyMap.ColVis.Enabled() && !allowed.ColumnVisibilityAllowed {
 		m.table.ResetColumnVisibility()
 	}
+	if m.KeyMap.ColTransform.Enabled() && !allowed.ColumnTransformAllowed {
+		m.table.ResetColumnSorting()
+	}
 
 	m.KeyMap.Search.SetEnabled(allowed.SearchAllowed)
 	m.KeyMap.ColSort.SetEnabled(allowed.ColumnSortingAllowed)
 	m.KeyMap.ColVis.SetEnabled(allowed.ColumnVisibilityAllowed)
+	m.KeyMap.ColTransform.SetEnabled(allowed.ColumnTransformAllowed)
 }
 
 // updateSize updates dimensions of the pane's contents based on the current

@@ -16,7 +16,7 @@ type SetColumnTransform struct {
 func (s *SetColumnTransform) SetAll(c ColumnTransform) *DoableSetter {
 	d := &DoableSetter{}
 	d.p = s.p
-	d.t = setSort
+	d.t = setTransform
 	d.f = func() (ViewOptions, bool) {
 		v := s.p.v
 		v.columnTransform = c

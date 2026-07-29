@@ -38,6 +38,7 @@ type itemsTable interface {
 	ResetSearch()
 	ResetColumnVisibility()
 	ResetColumnSorting()
+	ResetColumnTransform()
 
 	SetColumnSorting(cols []string, sortingOn string, ascending bool) bool
 	SetColumnVisibility(cols []string, visible []bool) bool
