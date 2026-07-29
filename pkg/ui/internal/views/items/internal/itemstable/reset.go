@@ -13,6 +13,7 @@ func (t *ItemsTable) Reset() {
 	t.viewOptions.ResetColumnSortingState()
 	t.viewOptions.ResetColumnVisibilityState()
 	t.viewOptions.ResetSearchState()
+	t.viewOptions.ResetColumnTransformState()
 
 	t.table.SetCursor(0)
 
