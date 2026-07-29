@@ -18,6 +18,7 @@ type ViewOptions struct {
 	searchResults    SearchResults
 	columnVisibility ColumnVisibility
 	columnSorting    ColumnSorting
+	columnTransform  ColumnTransform
 }
 
 func NewViewOptions() ViewOptions {

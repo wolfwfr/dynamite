@@ -4,6 +4,7 @@ import (
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/components/search"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/components/table"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/items/internal/itemstable/viewoptions"
+	u "github.com/wolfwfr/dynamite/pkg/util"
 )
 
 // NOTE: each view-options-update-handler below (i.e. each set-handler) is
@@ -50,7 +51,7 @@ func (t *ItemsTable) SetColumnSorting(cols []string, sortingOn string, ascending
 	return true
 }
 
-// SetColumnSorting updates the column-visibility state. Changes to column
+// SetColumnVisibility updates the column-visibility state. Changes to column
 // visibility only affect the columns and do not affect table rows. The function
 // returns a boolean that indicates whether the mutation was accepted and
 // successfully applied.
@@ -96,6 +97,46 @@ func (t *ItemsTable) SetColumnVisibility(cols []string, visible []bool) bool {
 	return true
 }
 
+// SetColumnTransform updates the column-transform state. Changes to column
+// transform affect the column suffix and the (virtual) rows being displayed.
+// The function returns a boolean that indicates whether the mutation was
+// accepted and successfully applied.
+func (t *ItemsTable) SetColumnTransform(cols []string, transformed []bool) bool {
+	// map visible → transformedM
+	transformedM := make(map[string]struct{})
+	for i, c := range cols {
+		if transformed[i] {
+			transformedM[c] = struct{}{}
+		}
+	}
+
+	// ensure visibility is reset when
+	if len(transformed) == 0 {
+		t.ResetColumnTransform()
+		return false
+	}
+
+	// update internal state
+	var ok bool
+	if t.viewOptions, ok = t.viewOptions.Set().ColumnTransform().SetAll(viewoptions.ColumnTransform{
+		Enabled:     true,
+		Transformed: transformedM,
+	}).Do(); !ok {
+		return false
+	}
+
+	tablecols := t.table.Columns()
+	// prepare table column update
+	for i, c := range tablecols {
+		c.Suffix = getColumnSuffix(t.viewOptions, c.Title)
+		tablecols[i] = c
+	}
+	t.updateTable(tablecols, parseRows(t.ColumnAttributes, t.Items.TableKeys, t.CompileTransforms()), nil)
+	t.RebuildSearchResults()
+
+	return true
+}
+
 // SetSearchEnable merely enables the search view-options, without setting any
 // additional parameters or updating the table view.
 func (t *ItemsTable) SetSearchEnable() bool {
@@ -136,6 +177,30 @@ func (t *ItemsTable) SetSearchResults(col string, results []search.FilteredItem)
 	}
 
 	t.updateTable(nil, nil, filtered)
+	return true
+}
+
+// RebuildSearchResults can be used when the underlying rowset has changed but
+// did not affect search results or search order. Calling this function will
+// re-execute the existing search state and store the resulting virtual rows.
+// The function returns true when successfully executed or false when the
+// underlying rows were found to be incompatible with the current state of
+// search results.
+func (t *ItemsTable) RebuildSearchResults() bool {
+	var (
+		viewopts = t.viewOptions.GetSearchResultsOptions()
+		rows     = t.table.Rows()
+		filtered = make([]table.Row, len(viewopts.MatchedItems))
+	)
+
+	for i, matchedIndex := range viewopts.MatchedItems {
+		if matchedIndex >= len(rows) {
+			return false
+		}
+		filtered[i] = rows[matchedIndex]
+	}
+
+	t.updateTable(nil, nil, u.Ternary(filtered, nil, len(filtered) > 0))
 	return true
 }
 

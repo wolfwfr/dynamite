@@ -32,6 +32,7 @@ var (
 	StringColour    = lipgloss.Color("#a7bc85")
 	TokenColour     = SubtleColour3
 	ErrorColour     = lipgloss.Color("#B51010")
+	TimestampColour = lipgloss.Color("#F58427")
 
 	RegionBoxBg         = lipgloss.Color("#80380E")
 	FilterBoxBg         = lipgloss.Color("#681FA1")

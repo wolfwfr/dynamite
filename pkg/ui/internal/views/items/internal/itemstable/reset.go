@@ -8,11 +8,12 @@ import (
 // Reset completely resets all internal state parameters and empties the table
 func (t *ItemsTable) Reset() {
 	t.Items = types.Items{}
-	t.ColumnTitles = []string{}
+	t.ColumnAttributes = make([]ColumnAttributes, 0)
 
 	t.viewOptions.ResetColumnSortingState()
 	t.viewOptions.ResetColumnVisibilityState()
 	t.viewOptions.ResetSearchState()
+	t.viewOptions.ResetColumnTransformState()
 
 	t.table.SetCursor(0)
 
@@ -23,14 +24,22 @@ func (t *ItemsTable) Reset() {
 // updates the table contents
 func (t *ItemsTable) ResetColumnVisibility() {
 	t.viewOptions.ResetColumnVisibilityState()
-	t.updateTable(assembleColumns(t.viewOptions, t.ColumnTitles), nil, nil)
+	t.updateTable(assembleColumns(t.viewOptions, t.ColumnAttributes), nil, nil)
 }
 
 // ResetColumnSorting resets column-sorting related state parameters and updates
 // the table contents
 func (t *ItemsTable) ResetColumnSorting() {
 	t.viewOptions.ResetColumnSortingState()
-	t.updateTable(assembleColumns(t.viewOptions, t.ColumnTitles), parseRows(t.ColumnTitles, t.Items.TableKeys), nil)
+	t.updateTable(assembleColumns(t.viewOptions, t.ColumnAttributes), parseRows(t.ColumnAttributes, t.Items.TableKeys, t.CompileTransforms()), nil)
+}
+
+// ResetColumnTransform resets column-transform related state parameters and updates
+// the table contents
+func (t *ItemsTable) ResetColumnTransform() {
+	t.viewOptions.ResetColumnTransformState()
+	t.updateTable(assembleColumns(t.viewOptions, t.ColumnAttributes), parseRows(t.ColumnAttributes, t.Items.TableKeys, t.CompileTransforms()), nil)
+	t.RebuildSearchResults() // to reflect changes in virtual rows too
 }
 
 // ResetSearch resets search related state parameters and updates the table
@@ -38,7 +47,7 @@ func (t *ItemsTable) ResetColumnSorting() {
 func (t *ItemsTable) ResetSearch() {
 	t.viewOptions.ResetSearchState()
 	t.table.ResetVirtualRows()
-	t.updateTable(nil, t.sortRows(t.table.Columns(), parseRows(t.ColumnTitles, t.Items.TableKeys)), nil)
+	t.updateTable(nil, t.sortRows(t.table.Columns(), parseRows(t.ColumnAttributes, t.Items.TableKeys, t.CompileTransforms())), nil)
 }
 
 // clearCache completely removes any cached state

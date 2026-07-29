@@ -83,6 +83,12 @@ func (t *ItemsTable) GetColumns() []table.Column {
 	return t.table.Columns()
 }
 
+func (t *ItemsTable) GetColumnTypes() []ColumnAttributes {
+	res := make([]ColumnAttributes, len(t.ColumnAttributes))
+	copy(res, t.ColumnAttributes)
+	return res
+}
+
 func (t *ItemsTable) GetRows() []table.Row {
 	return t.table.Rows()
 }
@@ -112,15 +118,15 @@ func (t *ItemsTable) AddItems(items apitypes.Items, hasRangeKey bool) {
 	}
 
 	// set columns
-	columnTitles := compileUniqueKeys(items.TableKeys, t.ColumnTitles, hasRangeKey)
-	defer func() { t.ColumnTitles = columnTitles }()
+	columnTitles := compileUniqueKeys(items.TableKeys, items.Raw, t.ColumnAttributes, hasRangeKey)
+	defer func() { t.ColumnAttributes = columnTitles }()
 
 	var (
 		cols []table.Column = nil
 		rows []table.Row    = nil
 		virt []table.Row    = nil
 
-		noColumnUpdate = slices.Equal(t.ColumnTitles, columnTitles)
+		noColumnUpdate = slices.Equal(t.ColumnAttributes, columnTitles)
 		columnUpdate   = !noColumnUpdate
 		appendOnly     = noColumnUpdate && !t.viewOptions.GetColumnSortingOptions().Enabled
 	)
@@ -128,11 +134,11 @@ func (t *ItemsTable) AddItems(items apitypes.Items, hasRangeKey bool) {
 	switch {
 	case columnUpdate: // update columns & ALL rows
 		cols = assembleColumns(t.viewOptions, columnTitles)
-		rows = parseRows(columnTitles, t.Items.TableKeys)
+		rows = parseRows(columnTitles, t.Items.TableKeys, t.CompileTransforms())
 	case appendOnly: // update with new rows (append)
-		rows = parseRows(columnTitles, t.Items.TableKeys)
+		rows = parseRows(columnTitles, t.Items.TableKeys, t.CompileTransforms())
 	default: // update ALL rows but no columns
-		rows = parseRows(columnTitles, t.Items.TableKeys)
+		rows = parseRows(columnTitles, t.Items.TableKeys, t.CompileTransforms())
 	}
 
 	t.updateTable(cols, rows, virt)

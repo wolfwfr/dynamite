@@ -34,6 +34,7 @@ func TestSearchCallbacks(t *testing.T) {
 		SearchAllowed:           true,
 		ColumnSortingAllowed:    true,
 		ColumnVisibilityAllowed: true,
+		ColumnTransformAllowed:  true,
 	}
 
 	t.Run("item-selection-pane should", func(t *testing.T) {

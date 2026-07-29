@@ -20,6 +20,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	appconfig "github.com/wolfwfr/dynamite/pkg"
+	"github.com/wolfwfr/dynamite/pkg/common"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/adapters/dynamodb"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/adapters/dynamodb/types"
 	apitypes "github.com/wolfwfr/dynamite/pkg/ui/internal/adapters/dynamodb/types"
@@ -317,9 +318,11 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 		case key.Matches(msg, m.KeyMap.Browser):
 			return m.openInBrowser(m.resolveBrowserURL())
 		case key.Matches(msg, m.KeyMap.ColVis):
-			return m.toggleColumnVsibilityDialog(msg)
+			return m.toggleColumnVisibilityDialog(msg)
 		case key.Matches(msg, m.KeyMap.ColSort):
 			return m.toggleColumnSortingDialog(msg)
+		case key.Matches(msg, m.KeyMap.ColTransform):
+			return m.toggleColumnTransformDialog(msg)
 		default:
 			if match, call := m.AddKeyMap.Matches(msg); match {
 				return call
@@ -336,6 +339,8 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 		return m.UpdateColumnVisibility(msg)
 	case messages.ColumnSortingUpdate:
 		return m.UpdateColumnSorting(msg)
+	case messages.ColumnTransformUpdate:
+		return m.UpdateColumnTransform(msg)
 	case messages.ScanIndexChanged:
 		return m.ChangeScanIndex(msg)
 	case messages.QueryParametersChanged:
@@ -707,10 +712,14 @@ func (m *ItemSelectionPane) updateKeyMaps() {
 	if m.KeyMap.ColVis.Enabled() && !allowed.ColumnVisibilityAllowed {
 		m.table.ResetColumnVisibility()
 	}
+	if m.KeyMap.ColTransform.Enabled() && !allowed.ColumnTransformAllowed {
+		m.table.ResetColumnSorting()
+	}
 
 	m.KeyMap.Search.SetEnabled(allowed.SearchAllowed)
 	m.KeyMap.ColSort.SetEnabled(allowed.ColumnSortingAllowed)
 	m.KeyMap.ColVis.SetEnabled(allowed.ColumnVisibilityAllowed)
+	m.KeyMap.ColTransform.SetEnabled(allowed.ColumnTransformAllowed)
 }
 
 // updateSize updates dimensions of the pane's contents based on the current
@@ -877,7 +886,7 @@ func (m *ItemSelectionPane) UpdateColumnVisibility(msg messages.ColumnVisibility
 }
 
 // toggle column visibility dialog & provide current state (in case dialog opens)
-func (m *ItemSelectionPane) toggleColumnVsibilityDialog(msg tea.Msg) tea.Cmd {
+func (m *ItemSelectionPane) toggleColumnVisibilityDialog(msg tea.Msg) tea.Cmd {
 	cols := m.table.GetColumns()
 	st := m.table.GetViewOptionsState()
 	vis := st.GetColumnVisibilityOptions().InVisible
@@ -898,6 +907,47 @@ func (m *ItemSelectionPane) toggleColumnVsibilityDialog(msg tea.Msg) tea.Cmd {
 		msg.TableARN = arn
 		msg.AllColumns = colsS
 		msg.Visible = visB
+		return msg
+	}
+	return tea.Batch(toggle, state)
+}
+
+func (m *ItemSelectionPane) UpdateColumnTransform(msg messages.ColumnTransformUpdate) tea.Cmd {
+	if msg.TableARN != u.IfNotNil(m.selectedTable.TableArn, "") { // expired
+		return nil
+	}
+	_ = m.table.SetColumnTransform(msg.AllColumns, msg.Transform)
+	m.updateKeyMaps()
+	return nil
+}
+
+// toggle column transform dialog & provide current state (in case dialog opens)
+func (m *ItemSelectionPane) toggleColumnTransformDialog(msg tea.Msg) tea.Cmd {
+	cols := m.table.GetColumnTypes()
+	st := m.table.GetViewOptionsState()
+	trans := st.GetColumnTransformOptions().Transformed
+
+	colsS := make([]string, 0, len(cols))
+	transB := make([]bool, 0, len(cols))
+	for _, c := range cols {
+		if c.Type != common.DynamoDBAttributeTypeN {
+			continue
+		}
+		colsS = append(colsS, c.Title)
+		_, isTransformed := trans[c.Title]
+		transB = append(transB, isTransformed)
+	}
+	colsS = slices.Clip(colsS)
+	transB = slices.Clip(transB)
+	arn := u.IfNotNil(m.selectedTable.TableArn, "")
+	toggle := func() tea.Msg {
+		return messages.ToggleColumnTransform{}
+	}
+	state := func() tea.Msg {
+		msg := messages.InitColumnTransform{}
+		msg.TableARN = arn
+		msg.AllColumns = colsS
+		msg.Transform = transB
 		return msg
 	}
 	return tea.Batch(toggle, state)

@@ -160,6 +160,7 @@ Among others, Dynamite offers:
 - **Filter**: Apply DynamoDB's filter capability to narrow down your search
 - **Open in Browser**: Swiftly open the table or item in your browser and edit
 - **ZOOM**: Don't need the second pane? Zoom in and only display what you need
+- **Transform**: transform unix timestamps to human readable ones
 
 <br/>
 
@@ -177,7 +178,6 @@ Among others, Dynamite offers:
 
 - **CLI Extension**: use CLI flags to hop straight into a table of choice or launch a query.
 - **Pane Configurability**: configure width distribution of the 2 panes
-- **Transforms**: transform column values, e.g. unix timestamps to human readable
 
 <br/>
 

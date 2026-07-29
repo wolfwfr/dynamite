@@ -86,7 +86,8 @@ type Items struct {
 	YAML       []string
 	YAMLStyled []styles.ObjectStyle
 	Raw        []map[string]types.AttributeValue // TODO: review usefullness
-	TableKeys  [][]KeyValue                      // TODO: review: should this be part of items?
+	// TODO: rename to RootKeys
+	TableKeys [][]KeyValue // TODO: review: should this be part of items?
 }
 
 type ( // FILTER

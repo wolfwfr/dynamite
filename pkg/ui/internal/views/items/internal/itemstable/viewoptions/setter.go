@@ -7,6 +7,7 @@ const (
 	setSearch
 	setSort
 	setVis
+	setTransform
 )
 
 // Setter & DoableSetter provide a unified method for updating ViewOptions
@@ -37,6 +38,11 @@ func (s *Setter) ColumnVisibility() *SetColumnVisibility {
 	return &SetColumnVisibility{p: s}
 }
 
+// ColumnTransform returns the ColumnTransform Setter
+func (s *Setter) ColumnTransform() *SetColumnTransform {
+	return &SetColumnTransform{p: s}
+}
+
 // Do guards against incompatible option combinations and if compatible executes
 // the configured setter. It returns the new state of ViewOptions and a boolean
 // indicating whether the changes were accepted.
@@ -47,7 +53,8 @@ func (s *DoableSetter) Do() (ViewOptions, bool) {
 	if s.t == setNone ||
 		s.t == setSearch && !c.SearchAllowed ||
 		s.t == setSort && !c.ColumnSortingAllowed ||
-		s.t == setVis && !c.ColumnVisibilityAllowed {
+		s.t == setVis && !c.ColumnVisibilityAllowed ||
+		s.t == setTransform && !c.ColumnTransformAllowed {
 		return s.p.v, false
 	}
 

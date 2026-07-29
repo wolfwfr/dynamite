@@ -133,6 +133,7 @@ type ToggleColumnSorting struct{}
 type ToggleScanParameters struct{}
 type ToggleQueryParameters struct{}
 type ToggleFilterParameters struct{}
+type ToggleColumnTransform struct{}
 type ToggleNotificationDialog struct {
 	Msg      string
 	Error    error
@@ -158,6 +159,12 @@ type InitColumnSorting struct {
 	AllColumns []string // matching by index
 	SortingOn  string
 	Ascending  bool // if false, descending
+}
+
+type InitColumnTransform struct {
+	TableARN   string
+	AllColumns []string // matching by index
+	Transform  []bool   // matching by index
 }
 
 type InitScanParameters struct {
@@ -232,6 +239,12 @@ type QueryParametersChanged struct {
 type FilterParametersChanged struct {
 	TableARN string
 	State    []FilterState
+}
+
+type ColumnTransformUpdate struct {
+	TableARN   string
+	AllColumns []string // matching by index
+	Transform  []bool   // matching by index
 }
 
 type ColumnSortingReset struct {

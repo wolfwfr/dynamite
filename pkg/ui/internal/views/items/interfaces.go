@@ -21,6 +21,7 @@ type dynamodbClient interface {
 
 type itemsTable interface {
 	GetColumns() []table.Column
+	GetColumnTypes() []itemstable.ColumnAttributes
 	GetRows() []table.Row
 	GetVirtualRows() []table.Row
 	GetVisualRows() []table.Row
@@ -37,9 +38,11 @@ type itemsTable interface {
 	ResetSearch()
 	ResetColumnVisibility()
 	ResetColumnSorting()
+	ResetColumnTransform()
 
 	SetColumnSorting(cols []string, sortingOn string, ascending bool) bool
 	SetColumnVisibility(cols []string, visible []bool) bool
+	SetColumnTransform(cols []string, transformed []bool) bool
 	SetSearchEnable() bool
 	SetSearchResults(col string, results []search.FilteredItem) bool
 	SetDynamicColumnWidth(b bool)

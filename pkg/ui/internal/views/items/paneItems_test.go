@@ -185,6 +185,7 @@ func TestItemSelectionResets(t *testing.T) {
 			SearchAllowed:           true,
 			ColumnSortingAllowed:    true,
 			ColumnVisibilityAllowed: true,
+			ColumnTransformAllowed:  true,
 		}
 	)
 
