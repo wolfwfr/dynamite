@@ -109,6 +109,10 @@ func (m *TableSelection) Update(msg tea.Msg) tea.Cmd {
 		case key.Matches(msg, m.KeyMap.MoveFocus):
 			m.moveFocus()
 			return nil
+		case key.Matches(msg, m.KeyMap.MoveWidthLeft):
+			return m.moveWidthLeft()
+		case key.Matches(msg, m.KeyMap.MoveWidthRight):
+			return m.moveWidthRight()
 		case key.Matches(msg, m.KeyMap.Regions):
 			return m.ToggleRegionsDialog()
 		}
@@ -174,6 +178,18 @@ func (m TableSelection) ToggleRegionsDialog() tea.Cmd {
 	return func() tea.Msg {
 		return messages.ToggleRegions{}
 	}
+}
+
+func (m *TableSelection) moveWidthLeft() tea.Cmd {
+	m.config.TablesPrimaryWidth -= 5
+	m.applySize()
+	return nil
+}
+
+func (m *TableSelection) moveWidthRight() tea.Cmd {
+	m.config.TablesPrimaryWidth += 5
+	m.applySize()
+	return nil
 }
 
 func (m *TableSelection) applySize() {

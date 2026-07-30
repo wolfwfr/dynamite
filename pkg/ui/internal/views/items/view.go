@@ -107,6 +107,10 @@ func (m *ItemSelection) Update(msg tea.Msg) tea.Cmd {
 		case key.Matches(msg, m.KeyMap.MoveFocus):
 			m.moveFocus()
 			return nil
+		case key.Matches(msg, m.KeyMap.MoveWidthLeft):
+			return m.moveWidthLeft()
+		case key.Matches(msg, m.KeyMap.MoveWidthRight):
+			return m.moveWidthRight()
 		}
 	case tea.WindowSizeMsg:
 		m.window.height = msg.Height
@@ -170,6 +174,18 @@ func (m *ItemSelection) moveFocus() {
 	if m.focused > detailsPaneID {
 		m.focused = itemsPaneID
 	}
+}
+
+func (m *ItemSelection) moveWidthLeft() tea.Cmd {
+	m.config.ItemsPrimaryWidth -= 5
+	m.applySize()
+	return nil
+}
+
+func (m *ItemSelection) moveWidthRight() tea.Cmd {
+	m.config.ItemsPrimaryWidth += 5
+	m.applySize()
+	return nil
 }
 
 func (m *ItemSelection) applySize() {

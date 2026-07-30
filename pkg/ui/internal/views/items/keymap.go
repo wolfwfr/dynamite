@@ -162,7 +162,9 @@ func DefaultItemPaneKeyMap() *ItemPaneKeyMap {
 // ItemViewKeyMap defines keybindings. It satisfies to the help.KeyMap interface, which
 // is used to render the help menu.
 type ItemViewKeyMap struct {
-	MoveFocus key.Binding
+	MoveFocus      key.Binding
+	MoveWidthLeft  key.Binding
+	MoveWidthRight key.Binding
 }
 
 // DialogKeyMaps collects keys that toggle view-specific dailogs
@@ -196,7 +198,7 @@ func (km *ItemViewKeyMap) ShortHelp() []key.Binding {
 // FullHelp implements the KeyMap interface.
 func (km *ItemViewKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{km.MoveFocus},
+		{km.MoveFocus, km.MoveWidthLeft, km.MoveWidthRight},
 	}
 }
 
@@ -206,6 +208,14 @@ func DefaultItemViewKeyMap() *ItemViewKeyMap {
 		MoveFocus: key.NewBinding(
 			key.WithKeys("tab", "shift+tab"),
 			key.WithHelp("tab/shift+tab", "switch panes"),
+		),
+		MoveWidthLeft: key.NewBinding(
+			key.WithKeys("shift+left"),
+			key.WithHelp("shift+←", "move width left"),
+		),
+		MoveWidthRight: key.NewBinding(
+			key.WithKeys("shift+right"),
+			key.WithHelp("shift+→", "move width right"),
 		),
 	}
 }
