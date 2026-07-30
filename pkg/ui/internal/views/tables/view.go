@@ -181,13 +181,13 @@ func (m TableSelection) ToggleRegionsDialog() tea.Cmd {
 }
 
 func (m *TableSelection) moveWidthLeft() tea.Cmd {
-	m.config.TablesPrimaryWidth = max(0, m.config.TablesPrimaryWidth-5)
+	m.config.Tables.PrimaryWidth = max(0, m.config.Tables.PrimaryWidth-5)
 	m.applySize()
 	return nil
 }
 
 func (m *TableSelection) moveWidthRight() tea.Cmd {
-	m.config.TablesPrimaryWidth = min(100, m.config.TablesPrimaryWidth+5)
+	m.config.Tables.PrimaryWidth = min(100, m.config.Tables.PrimaryWidth+5)
 	m.applySize()
 	return nil
 }
@@ -197,7 +197,7 @@ func (m *TableSelection) applySize() {
 		borderH     = 2
 		borderW     = 2
 		homeGutterH = 1
-		pct         = min(100.0, float64(m.config.TablesPrimaryWidth))
+		pct         = min(100.0, float64(m.config.Tables.PrimaryWidth))
 		partWidth   = int(float64(m.window.width) / (100.0 / pct))
 		tableswidth = u.Ternary(m.window.width, partWidth, m.zoomEnabled && m.zoomtarget == tablesPaneID)
 		detailwidth = u.Ternary(m.window.width, m.window.width-tableswidth, m.zoomEnabled && m.zoomtarget == detailPaneID)

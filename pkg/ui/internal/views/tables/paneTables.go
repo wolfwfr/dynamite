@@ -256,9 +256,10 @@ func (m *tableSelectionPane) pageNext(init bool) tea.Cmd {
 	region := m.config.Region
 	ctx, cc := context.WithTimeout(m.ctx, m.stdTO)
 	m.cancelTables = cc
+	pagesize := u.Ternary(m.config.Tables.Pagesize, max(100, m.window.height), m.config.Tables.Pagesize > 0)
 	page := func() tea.Msg {
 		defer cc()
-		limit := min(100, m.config.MaxTables-len(m.tables)) // 100 is max
+		limit := min(pagesize, m.config.Tables.MaxTables-len(m.tables)) // 100 is max
 		if limit == 0 {
 			return nil
 		}
@@ -311,7 +312,7 @@ func (m *tableSelectionPane) processPage(msg messages.TablePageReady, preview bo
 	if preview {
 		cmds = append(cmds, m.MaybePreviewItem(true))
 	}
-	if len(m.tables) < m.config.MaxTables {
+	if len(m.tables) < m.config.Tables.MaxTables {
 		cmds = append(cmds, m.pageNext(false))
 	}
 	return tea.Batch(cmds...)

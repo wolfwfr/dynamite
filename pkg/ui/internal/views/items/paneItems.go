@@ -183,8 +183,8 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 		sessions:       make(map[string]SessionData),
 		queryMode:      messages.ScanMode,
 		previewFormat:  JSONformat,
-		scanLimit:      10,
-		queryLimit:     10,
+		scanLimit:      max(10, config.Items.PageSize),
+		queryLimit:     max(10, config.Items.PageSize),
 		pageCancel:     func() {}, // init as noop
 		table:          itemstable.NewItemsTable(),
 		pageIgnore:     make(map[uint8]struct{}),
@@ -709,8 +709,10 @@ func (m *ItemSelectionPane) updateSize() {
 	// TODO: fix the '1'; content prints one empty row beyond its allowed height
 	m.table.UpdateSize(h-1-searchBoxH-tableInfoH-ternary(1, 0, m.spinner.active), w)
 	m.search.SetWidth(w)
-	m.queryLimit = h
-	m.scanLimit = h
+	if m.config.Items.PageSize <= 0 {
+		m.queryLimit = h
+		m.scanLimit = h
+	}
 }
 
 func (m *ItemSelectionPane) resetKeyMap() {

@@ -74,10 +74,12 @@ type configFile struct {
 type TableViewSettings struct {
 	PrimaryWidth int `yaml:"primary_width_percent"`
 	MaxTables    int `yaml:"max_tables"`
+	PageSize     int `yaml:"page_size"`
 }
 
 type ItemViewSettings struct {
 	PrimaryWidth int `yaml:"primary_width_percent"`
+	PageSize     int `yaml:"page_size"`
 }
 
 type Config struct {
@@ -87,9 +89,11 @@ type Config struct {
 	LastUsedRegion      string
 	DefaultToLastRegion bool // TODO: impl
 	DefaultProfile      string
-	MaxTables           int
 	TablesPrimaryWidth  int
+	TablesPageSize      int
+	TablesMax      int
 	ItemsPrimaryWidth   int
+	ItemsPageSize       int
 }
 
 func defaultConfig() Config {
@@ -100,9 +104,11 @@ func defaultConfig() Config {
 		LastUsedRegion:      "",
 		DefaultToLastRegion: false,
 		DefaultProfile:      "",
-		MaxTables:           1000,
 		TablesPrimaryWidth:  50,
+		TablesPageSize:      0, // initialised by view, based on window size
+		TablesMax:      1000,
 		ItemsPrimaryWidth:   50,
+		ItemsPageSize:       0, // initialised by view, based on window size
 	}
 }
 
@@ -155,10 +161,13 @@ func mergeWithDefault(cfg configFile) Config {
 	}
 	res.DefaultProfile = notEmptyS(cfg.DefaultProfile, res.DefaultProfile)
 	if cfg.Tables.MaxTables > 0 {
-		res.MaxTables = cfg.Tables.MaxTables
+		res.TablesMax = cfg.Tables.MaxTables
 	}
 	res.TablesPrimaryWidth = util.Ternary(cfg.Tables.PrimaryWidth, res.TablesPrimaryWidth, cfg.Tables.PrimaryWidth > 0)
 	res.ItemsPrimaryWidth = util.Ternary(cfg.Items.PrimaryWidth, res.ItemsPrimaryWidth, cfg.Items.PrimaryWidth > 0)
+
+	res.ItemsPageSize = util.Ternary(cfg.Items.PageSize, res.ItemsPageSize, cfg.Items.PageSize > 0)
+	res.TablesPageSize = util.Ternary(cfg.Tables.PageSize, res.TablesPageSize, cfg.Tables.PageSize > 0)
 
 	return res
 }

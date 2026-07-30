@@ -177,13 +177,13 @@ func (m *ItemSelection) moveFocus() {
 }
 
 func (m *ItemSelection) moveWidthLeft() tea.Cmd {
-	m.config.ItemsPrimaryWidth = max(0, m.config.ItemsPrimaryWidth-5)
+	m.config.Items.PrimaryWidth = max(0, m.config.Items.PrimaryWidth-5)
 	m.applySize()
 	return nil
 }
 
 func (m *ItemSelection) moveWidthRight() tea.Cmd {
-	m.config.ItemsPrimaryWidth = min(100, m.config.ItemsPrimaryWidth+5)
+	m.config.Items.PrimaryWidth = min(100, m.config.Items.PrimaryWidth+5)
 	m.applySize()
 	return nil
 }
@@ -193,7 +193,7 @@ func (m *ItemSelection) applySize() {
 		borderH     = 2
 		borderW     = 2
 		homeGutterH = 1
-		pct         = min(100.0, float64(m.config.ItemsPrimaryWidth))
+		pct         = min(100.0, float64(m.config.Items.PrimaryWidth))
 		partWidth   = int(float64(m.window.width) / (100.0 / pct))
 		itemswidth  = u.Ternary(m.window.width, partWidth, m.zoomEnabled && m.zoomtarget == itemsPaneID)
 		detailwidth = u.Ternary(m.window.width, m.window.width-itemswidth, m.zoomEnabled && m.zoomtarget == detailsPaneID)

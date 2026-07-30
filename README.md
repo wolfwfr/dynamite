@@ -192,13 +192,17 @@ default_profile: ""
 tables:
   # percentage of screen width occupied by primary table-selection-pane
   primary_width_percent: 50
-  # limit of tables retrieved upon opening DYNAMITE
+  # limit of number of tables retrieved upon opening DYNAMITE
   max_tables: 1000
+  # page-size override, paginates tables from dynamodb with given pagesize, by default page-size depends on window-size
+  page_size: 0
 
 # settings for the item-selection-view
 items:
   # percentage of screen width occupied by primary item-selection-pane
   primary_width_percent: 50
+  # page-size override, paginates items from dynamodb table with given pagesize, by default page-size depends on window-size
+  page_size: 0
 ```
 
 <br/>
