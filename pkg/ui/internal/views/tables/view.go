@@ -181,8 +181,10 @@ func (m *TableSelection) applySize() {
 		borderH     = 2
 		borderW     = 2
 		homeGutterH = 1
-		tableswidth = u.Ternary(m.window.width, m.window.width/2, m.zoomEnabled && m.zoomtarget == tablesPaneID)
-		detailwidth = u.Ternary(m.window.width, m.window.width/2, m.zoomEnabled && m.zoomtarget == detailPaneID)
+		pct         = min(100.0, float64(m.config.TablesPrimaryWidth))
+		partWidth   = int(float64(m.window.width) / (100.0 / pct))
+		tableswidth = u.Ternary(m.window.width, partWidth, m.zoomEnabled && m.zoomtarget == tablesPaneID)
+		detailwidth = u.Ternary(m.window.width, m.window.width-tableswidth, m.zoomEnabled && m.zoomtarget == detailPaneID)
 		paddingR    = 1
 	)
 	// ensure full screen width is utilised,

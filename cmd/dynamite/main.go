@@ -105,12 +105,14 @@ func runApplication(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	cfg := appconfig.Config{
-		Profile:          resolveProfile(cmd, cfgf),
-		Region:           resolveRegion(cmd, cfgf),
-		URL:              urlP,
-		AvailableRegions: cfgf.AWSRegions,
-		StarredRegions:   cfgf.StarredRegions,
-		MaxTables:        cfgf.MaxTables,
+		Profile:            resolveProfile(cmd, cfgf),
+		Region:             resolveRegion(cmd, cfgf),
+		URL:                urlP,
+		AvailableRegions:   cfgf.AWSRegions,
+		StarredRegions:     cfgf.StarredRegions,
+		MaxTables:          cfgf.MaxTables,
+		TablesPrimaryWidth: cfgf.TablesPrimaryWidth,
+		ItemsPrimaryWidth:  cfgf.ItemsPrimaryWidth,
 
 		MFACredentialCB: f,
 		MFACredentialC:  credsC,

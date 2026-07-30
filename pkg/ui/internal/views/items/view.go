@@ -177,9 +177,10 @@ func (m *ItemSelection) applySize() {
 		borderH     = 2
 		borderW     = 2
 		homeGutterH = 1
-		// width       = u.Ternary(m.window.width, m.window.width/2, m.zoomEnabled)
-		itemswidth  = u.Ternary(m.window.width, m.window.width/2, m.zoomEnabled && m.zoomtarget == itemsPaneID)
-		detailwidth = u.Ternary(m.window.width, m.window.width/2, m.zoomEnabled && m.zoomtarget == detailsPaneID)
+		pct         = min(100.0, float64(m.config.ItemsPrimaryWidth))
+		partWidth   = int(float64(m.window.width) / (100.0 / pct))
+		itemswidth  = u.Ternary(m.window.width, partWidth, m.zoomEnabled && m.zoomtarget == itemsPaneID)
+		detailwidth = u.Ternary(m.window.width, m.window.width-itemswidth, m.zoomEnabled && m.zoomtarget == detailsPaneID)
 		paddingR    = 1
 	)
 

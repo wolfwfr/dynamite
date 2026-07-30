@@ -9,6 +9,8 @@ import (
 	"strconv"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/wolfwfr/dynamite/pkg/util"
 )
 
 var builtInRegions = []string{
@@ -65,7 +67,17 @@ type configFile struct {
 	// tables will be paged in automatically on boot. To prevent excessive
 	// calls, we specify a limit on how many pages (size of 100) can be
 	// retrieved. This parameter specifies the number of tables, not pages.
-	MaxTables int `yaml:"max_tables"`
+	MaxTables int               `yaml:"max_tables"`
+	Tables    TableViewSettings `yaml:"tables"`
+	Items     ItemViewSettings  `yaml:"items"`
+}
+
+type TableViewSettings struct {
+	PrimaryWidth int `yaml:"primary_width_percent"`
+}
+
+type ItemViewSettings struct {
+	PrimaryWidth int `yaml:"primary_width_percent"`
 }
 
 type Config struct {
@@ -76,6 +88,8 @@ type Config struct {
 	DefaultToLastRegion bool // TODO: impl
 	DefaultProfile      string
 	MaxTables           int
+	TablesPrimaryWidth  int
+	ItemsPrimaryWidth   int
 }
 
 func defaultConfig() Config {
@@ -87,6 +101,8 @@ func defaultConfig() Config {
 		DefaultToLastRegion: false,
 		DefaultProfile:      "",
 		MaxTables:           1000,
+		TablesPrimaryWidth:  50,
+		ItemsPrimaryWidth:   50,
 	}
 }
 
@@ -141,6 +157,8 @@ func mergeWithDefault(cfg configFile) Config {
 	if cfg.MaxTables > 0 {
 		res.MaxTables = cfg.MaxTables
 	}
+	res.TablesPrimaryWidth = util.Ternary(cfg.Tables.PrimaryWidth, res.TablesPrimaryWidth, cfg.Tables.PrimaryWidth > 0)
+	res.ItemsPrimaryWidth = util.Ternary(cfg.Items.PrimaryWidth, res.ItemsPrimaryWidth, cfg.Items.PrimaryWidth > 0)
 
 	return res
 }
