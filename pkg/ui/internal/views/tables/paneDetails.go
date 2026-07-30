@@ -107,6 +107,7 @@ func (m *detailsPane) Update(msg tea.Msg) (cmd tea.Cmd) {
 			}
 		}
 	case messages.TableDetails:
+		m.content.SetYOffset(0)
 		m.content.SetContent(renderDetails(msg.Details, m.styles))
 		return nil
 	}

@@ -96,6 +96,7 @@ func (m *detailsPane) Update(msg tea.Msg) (cmd tea.Cmd) {
 		}
 	case messages.PreviewItem:
 		m.previewing = msg
+		m.content.SetYOffset(0)
 		m.content.SetContent(msg.StyledItem)
 		return nil
 	case messages.CopyItem:
