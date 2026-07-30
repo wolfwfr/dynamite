@@ -19,11 +19,14 @@ type ViewOptions struct {
 	columnVisibility ColumnVisibility
 	columnSorting    ColumnSorting
 	columnTransform  ColumnTransform
+	columnDynWidth   ColumnDynWidth
 }
 
 func NewViewOptions() ViewOptions {
 	v := ViewOptions{}
 	v.columnVisibility.InVisible = make(map[string]struct{})
+	v.columnTransform.Transformed = make(map[string]struct{})
+	v.columnDynWidth.DynWidth = make(map[string]struct{})
 	return v
 }
 

@@ -14,8 +14,9 @@ import (
 // visibility and sorting.
 func assembleColumns(state view.ViewOptions, columnAttributes []ColumnAttributes) []table.Column {
 	var (
-		cols    = make([]table.Column, len(columnAttributes))
-		visopts = state.GetColumnVisibilityOptions()
+		cols      = make([]table.Column, len(columnAttributes))
+		visopts   = state.GetColumnVisibilityOptions()
+		widthopts = state.GetColumnDynWidthOptions()
 	)
 
 	for i, attrs := range columnAttributes {
@@ -32,6 +33,10 @@ func assembleColumns(state view.ViewOptions, columnAttributes []ColumnAttributes
 		// visibility
 		_, isInvisible := visopts.InVisible[title]
 		col.InVisible = visopts.Enabled && isInvisible
+
+		// column dynamic width
+		_, dyn := widthopts.DynWidth[title]
+		col.UseDynamicWidth = widthopts.Enabled && dyn
 
 		// insert
 		cols[i] = col

@@ -39,11 +39,6 @@ func (m *Model) Columns() []Column {
 	return m.cols
 }
 
-// DynamicColumnWidth returns the current setting for dynamic-column-width
-func (m *Model) DynamicColumnWidth() bool {
-	return m.dynCols
-}
-
 // Height returns the viewport height of the table.
 func (m *Model) Height() int {
 	return m.content.Height() + m.header.Height()

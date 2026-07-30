@@ -22,7 +22,6 @@ func NewItemsTable() *ItemsTable {
 	{ // contents table
 		t := table.New(
 			table.WithFocused(true),
-			table.WithDynamicColumnWidth(false),
 			table.WithFieldDelegate(m.TableRowFieldDelegate),
 		)
 		s := table.DefaultStyles()
@@ -103,10 +102,6 @@ func (t *ItemsTable) GetVisualRows() []table.Row {
 
 func (t *ItemsTable) GetKeyMap() *table.KeyMap {
 	return t.table.KeyMap
-}
-
-func (t *ItemsTable) GetDynamicColumnWidth() bool {
-	return t.table.DynamicColumnWidth()
 }
 
 // AddItems processes dynamo-db items and appends them to the table contents,

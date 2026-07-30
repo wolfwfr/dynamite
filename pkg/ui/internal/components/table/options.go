@@ -9,12 +9,6 @@ import (
 //	table := New(WithColumns([]Column{{Title: "ID", Width: 10}}))
 type Option func(*Model)
 
-func WithDynamicColumnWidth(b bool) Option {
-	return func(m *Model) {
-		m.dynCols = b
-	}
-}
-
 // WithColumns sets the table columns (headers).
 func WithColumns(cols []Column) Option {
 	return func(m *Model) {

@@ -27,6 +27,13 @@ func (t *ItemsTable) ResetColumnVisibility() {
 	t.updateTable(assembleColumns(t.viewOptions, t.ColumnAttributes), nil, nil)
 }
 
+// ResetColumnDynWidth resets column-dynamic-width related state parameters and
+// updates the table contents
+func (t *ItemsTable) ResetColumnDynWidth() {
+	t.viewOptions.ResetColumnDynWidthState()
+	t.updateTable(assembleColumns(t.viewOptions, t.ColumnAttributes), nil, nil)
+}
+
 // ResetColumnSorting resets column-sorting related state parameters and updates
 // the table contents
 func (t *ItemsTable) ResetColumnSorting() {

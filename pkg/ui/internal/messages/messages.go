@@ -129,6 +129,7 @@ type ToggleHelp struct{}
 type ToggleRegions struct{}
 
 type ToggleColumnVisibility struct{}
+type ToggleColumnWidthDialog struct{}
 type ToggleColumnSorting struct{}
 type ToggleScanParameters struct{}
 type ToggleQueryParameters struct{}
@@ -152,6 +153,12 @@ type InitColumnVisibility struct {
 	TableARN   string
 	AllColumns []string // matching by index
 	Visible    []bool   // matching by index
+}
+
+type InitColumnWidth struct {
+	TableARN   string
+	AllColumns []string // matching by index
+	DynWidth   []bool   // matching by index
 }
 
 type InitColumnSorting struct {
@@ -212,6 +219,12 @@ type ColumnVisibilityUpdate struct {
 	TableARN   string
 	AllColumns []string // matching by index
 	Visible    []bool   // matching by index
+}
+
+type ColumnWidthUpdate struct {
+	TableARN   string
+	AllColumns []string // matching by index
+	DynWidth   []bool   // matching by index
 }
 
 type ColumnSortingUpdate struct {

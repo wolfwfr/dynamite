@@ -50,7 +50,7 @@ type ItemPaneKeyMap struct {
 	Esc              key.Binding
 	Back             key.Binding
 	Continue         key.Binding
-	ChCols           key.Binding
+	ColWidth         key.Binding
 	ToggleFmt        key.Binding
 	Scan             key.Binding
 	ScanParameters   key.Binding
@@ -73,7 +73,7 @@ func (km *ItemPaneKeyMap) ShortHelp() []key.Binding {
 // FullHelp implements the KeyMap interface.
 func (km *ItemPaneKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{km.Search, km.Zoom, km.Reload, km.Esc, km.Continue, km.Back, km.ChCols, km.ToggleFmt, km.Scan, km.ScanParameters, km.Query, km.QueryParameters, km.FilterParameters, km.Copy, km.Browser, km.ColVis, km.ColSort, km.ColTransform},
+		{km.Search, km.Zoom, km.Reload, km.Esc, km.Continue, km.Back, km.ColWidth, km.ToggleFmt, km.Scan, km.ScanParameters, km.Query, km.QueryParameters, km.FilterParameters, km.Copy, km.Browser, km.ColVis, km.ColSort, km.ColTransform},
 	}
 }
 
@@ -104,7 +104,7 @@ func DefaultItemPaneKeyMap() *ItemPaneKeyMap {
 			key.WithKeys("c"),
 			key.WithHelp("c", "continue paging"),
 		),
-		ChCols: key.NewBinding(
+		ColWidth: key.NewBinding(
 			key.WithKeys("w"),
 			key.WithHelp("w", "toggle column width"),
 		),
@@ -172,6 +172,7 @@ type DialogKeyMaps struct {
 	ColumnVisibility key.Binding
 	ColumnSorting    key.Binding
 	ColumnTransform  key.Binding
+	ColumnWidth      key.Binding
 	ScanParams       key.Binding
 	QueryParams      key.Binding
 	FilterParams     key.Binding
@@ -183,6 +184,7 @@ func (m *ItemSelection) DialogKeyMaps() DialogKeyMaps {
 		ColumnVisibility: m.itemsPane.KeyMap.ColVis,
 		ColumnSorting:    m.itemsPane.KeyMap.ColSort,
 		ColumnTransform:  m.itemsPane.KeyMap.ColTransform,
+		ColumnWidth:      m.itemsPane.KeyMap.ColWidth,
 		ScanParams:       m.itemsPane.KeyMap.ScanParameters,
 		QueryParams:      m.itemsPane.KeyMap.QueryParameters,
 		FilterParams:     m.itemsPane.KeyMap.FilterParameters,

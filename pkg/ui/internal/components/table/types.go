@@ -22,8 +22,6 @@ type Model struct {
 	// headerDelegate, when set, is called to provide non-default styling for the header
 	headerDelegate HeaderDelegate
 
-	dynCols bool
-
 	cols []Column
 	// TODO: if rows are already stored in memory in their entirety, can't they
 	// 'simply' be passed off to the viewport in their entirety, instead of the
@@ -88,11 +86,12 @@ func (r Rows) ToStrings() []string {
 
 // Column defines the table structure.
 type Column struct {
-	Title        string
-	Suffix       string
-	Width        int
-	DynamicWidth int
-	InVisible    bool
+	Title           string
+	Suffix          string
+	Width           int
+	DynamicWidth    int
+	UseDynamicWidth bool
+	InVisible       bool
 }
 
 // Styles contains style definitions for this list component. By default, these

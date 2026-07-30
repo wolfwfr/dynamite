@@ -26,7 +26,6 @@ type itemsTable interface {
 	GetVirtualRows() []table.Row
 	GetVisualRows() []table.Row
 	GetKeyMap() *table.KeyMap
-	GetDynamicColumnWidth() bool
 	GetSelectedRow() *table.Row
 	GetSelectedItem() (*itemstable.Item, int)
 	GetAllowedOptions() viewoptions.Check
@@ -39,13 +38,14 @@ type itemsTable interface {
 	ResetColumnVisibility()
 	ResetColumnSorting()
 	ResetColumnTransform()
+	ResetColumnDynWidth()
 
 	SetColumnSorting(cols []string, sortingOn string, ascending bool) bool
 	SetColumnVisibility(cols []string, visible []bool) bool
 	SetColumnTransform(cols []string, transformed []bool) bool
+	SetColumnDynamicWidth(cols []string, dynwidth []bool) bool
 	SetSearchEnable() bool
 	SetSearchResults(col string, results []search.FilteredItem) bool
-	SetDynamicColumnWidth(b bool)
 
 	PaginationEligible() bool
 	UpdateSize(height, width int)

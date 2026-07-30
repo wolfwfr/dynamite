@@ -37,6 +37,7 @@ const (
 	columns_dialog
 	column_sorting_dialog
 	column_transform_dialog
+	column_width_dialog
 	scan_param_dialog
 	query_param_dialog
 	filter_param_dialog
@@ -97,6 +98,7 @@ type Model struct {
 		columnVisibility *dialogs.ColumnVis
 		columnSorting    *dialogs.ColumnSorting
 		columnTransform  *dialogs.TransformDialog
+		columnWidth      *dialogs.WidthDialog
 		scanParams       *dialogs.ScanDialog
 		queryParams      *dialogs.Queryialog
 		filterParams     *dialogs.FilterDialog
@@ -181,6 +183,7 @@ func NewModel(ctx context.Context, cfg appconfig.Config, opts ...Option) Model {
 		m.dialogs.columnVisibility = dialogs.NewColumnVisibilityDialog(DialogCloseKeymapFrom(itemViewDialogKeys.ColumnVisibility))
 		m.dialogs.columnSorting = dialogs.NewColumnSortingDialog(DialogCloseKeymapFrom(itemViewDialogKeys.ColumnSorting))
 		m.dialogs.columnTransform = dialogs.NewTransformDialog(DialogCloseKeymapFrom(itemViewDialogKeys.ColumnTransform))
+		m.dialogs.columnWidth = dialogs.NewWidthDialog(DialogCloseKeymapFrom(itemViewDialogKeys.ColumnWidth))
 		m.dialogs.scanParams = dialogs.NewScanDialog(DialogCloseKeymapFrom(itemViewDialogKeys.ScanParams))
 		m.dialogs.queryParams = dialogs.NewQueryDialog(DialogCloseKeymapFrom(itemViewDialogKeys.QueryParams))
 		m.dialogs.filterParams = dialogs.NewFilterDialog(DialogCloseKeymapFrom(itemViewDialogKeys.FilterParams))
@@ -246,6 +249,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m, cmd = m.ToggleColumnSortingDialog()
 	case messages.ToggleColumnTransform:
 		m, cmd = m.ToggleColumnTransformDialog()
+	case messages.ToggleColumnWidthDialog:
+		m, cmd = m.ToggleColumnWidthDialog()
 	case messages.ToggleScanParameters:
 		m, cmd = m.ToggleScanParametersDialog()
 	case messages.ToggleQueryParameters:
@@ -298,6 +303,7 @@ func (m Model) broadcast(msg tea.Msg) (Model, tea.Cmd) {
 	cmds = append(cmds, m.dialogs.columnVisibility.Update(msg))
 	cmds = append(cmds, m.dialogs.columnSorting.Update(msg))
 	cmds = append(cmds, m.dialogs.columnTransform.Update(msg))
+	cmds = append(cmds, m.dialogs.columnWidth.Update(msg))
 	cmds = append(cmds, m.dialogs.scanParams.Update(msg))
 	cmds = append(cmds, m.dialogs.queryParams.Update(msg))
 	cmds = append(cmds, m.dialogs.filterParams.Update(msg))
@@ -323,6 +329,8 @@ func (m Model) routeToActiveOnly(msg tea.Msg) (Model, tea.Cmd) {
 			return m, m.dialogs.columnSorting.Update(msg)
 		case column_transform_dialog:
 			return m, m.dialogs.columnTransform.Update(msg)
+		case column_width_dialog:
+			return m, m.dialogs.columnWidth.Update(msg)
 		case scan_param_dialog:
 			return m, m.dialogs.scanParams.Update(msg)
 		case query_param_dialog:
@@ -462,6 +470,17 @@ func (m Model) ToggleColumnSortingDialog() (Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m Model) ToggleColumnWidthDialog() (Model, tea.Cmd) {
+	if m.dialogs.open && m.dialogs.active != column_width_dialog {
+		return m, nil
+	}
+	m.dialogs.open = !m.dialogs.open
+	if m.dialogs.open {
+		m.dialogs.active = column_width_dialog
+	}
+	return m, nil
+}
+
 func (m Model) ToggleColumnTransformDialog() (Model, tea.Cmd) {
 	if m.dialogs.open && m.dialogs.active != column_transform_dialog {
 		return m, nil
@@ -577,6 +596,8 @@ func (m Model) View() tea.View {
 			dialog = m.dialogs.columnSorting
 		case column_transform_dialog:
 			dialog = m.dialogs.columnTransform
+		case column_width_dialog:
+			dialog = m.dialogs.columnWidth
 		case scan_param_dialog:
 			dialog = m.dialogs.scanParams
 		case query_param_dialog:

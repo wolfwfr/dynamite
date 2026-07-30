@@ -30,8 +30,6 @@ func New(opts ...Option) *Model {
 		content: c, //nolint:mnd
 		header:  h,
 
-		dynCols: true,
-
 		KeyMap: DefaultKeyMap(),
 		Help:   help.New(),
 		styles: DefaultStyles(),
@@ -167,16 +165,16 @@ func (m *Model) UpdateContent() (colWidthChanged bool) {
 	// Render only rows that fit within the viewport
 	// Constant runtime, independent of number of rows in a table.
 	// Limits the number of renderedRows to a maximum of m.viewport.Height
-
-	if m.dynCols {
-		for j := range m.cols {
-			mx := len(m.cols[j].Title) + len(m.cols[j].Suffix)
-			for i := m.start; i < m.end; i++ {
-				mx = max(mx, len(m.VisualRows()[i].Fields[j].Value()))
-			}
-			colWidthChanged = colWidthChanged || mx != m.cols[j].Width // once true, stays true
-			m.cols[j].DynamicWidth = mx
+	for j := range m.cols {
+		if !m.cols[j].UseDynamicWidth {
+			continue
 		}
+		mx := len(m.cols[j].Title) + len(m.cols[j].Suffix)
+		for i := m.start; i < m.end; i++ {
+			mx = max(mx, len(m.VisualRows()[i].Fields[j].Value()))
+		}
+		colWidthChanged = colWidthChanged || mx != m.cols[j].Width // once true, stays true
+		m.cols[j].DynamicWidth = mx
 	}
 
 	renderedRows := make([]string, 0, max(0, m.end-m.start))
@@ -334,7 +332,10 @@ func (m *Model) SetHeaderDelegate(f HeaderDelegate) {
 // updates the view appropriately
 func (m *Model) SetDynamicColumnWidth(b bool) {
 	m.ResetCache()
-	m.dynCols = b
+	// HACK:
+	for i := range m.cols {
+		m.cols[i].UseDynamicWidth = b
+	}
 	m.UpdateContent()
 	m.UpdateHeader()
 }
@@ -476,7 +477,7 @@ func (m *Model) renderHeader() string {
 	renderHeaderFunc := func() string {
 		for i, col := range m.cols {
 			var (
-				width     = ternary(col.DynamicWidth, col.Width, m.dynCols && col.DynamicWidth > 0)
+				width     = ternary(col.DynamicWidth, col.Width, col.UseDynamicWidth && col.DynamicWidth > 0)
 				cellwidth = width + pL + pR
 				inview    = x < tL+cellwidth && x+w >= tL
 			)
@@ -550,7 +551,7 @@ func (m *Model) renderRow(r int) (rendered string) {
 	renderRowFunc := func() string {
 		for i := range rows[r].Fields {
 			var (
-				width     = ternary(m.cols[i].DynamicWidth, m.cols[i].Width, m.dynCols && m.cols[i].DynamicWidth > 0)
+				width     = ternary(m.cols[i].DynamicWidth, m.cols[i].Width, m.cols[i].UseDynamicWidth && m.cols[i].DynamicWidth > 0)
 				cellwidth = width + pL + pR
 				inview    = x < tL+cellwidth && x+w >= tL
 			)
@@ -575,7 +576,7 @@ func (m *Model) renderRow(r int) (rendered string) {
 				renderedCell string
 			)
 			if inview {
-				renderedCell = renderCell(renderWidth(ternary(value, ansi.Truncate(value, width, "…"), m.dynCols)))
+				renderedCell = renderCell(renderWidth(ternary(value, ansi.Truncate(value, width, "…"), m.cols[i].UseDynamicWidth)))
 			} else {
 				renderedCell = renderCell(renderWidth(""))
 			}

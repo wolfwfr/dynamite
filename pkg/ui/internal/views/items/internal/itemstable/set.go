@@ -190,6 +190,38 @@ func (t *ItemsTable) RebuildSearchResults() bool {
 	return true
 }
 
-func (t *ItemsTable) SetDynamicColumnWidth(b bool) {
-	t.table.SetDynamicColumnWidth(b)
+func (t *ItemsTable) SetColumnDynamicWidth(cols []string, dynamicWidth []bool) bool {
+	// guard against mismatched states
+	tablecols := t.table.Columns()
+	if len(tablecols) != len(cols) {
+		// TODO: better handling of new columns appearing in view
+		return false
+	}
+
+	// map width → widthM
+	widthM := make(map[string]struct{})
+	for i, c := range cols {
+		if dynamicWidth[i] {
+			widthM[c] = struct{}{}
+		}
+	}
+
+	// ensure dynamic-width is reset when no columns match
+	if len(widthM) == 0 {
+		t.ResetColumnDynWidth()
+		return false
+	}
+
+	// update internal state
+	var ok bool
+	if t.viewOptions, ok = t.viewOptions.Set().ColumnDynamicWidth().SetAll(viewoptions.ColumnDynWidth{
+		Enabled:  true,
+		DynWidth: widthM,
+	}).Do(); !ok {
+		return false
+	}
+
+	t.updateTable(assembleColumns(t.viewOptions, t.ColumnAttributes), nil, nil)
+
+	return true
 }

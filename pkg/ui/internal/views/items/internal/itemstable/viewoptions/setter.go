@@ -8,6 +8,7 @@ const (
 	setSort
 	setVis
 	setTransform
+	setWidth
 )
 
 // Setter & DoableSetter provide a unified method for updating ViewOptions
@@ -36,6 +37,11 @@ func (s *Setter) ColumnSorting() *SetColumnSorting {
 // ColumnVisibility returns the ColumnVisibility Setter
 func (s *Setter) ColumnVisibility() *SetColumnVisibility {
 	return &SetColumnVisibility{p: s}
+}
+
+// ColumnDynamicWidth returns the ColumnDynamicWidth Setter
+func (s *Setter) ColumnDynamicWidth() *SetColumnDynamicWidth {
+	return &SetColumnDynamicWidth{p: s}
 }
 
 // ColumnTransform returns the ColumnTransform Setter

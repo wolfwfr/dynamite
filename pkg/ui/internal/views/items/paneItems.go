@@ -297,8 +297,8 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 			return m.escape()
 		case key.Matches(msg, m.KeyMap.Reload):
 			return m.Reload()
-		case key.Matches(msg, m.KeyMap.ChCols):
-			m.table.SetDynamicColumnWidth(!m.table.GetDynamicColumnWidth())
+		case key.Matches(msg, m.KeyMap.ColWidth):
+			return m.toggleColumnWidthDialog(msg)
 		case key.Matches(msg, m.KeyMap.Zoom):
 			return m.Zoom()
 		case key.Matches(msg, m.KeyMap.ToggleFmt):
@@ -341,6 +341,8 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 		return m.UpdateColumnSorting(msg)
 	case messages.ColumnTransformUpdate:
 		return m.UpdateColumnTransform(msg)
+	case messages.ColumnWidthUpdate:
+		return m.UpdateColumnDynamicWidth(msg)
 	case messages.ScanIndexChanged:
 		return m.ChangeScanIndex(msg)
 	case messages.QueryParametersChanged:
@@ -878,6 +880,42 @@ func (m *ItemSelectionPane) toggleColumnVisibilityDialog(msg tea.Msg) tea.Cmd {
 		msg.TableARN = arn
 		msg.AllColumns = colsS
 		msg.Visible = visB
+		return msg
+	}
+	return tea.Batch(toggle, state)
+}
+
+func (m *ItemSelectionPane) UpdateColumnDynamicWidth(msg messages.ColumnWidthUpdate) tea.Cmd {
+	if msg.TableARN != u.IfNotNil(m.selectedTable.TableArn, "") { // expired
+		return nil
+	}
+	_ = m.table.SetColumnDynamicWidth(msg.AllColumns, msg.DynWidth)
+	m.updateKeyMaps()
+	return nil
+}
+
+// toggle column dynamicWidth dialog & provide current state (in case dialog opens)
+func (m *ItemSelectionPane) toggleColumnWidthDialog(msg tea.Msg) tea.Cmd {
+	cols := m.table.GetColumns()
+	st := m.table.GetViewOptionsState()
+	dw := st.GetColumnDynWidthOptions().DynWidth
+
+	colsS := make([]string, 0, len(cols))
+	dwB := make([]bool, 0, len(cols))
+	for _, c := range cols {
+		colsS = append(colsS, c.Title)
+		_, dwEnabled := dw[c.Title]
+		dwB = append(dwB, dwEnabled)
+	}
+	arn := u.IfNotNil(m.selectedTable.TableArn, "")
+	toggle := func() tea.Msg {
+		return messages.ToggleColumnWidthDialog{}
+	}
+	state := func() tea.Msg {
+		msg := messages.InitColumnWidth{}
+		msg.TableARN = arn
+		msg.AllColumns = colsS
+		msg.DynWidth = dwB
 		return msg
 	}
 	return tea.Batch(toggle, state)

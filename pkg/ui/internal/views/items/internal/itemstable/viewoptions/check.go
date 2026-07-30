@@ -5,6 +5,7 @@ type Check struct {
 	ColumnSortingAllowed    bool
 	ColumnVisibilityAllowed bool
 	ColumnTransformAllowed  bool
+	ColumnDynWidthAllowed   bool
 }
 
 func (v *ViewOptions) Check() Check {
@@ -14,5 +15,6 @@ func (v *ViewOptions) Check() Check {
 	c.ColumnSortingAllowed = !v.searchResults.Enabled
 	c.ColumnVisibilityAllowed = true
 	c.ColumnTransformAllowed = true
+	c.ColumnDynWidthAllowed = true
 	return c
 }
