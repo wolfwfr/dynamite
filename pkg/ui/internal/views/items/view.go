@@ -177,13 +177,13 @@ func (m *ItemSelection) moveFocus() {
 }
 
 func (m *ItemSelection) moveWidthLeft() tea.Cmd {
-	m.config.ItemsPrimaryWidth -= 5
+	m.config.ItemsPrimaryWidth = max(0, m.config.ItemsPrimaryWidth-5)
 	m.applySize()
 	return nil
 }
 
 func (m *ItemSelection) moveWidthRight() tea.Cmd {
-	m.config.ItemsPrimaryWidth += 5
+	m.config.ItemsPrimaryWidth = min(100, m.config.ItemsPrimaryWidth+5)
 	m.applySize()
 	return nil
 }

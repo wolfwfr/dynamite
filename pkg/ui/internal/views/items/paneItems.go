@@ -1063,7 +1063,7 @@ func emptyContent(content string) bool {
 }
 
 func (m *ItemSelectionPane) noContentMessage() string {
-	if m.paging {
+	if m.paging || m.window.width <= 0 {
 		return ""
 	}
 	s := strings.Builder{}

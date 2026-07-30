@@ -181,13 +181,13 @@ func (m TableSelection) ToggleRegionsDialog() tea.Cmd {
 }
 
 func (m *TableSelection) moveWidthLeft() tea.Cmd {
-	m.config.TablesPrimaryWidth -= 5
+	m.config.TablesPrimaryWidth = max(0, m.config.TablesPrimaryWidth-5)
 	m.applySize()
 	return nil
 }
 
 func (m *TableSelection) moveWidthRight() tea.Cmd {
-	m.config.TablesPrimaryWidth += 5
+	m.config.TablesPrimaryWidth = min(100, m.config.TablesPrimaryWidth+5)
 	m.applySize()
 	return nil
 }
