@@ -154,7 +154,6 @@ Among others, Dynamite offers:
 - **Syntax Highlighting**: JSON/YAML views of your items with highlighting
 - **Visibility Toggle**: only display the columns you're interested in
 - **Easy Sorting**: quickly sort your results by any field (S, B, N)
-- **Flexible Formatting**: Display your items as JSON or YAML
 - **Quick Copy**: Copy table name, item field or the item JSON/YAML immediately
 - **Scan/Query**: Scan and Query your table, select index, order, and set keys
 - **Filter**: Apply DynamoDB's filter capability to narrow down your search
