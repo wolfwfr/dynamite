@@ -40,6 +40,7 @@ var (
 	QueryModeBoxQeuryBg = lipgloss.Color("#046645")
 	QueryModeBoxScanBg  = lipgloss.Color("#0E3080")
 	QueryModeBoxAdminBg = lipgloss.Color("#0E5680")
+	HelpBoxBg           = lipgloss.Color("#042B19")
 
 	SearchFg = lipgloss.Color("#4F4F4F")
 

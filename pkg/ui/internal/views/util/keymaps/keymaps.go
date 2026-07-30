@@ -3,6 +3,8 @@
 package keymaps
 
 import (
+	"slices"
+
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 )
@@ -10,8 +12,9 @@ import (
 // ------------------------------------------ //
 
 type AdditionalKey struct {
-	Binding key.Binding
-	Call    tea.Cmd
+	Binding   key.Binding
+	Call      tea.Cmd
+	ShortHelp bool
 }
 
 type AdditionalKeys []AdditionalKey
@@ -19,9 +22,11 @@ type AdditionalKeys []AdditionalKey
 func (a AdditionalKeys) ShortHelp() []key.Binding {
 	keys := make([]key.Binding, len(a))
 	for i, b := range a {
-		keys[i] = b.Binding
+		if b.ShortHelp {
+			keys[i] = b.Binding
+		}
 	}
-	return keys
+	return slices.Clip(keys)
 }
 
 func (a AdditionalKeys) Bindings() []key.Binding {

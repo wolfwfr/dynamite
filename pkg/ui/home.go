@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"slices"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -74,17 +75,29 @@ var pageSuspendBlock = lipgloss.NewStyle().
 	Margin(0, 1, 0, 0).
 	Height(1)
 
+var helpBlock = lipgloss.NewStyle().
+	Background(commonstyles.HelpBoxBg).
+	Foreground(commonstyles.SubtleColour2).
+	Align(lipgloss.Left, lipgloss.Top).
+	Padding(0, 1, 0, 1).
+	Margin(0, 1, 0, 0).
+	Height(1)
+
 type Model struct {
 	// ActiveView determines tea.Msg forwarding
 	activeView View
 
+	// current query-mode
 	QueryMode messages.ItemsQueryMode
 
+	// badge flags
 	FiltersEnabled  bool
 	PagingSuspended bool
 
+	// key bindings
 	KeyMap KeyMap
 
+	// window attributes
 	window struct {
 		width  int
 		height int
@@ -155,11 +168,13 @@ func NewModel(ctx context.Context, cfg appconfig.Config, opts ...Option) Model {
 
 	inheritedKeys := []keymaps.AdditionalKey{
 		{
-			Binding: m.KeyMap.ForceQuit,
-			Call:    tea.Quit,
+			Binding:   m.KeyMap.ForceQuit,
+			Call:      tea.Quit,
+			ShortHelp: true,
 		}, {
-			Binding: m.KeyMap.Help,
-			Call:    m.SignalOpenHelpDialog(),
+			Binding:   m.KeyMap.Help,
+			Call:      m.SignalOpenHelpDialog(),
+			ShortHelp: false,
 		},
 	}
 
@@ -558,14 +573,14 @@ type dialog interface {
 
 func (m Model) View() tea.View {
 	var page string
-	var help string
+	var keys []key.Binding
 	switch m.activeView {
 	case tables_view:
 		page = m.tableSelection.View()
-		help = m.Help.ShortHelpView(m.tableSelection.ShortHelp())
+		keys = m.tableSelection.ShortHelp()
 	case items_view:
 		page = m.itemselection.View()
-		help = m.Help.ShortHelpView(m.itemselection.ShortHelp())
+		keys = m.itemselection.ShortHelp()
 	}
 
 	// assemble gutter
@@ -575,7 +590,18 @@ func (m Model) View() tea.View {
 	query := u.Ternary(queryModeBlock.Render(queryMode), "", m.activeView == items_view)
 	filter := u.Ternary(filterModeBlock.Render("FILTER"), "", m.FiltersEnabled && m.activeView == items_view)
 	pageSus := u.Ternary(pageSuspendBlock.Render("PAGING"), "", m.PagingSuspended && m.activeView == items_view)
-	gutter := lipgloss.JoinHorizontal(lipgloss.Left, region, query, filter, pageSus, " ", help)
+	helpBlock := helpBlock.Render(strings.Join(m.KeyMap.Help.Keys(), ","), " help")
+	pregutterLeft := lipgloss.JoinHorizontal(lipgloss.Left, region, query, filter, pageSus, " ")
+	pregutterRight := lipgloss.JoinHorizontal(lipgloss.Right, " ", helpBlock)
+
+	m.Help.SetWidth(m.window.width - lipgloss.Width(pregutterLeft) - lipgloss.Width(pregutterRight))
+	help := m.Help.ShortHelpView(keys)
+	var fill string
+	if remainingSpace := m.Help.Width() - lipgloss.Width(help); remainingSpace > 0 {
+		fill = u.RepeatString(" ", remainingSpace)
+	}
+
+	gutter := lipgloss.JoinHorizontal(lipgloss.Left, pregutterLeft, help, fill, pregutterRight)
 
 	page = lipgloss.JoinVertical(lipgloss.Top, page, gutter)
 

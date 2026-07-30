@@ -15,7 +15,7 @@ type KeyMap struct {
 
 // ShortHelp implements the KeyMap interface.
 func (km *KeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{km.ForceQuit, km.Help}
+	return []key.Binding{km.ForceQuit}
 }
 
 // FullHelp implements the KeyMap interface.
