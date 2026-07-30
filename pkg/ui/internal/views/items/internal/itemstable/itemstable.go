@@ -170,7 +170,7 @@ func (t *ItemsTable) GetSelectedItem() (*Item, int) {
 	)
 
 	if len(items.Raw) == 0 || row == nil {
-		return nil, 0
+		return nil, -1
 	}
 
 	idx := row.Metadata[ItemIndexMetaKey].(int)

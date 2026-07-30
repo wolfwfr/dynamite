@@ -20,7 +20,7 @@ func (m *ItemSelectionPane) SearchEmptyInputCallback() tea.Cmd {
 
 func (m *ItemSelectionPane) SearchResultsCallback(col string, results []search.FilteredItem) tea.Cmd {
 	m.table.SetSearchResults(col, results)
-	return nil
+	return m.MaybePreviewItem(true)
 }
 
 func (m *ItemSelectionPane) SearchResetCallback(searchHeight int) tea.Cmd {

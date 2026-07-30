@@ -187,7 +187,7 @@ func newTableSelectionPane(ctx context.Context, config *appconfig.Config, opts .
 						p.tablefiltering.matchedRunes[i] = match.Matches
 					}
 					p.content.SetVirtualRows(filtered)
-					return nil
+					return p.MaybePreviewItem(true)
 				},
 				Reset: func(searchHeight int) tea.Cmd {
 					p.tablefiltering.enabled = false

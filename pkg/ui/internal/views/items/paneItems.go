@@ -466,10 +466,14 @@ func (m *ItemSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
 	item, idx := m.table.GetSelectedItem()
 
 	// if no item or preview was already instructed to preview this item, skip
-	if item == nil || idx == m.lastPreviewItem && !force {
+	if idx == m.lastPreviewItem && !force {
 		return nil
 	}
 	m.lastPreviewItem = idx
+	if item == nil {
+		// empty preview
+		return func() tea.Msg { return messages.PreviewItem{} }
+	}
 	var styled string
 	var raw string
 	switch m.previewFormat {
