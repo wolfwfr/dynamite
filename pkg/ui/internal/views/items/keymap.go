@@ -48,7 +48,6 @@ type ItemPaneKeyMap struct {
 	Search           key.Binding
 	Zoom             key.Binding
 	Esc              key.Binding
-	Back             key.Binding
 	Continue         key.Binding
 	ColWidth         key.Binding
 	AllColWidth      key.Binding
@@ -68,13 +67,13 @@ type ItemPaneKeyMap struct {
 
 // ShortHelp implements the KeyMap interface.
 func (km *ItemPaneKeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{km.Back, km.Search, km.Zoom, km.Reload, km.Esc, km.ToggleFmt, km.Scan, km.ScanParameters, km.Query, km.QueryParameters, km.FilterParameters}
+	return []key.Binding{km.Search, km.Zoom, km.Reload, km.Esc, km.ToggleFmt, km.Scan, km.ScanParameters, km.Query, km.QueryParameters, km.FilterParameters}
 }
 
 // FullHelp implements the KeyMap interface.
 func (km *ItemPaneKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{km.Search, km.Zoom, km.Reload, km.Esc, km.Continue, km.Back, km.ColWidth, km.AllColWidth, km.ToggleFmt, km.Scan, km.ScanParameters, km.Query, km.QueryParameters, km.FilterParameters, km.Copy, km.Browser, km.ColVis, km.ColSort, km.ColTransform},
+		{km.Search, km.Zoom, km.Reload, km.Esc, km.Continue, km.ColWidth, km.AllColWidth, km.ToggleFmt, km.Scan, km.ScanParameters, km.Query, km.QueryParameters, km.FilterParameters, km.Copy, km.Browser, km.ColVis, km.ColSort, km.ColTransform},
 	}
 }
 
@@ -96,10 +95,6 @@ func DefaultItemPaneKeyMap() *ItemPaneKeyMap {
 		Esc: key.NewBinding(
 			key.WithKeys("esc"),
 			key.WithHelp("esc", "cancel"),
-		),
-		Back: key.NewBinding(
-			key.WithKeys("backspace"),
-			key.WithHelp("backspace", "back"),
 		),
 		Continue: key.NewBinding(
 			key.WithKeys("c"),
@@ -167,6 +162,7 @@ func DefaultItemPaneKeyMap() *ItemPaneKeyMap {
 // ItemViewKeyMap defines keybindings. It satisfies to the help.KeyMap interface, which
 // is used to render the help menu.
 type ItemViewKeyMap struct {
+	Back           key.Binding
 	MoveFocus      key.Binding
 	MoveWidthLeft  key.Binding
 	MoveWidthRight key.Binding
@@ -199,19 +195,23 @@ func (m *ItemSelection) DialogKeyMaps() DialogKeyMaps {
 
 // ShortHelp implements the KeyMap interface.
 func (km *ItemViewKeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{km.MoveFocus}
+	return []key.Binding{km.Back, km.MoveFocus}
 }
 
 // FullHelp implements the KeyMap interface.
 func (km *ItemViewKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{km.MoveFocus, km.MoveWidthLeft, km.MoveWidthRight},
+		{km.Back, km.MoveFocus, km.MoveWidthLeft, km.MoveWidthRight},
 	}
 }
 
 // DefaultItemViewKeyMap returns a default set of keybindings.
 func DefaultItemViewKeyMap() *ItemViewKeyMap {
 	return &ItemViewKeyMap{
+		Back: key.NewBinding(
+			key.WithKeys("backspace"),
+			key.WithHelp("backspace", "back"),
+		),
 		MoveFocus: key.NewBinding(
 			key.WithKeys("tab", "shift+tab"),
 			key.WithHelp("tab/shift+tab", "switch panes"),

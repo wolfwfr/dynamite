@@ -104,6 +104,8 @@ func (m *ItemSelection) Update(msg tea.Msg) tea.Cmd {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
 		switch {
+		case key.Matches(msg, m.KeyMap.Back):
+			return m.back()
 		case key.Matches(msg, m.KeyMap.MoveFocus):
 			m.moveFocus()
 			return nil
@@ -167,6 +169,20 @@ func (m *ItemSelection) handleZoom(msg tea.Msg) tea.Cmd {
 	}
 	m.applySize()
 	return nil
+}
+
+func (m *ItemSelection) back() tea.Cmd {
+	// switch to previous view
+	switchView := func() tea.Msg {
+		return messages.SwitchView{
+			OldView: messages.Item_selection,
+			NewView: messages.Table_selection,
+		}
+	}
+
+	itemsCmd := m.itemsPane.exit()
+	detailsCmd := m.detailsPane.exit()
+	return tea.Batch(switchView, itemsCmd, detailsCmd)
 }
 
 func (m *ItemSelection) moveFocus() {

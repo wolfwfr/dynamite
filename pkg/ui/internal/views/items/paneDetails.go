@@ -73,6 +73,11 @@ func (m *detailsPane) cleanSlate() {
 	m.err = nil
 }
 
+func (m *detailsPane) exit() tea.Cmd {
+	m.content.SetContent("")
+	return nil
+}
+
 func (m *detailsPane) Init() tea.Cmd {
 	m.previewing = messages.PreviewItem{}
 	m.cleanSlate()

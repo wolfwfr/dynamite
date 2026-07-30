@@ -293,8 +293,6 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 			}
 		case key.Matches(msg, m.KeyMap.Continue):
 			return m.continuePaging()
-		case key.Matches(msg, m.KeyMap.Back):
-			return m.escape()
 		case key.Matches(msg, m.KeyMap.Reload):
 			return m.Reload()
 		case key.Matches(msg, m.KeyMap.ColWidth):
@@ -809,7 +807,7 @@ func (m *ItemSelectionPane) handleResetColumnSortingMessage(msg messages.ColumnS
 	return nil
 }
 
-func (m *ItemSelectionPane) escape() tea.Cmd {
+func (m *ItemSelectionPane) exit() tea.Cmd {
 	// immediately cancel pending calls
 	m.pageCancel()
 
@@ -835,22 +833,7 @@ func (m *ItemSelectionPane) escape() tea.Cmd {
 	m.pageIgnore = make(map[uint8]struct{})
 	m.pageLatestID = 0
 
-	// switch to previous view
-	switchView := func() tea.Msg {
-		return messages.SwitchView{
-			OldView: messages.Item_selection,
-			NewView: messages.Table_selection,
-		}
-	}
-
-	// clean up preview window
-	resetPreview := func() tea.Msg {
-		return messages.PreviewItem{
-			StyledItem: "",
-		}
-	}
-
-	return tea.Batch(reset, resetPreview, switchView)
+	return reset
 }
 
 func (m *ItemSelectionPane) UpdateColumnVisibility(msg messages.ColumnVisibilityUpdate) tea.Cmd {
