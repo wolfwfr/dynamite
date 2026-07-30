@@ -163,6 +163,46 @@ Among others, Dynamite offers:
 
 <br/>
 
+## 🔧 Configuration
+
+By default, the `config.yaml` is stored at your OS default config location:
+
+- **Unix/Linux**: `{XDG_CONFIG_HOME}` or`{HOME}/.config/`
+- **windows**: `{AppData}/`
+- **darwin/ios**: `{HOME}/Library/Application Support/`
+
+A custom config_path can be provided to the CLI with `--cfg` or the `DYNAMITE_TUI_CONFIG_DIR` ENVIRONMENT variable.
+
+Here is the default configuration:
+
+```yaml
+# merges with built-in list of currently existing regions
+aws_regions: []
+
+# starred_regions appear at the top of the selection
+starred_regions: []
+
+# region that is selected by default
+default_region: us-east-1
+
+# default AWS profile to look for when no relevant ENVIRONMENT variables were found
+default_profile: ""
+
+# settings for the table-selection-view
+tables:
+  # percentage of screen width occupied by primary table-selection-pane
+  primary_width_percent: 50
+  # limit of tables retrieved upon opening DYNAMITE
+  max_tables: 1000
+
+# settings for the item-selection-view
+items:
+  # percentage of screen width occupied by primary item-selection-pane
+  primary_width_percent: 50
+```
+
+<br/>
+
 ## 🛣 Roadmap
 
 ☝️ This is a work in progress and the following is required for a first release:
@@ -182,8 +222,7 @@ Among others, Dynamite offers:
 
 ## ✋ Non Goals
 
-- **ADMIN Mode**: Although I'm considering it, I'm currently flagging write
-operations as a non-goal
+- **ADMIN Mode**: Although I'm considering it, I'm currently flagging write operations as a non-goal
 - **Full API Compatibility**: Full integration with all of the aws-sdk-go-v2 dynamo-db related functions
 
 <br/>
