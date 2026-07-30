@@ -926,6 +926,26 @@ func (m *ItemSelectionPane) UpdateColumnTransform(msg messages.ColumnTransformUp
 		return nil
 	}
 	_ = m.table.SetColumnTransform(msg.AllColumns, msg.Transform)
+	transformedM := make(map[string]struct{})
+	for i, col := range msg.AllColumns {
+		if msg.Transform[i] {
+			transformedM[col] = struct{}{}
+		}
+	}
+
+	cols := m.table.GetColumns()
+	colsS := make([]string, 0, len(cols))
+	dwB := make([]bool, 0, len(cols))
+	for _, c := range cols {
+		colsS = append(colsS, c.Title)
+		_, dwEnabled := transformedM[c.Title]
+		dwEnabled = dwEnabled || c.UseDynamicWidth
+		dwB = append(dwB, dwEnabled)
+	}
+
+	// automatically enable dynamic-column-width for transformed columns
+	_ = m.table.SetColumnDynamicWidth(colsS, dwB)
+
 	m.updateKeyMaps()
 	return nil
 }
