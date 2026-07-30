@@ -67,13 +67,13 @@ type configFile struct {
 	// tables will be paged in automatically on boot. To prevent excessive
 	// calls, we specify a limit on how many pages (size of 100) can be
 	// retrieved. This parameter specifies the number of tables, not pages.
-	MaxTables int               `yaml:"max_tables"`
-	Tables    TableViewSettings `yaml:"tables"`
-	Items     ItemViewSettings  `yaml:"items"`
+	Tables TableViewSettings `yaml:"tables"`
+	Items  ItemViewSettings  `yaml:"items"`
 }
 
 type TableViewSettings struct {
 	PrimaryWidth int `yaml:"primary_width_percent"`
+	MaxTables    int `yaml:"max_tables"`
 }
 
 type ItemViewSettings struct {
@@ -154,8 +154,8 @@ func mergeWithDefault(cfg configFile) Config {
 		res.DefaultToLastRegion = defreg
 	}
 	res.DefaultProfile = notEmptyS(cfg.DefaultProfile, res.DefaultProfile)
-	if cfg.MaxTables > 0 {
-		res.MaxTables = cfg.MaxTables
+	if cfg.Tables.MaxTables > 0 {
+		res.MaxTables = cfg.Tables.MaxTables
 	}
 	res.TablesPrimaryWidth = util.Ternary(cfg.Tables.PrimaryWidth, res.TablesPrimaryWidth, cfg.Tables.PrimaryWidth > 0)
 	res.ItemsPrimaryWidth = util.Ternary(cfg.Items.PrimaryWidth, res.ItemsPrimaryWidth, cfg.Items.PrimaryWidth > 0)
