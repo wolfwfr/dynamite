@@ -300,29 +300,44 @@ func TestLoadSessions(t *testing.T) {
 	)
 
 	// factory initialising a new system-under-test
-	newSUT := func() *ItemSelectionPane {
+	newSUT := func(m *mocks.MockdynamodbClient) *ItemSelectionPane {
 		sut := newItemSelectionPane(context.Background(), &appconfig.Config{})
+		sut.dynamodbClient = m
 		sut.selectedTable.TableArn = &tableARN1
 		sut.selectedTable.TableName = &tableName1
 		sut.config = &appconfig.Config{}
 		return sut
 	}
 
+	returnMockDetails := func(db *mocks.MockdynamodbClient, arn, name string, count int64) {
+		db.EXPECT().DescribeTable(gm.Any(), gm.Any(), gm.Any()).Return(&apitypes.DescribeTableResponse{
+			ItemCount: &count,
+			TableArn:  &arn,
+			TableName: &name,
+		}, nil).Times(1)
+	}
+
 	t.Run("item-selection-pane should", func(t *testing.T) {
 		t.Run("store & restore scan parameters when exiting item-selection view in scan-mode", func(t *testing.T) {
-			sut := newSUT()                                               // init sut
+			ctrl := gm.NewController(t)                                   // init mock controller
+			db := mocks.NewMockdynamodbClient(ctrl)                       // init mocked DynamoDB client
+			sut := newSUT(db)                                             // init sut
 			sut.scanParameters.index = &someIndex                         // set params; index
 			sut.exit()                                                    // exit view
-			simpleSelectTable(sut, tableARN2, tableName2, 10)             // select table 2 in between
+			returnMockDetails(db, tableARN2, tableName2, 10)              // setup mock return
+			simpleSelectTable(sut, tableName2)                            // select table 2 in between
 			sut.exit()                                                    // exit again
-			simpleSelectTable(sut, tableARN1, tableName1, 10)             // re-enter table 1
+			returnMockDetails(db, tableARN1, tableName1, 10)              // setup mock return
+			simpleSelectTable(sut, tableName1)                            // re-enter table 1
 			assert.EqualValues(t, someIndex, *sut.scanParameters.index)   // assert restored; index
 			assert.EqualValues(t, someIndex, *sut.tableIndex.activeIndex) // assert restored; active index
 		})
 		t.Run("store & restore scan parameters when switching to and from query-mode", func(t *testing.T) {
 			skipIf(t, !queryKeyValid, "skipping due to outdated keymap")  // skip if keymap needs updating
 			skipIf(t, !scanKeyValid, "skipping due to outdated keymap")   // skip if keymap needs updating
-			sut := newSUT()                                               // init sut
+			ctrl := gm.NewController(t)                                   // init mock controller
+			db := mocks.NewMockdynamodbClient(ctrl)                       // init mocked DynamoDB client
+			sut := newSUT(db)                                             // init sut
 			sut.scanParameters.index = &someIndex                         // set params; index
 			sut.Update(queryKey)                                          // switch to query-mode
 			assert.Nil(t, sut.tableIndex.activeIndex)                     // assert active index is reset
@@ -332,7 +347,9 @@ func TestLoadSessions(t *testing.T) {
 		})
 		t.Run("store & restore query parameters when exiting item-selection view in query-mode", func(t *testing.T) {
 			skipIf(t, !queryKeyValid, "skipping due to outdated keymap")                  // skip if keymap needs updating
-			sut := newSUT()                                                               // init sut
+			ctrl := gm.NewController(t)                                                   // init mock controller
+			db := mocks.NewMockdynamodbClient(ctrl)                                       // init mocked DynamoDB client
+			sut := newSUT(db)                                                             // init sut
 			sut.Update(queryKey)                                                          // switch to query-mode
 			sut.queryParameters.index = &someIndex                                        // set params; index
 			sut.queryParameters.hashKeyValue = hkValue                                    // set params; hash-key value
@@ -341,10 +358,12 @@ func TestLoadSessions(t *testing.T) {
 			sut.queryParameters.rangeOrderDescending = true                               // set params; range-order
 			sut.queryParameters.rangeKeyOperator = messages.Between                       // set params; range operator
 			sut.exit()                                                                    // exit view
-			simpleSelectTable(sut, tableARN2, tableName2, 10)                             // select table 2 in between
+			returnMockDetails(db, tableARN2, tableName2, 10)                              // setup mock return
+			simpleSelectTable(sut, tableName2)                                            // select table 2 in between
 			sut.Update(queryKey)                                                          // switch to query-mode again
 			sut.exit()                                                                    // exit again
-			simpleSelectTable(sut, tableARN1, tableName1, 10)                             // re-enter table 1
+			returnMockDetails(db, tableARN1, tableName1, 10)                              // setup mock return
+			simpleSelectTable(sut, tableName1)                                            // re-enter table 1
 			assert.EqualValues(t, sut.queryMode, messages.QueryMode)                      // assert re-enter straight into query-mode this time
 			assert.EqualValues(t, someIndex, *sut.queryParameters.index)                  // assert restored; index
 			assert.EqualValues(t, hkValue, sut.queryParameters.hashKeyValue)              // assert restored; hash-key value
@@ -357,7 +376,9 @@ func TestLoadSessions(t *testing.T) {
 		t.Run("store & restore query parameters when switching to scan-mode", func(t *testing.T) {
 			skipIf(t, !queryKeyValid, "skipping due to outdated keymap")                  // skip if keymap needs updating
 			skipIf(t, !scanKeyValid, "skipping due to outdated keymap")                   // skip if keymap needs updating
-			sut := newSUT()                                                               // init sut
+			ctrl := gm.NewController(t)                                                   // init mock controller
+			db := mocks.NewMockdynamodbClient(ctrl)                                       // init mocked DynamoDB client
+			sut := newSUT(db)                                                             // init sut
 			sut.Update(queryKey)                                                          // switch to query-mode
 			sut.queryParameters.index = &someIndex                                        // set params; index
 			sut.queryParameters.hashKeyValue = hkValue                                    // set params; hash-key value
@@ -378,7 +399,9 @@ func TestLoadSessions(t *testing.T) {
 			assert.EqualValues(t, someIndex, *sut.tableIndex.activeIndex)                 // assert restored; active index
 		})
 		t.Run("store & restore filter parameters when exiting item-selection view", func(t *testing.T) {
-			sut := newSUT()                                        // init sut
+			ctrl := gm.NewController(t)                            // init mock controller
+			db := mocks.NewMockdynamodbClient(ctrl)                // init mocked DynamoDB client
+			sut := newSUT(db)                                      // init sut
 			queryfilter := []apitypes.FilterExpressionParameters{{ // specify some filter-parameter-set
 				AttributePath:      "name",
 				AttributeValue1:    "Henry",
@@ -391,9 +414,11 @@ func TestLoadSessions(t *testing.T) {
 			sut.filterParameters.query = queryfilter                       // set params
 			sut.filterParameters.scan = scanfilter                         // set params
 			sut.exit()                                                     // exit view
-			simpleSelectTable(sut, tableARN2, tableName2, 10)              // select table 2 in between
+			returnMockDetails(db, tableARN2, tableName2, 10)               // setup mock return
+			simpleSelectTable(sut, tableName2)                             // select table 2 in between
 			sut.exit()                                                     // exit again
-			simpleSelectTable(sut, tableARN1, tableName1, 10)              // re-enter table 1
+			returnMockDetails(db, tableARN1, tableName1, 10)               // setup mock return
+			simpleSelectTable(sut, tableName1)                             // re-enter table 1
 			assert.EqualValues(t, queryfilter, sut.filterParameters.query) // assert restored; index
 			assert.EqualValues(t, scanfilter, sut.filterParameters.scan)   // assert restored; active index
 		})
@@ -621,13 +646,9 @@ func simpleLoadItems(sut *ItemSelectionPane, tableARN string, items apitypes.Ite
 
 // convenience function to send a 'SelectTable' message to the
 // system-under-test
-func simpleSelectTable(sut *ItemSelectionPane, tableARN, tableName string, count int64) tea.Cmd {
+func simpleSelectTable(sut *ItemSelectionPane, tableName string) tea.Cmd {
 	return sut.Update(messages.SelectTable{
 		TableName: tableName,
-		TableDetails: apitypes.DescribeTableResponse{
-			TableArn:  &tableARN,
-			ItemCount: &count,
-		},
 	})
 }
 

@@ -332,7 +332,7 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 		m.lastPreviewMsg = &msg
 		return nil
 	case messages.SelectTable:
-		return m.selectTable(msg.TableName, msg.TableDetails)
+		return m.selectTable(msg.TableName)
 	case messages.ToggleJSONYAML:
 		return m.ToggleJSONYAMLFormat()
 	case messages.ColumnVisibilityUpdate:
@@ -547,8 +547,21 @@ func (m *ItemSelectionPane) ProcessPage(msg messages.PageReady) tea.Cmd {
 // selectTable processes the select-table message, which indicates that the
 // item-selection-view is opened because a table has been selected. It will
 // default to scanning the first page of items.
-func (m *ItemSelectionPane) selectTable(tableName string, details types.DescribeTableResponse) tea.Cmd {
-	m.selectedTable = details
+func (m *ItemSelectionPane) selectTable(tableName string) tea.Cmd {
+	ctx, cc := context.WithTimeout(m.ctx, m.stdTO)
+	defer cc()
+	// TODO: consider async (in case user wants to bail out maybe?)
+	details, err := m.dynamodbClient.DescribeTable(m.config.Client, ctx, tableName)
+	if err != nil {
+		m.err = err
+		return nil
+	}
+	if details == nil {
+		notifyError(fmt.Errorf("table '%s' returned nil response", tableName))
+		return m.exit()
+	}
+
+	m.selectedTable = *details
 	cmds := make([]tea.Cmd, 0)
 	if session, remembered := m.sessions[*details.TableArn]; remembered {
 		// restore session parameters
@@ -572,7 +585,7 @@ func (m *ItemSelectionPane) selectTable(tableName string, details types.Describe
 		if m.tableIndex.activeIndex == nil {
 			m.tableIndex.indexItemCount = *details.ItemCount
 		} else {
-			m.tableIndex.indexItemCount = indexCountFromTable(*m.tableIndex.activeIndex, details)
+			m.tableIndex.indexItemCount = indexCountFromTable(*m.tableIndex.activeIndex, *details)
 		}
 	} else {
 		// defaults on newly opened table
@@ -587,7 +600,7 @@ func (m *ItemSelectionPane) selectTable(tableName string, details types.Describe
 	return tea.Batch(cmds...)
 }
 
-func (m ItemSelectionPane) resolveBrowserURL() string {
+func (m *ItemSelectionPane) resolveBrowserURL() string {
 	selection := m.table.GetSelectedRow()
 	if selection == nil || len(selection.Fields) == 0 || m.selectedTable.TableName == nil {
 		return ""

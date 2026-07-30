@@ -15,6 +15,7 @@ import (
 
 //go:generate mockgen -source=$GOFILE -destination=./mocks/gen.go -package=mocks
 type dynamodbClient interface {
+	DescribeTable(client *dynamodb.Client, ctx context.Context, tableName string) (*apitypes.DescribeTableResponse, error)
 	ScanTable(client *dynamodb.Client, ctx context.Context, table string, params apitypes.ScanParameters) (*apitypes.ScanResponse, error)
 	QueryTable(client *dynamodb.Client, ctx context.Context, table string, params apitypes.QueryParameters) (*apitypes.QueryResponse, error)
 }

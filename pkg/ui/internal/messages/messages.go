@@ -85,8 +85,7 @@ type SwitchView struct {
 }
 
 type SelectTable struct {
-	TableName    string
-	TableDetails apitypes.DescribeTableResponse
+	TableName string
 }
 
 type ZoomToggleItemSelectionPane struct{}

@@ -517,24 +517,10 @@ func (m *tableSelectionPane) selectTable() tea.Cmd {
 	if len(row.Fields) == 0 {
 		return nil // nothing to select
 	}
-	// TODO: async!
-	if m.details == nil || (m.details.TableName != nil && *m.details.TableName != row.Fields[0].Value()) {
-		m.cleanSlate()
-		ctx, cc := context.WithTimeout(m.ctx, m.stdTO)
-		defer cc()
-		details, err := m.dynamodbClient.DescribeTable(m.config.Client, ctx, row.Fields[0].Value())
-		if err != nil {
-			m.err = err
-			return nil
-		}
-		m.details = details
-	}
-	details := m.details
 
 	selectTable := func() tea.Msg {
 		return messages.SelectTable{
-			TableName:    row.Fields[0].Value(),
-			TableDetails: *details,
+			TableName: row.Fields[0].Value(),
 		}
 	}
 	return tea.Batch(switchView, selectTable)
