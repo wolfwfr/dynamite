@@ -299,6 +299,8 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 			return m.Reload()
 		case key.Matches(msg, m.KeyMap.ColWidth):
 			return m.toggleColumnWidthDialog(msg)
+		case key.Matches(msg, m.KeyMap.AllColWidth):
+			return m.toggleColumnWidthForAll()
 		case key.Matches(msg, m.KeyMap.Zoom):
 			return m.Zoom()
 		case key.Matches(msg, m.KeyMap.ToggleFmt):
@@ -919,6 +921,30 @@ func (m *ItemSelectionPane) toggleColumnWidthDialog(msg tea.Msg) tea.Cmd {
 		return msg
 	}
 	return tea.Batch(toggle, state)
+}
+
+func (m *ItemSelectionPane) toggleColumnWidthForAll() tea.Cmd {
+	cols := m.table.GetColumns()
+	st := m.table.GetViewOptionsState()
+	dw := st.GetColumnDynWidthOptions().DynWidth
+	if len(cols) == 0 {
+		return nil
+	}
+	_, b := dw[cols[0].Title] // existing
+	b = !b                    // invert
+
+	colsS := make([]string, 0, len(cols))
+	dwB := make([]bool, 0, len(cols))
+	for _, c := range cols {
+		colsS = append(colsS, c.Title)
+		dwB = append(dwB, b)
+	}
+
+	// automatically enable dynamic-column-width for transformed columns
+	_ = m.table.SetColumnDynamicWidth(colsS, dwB)
+
+	m.updateKeyMaps()
+	return nil
 }
 
 func (m *ItemSelectionPane) UpdateColumnTransform(msg messages.ColumnTransformUpdate) tea.Cmd {

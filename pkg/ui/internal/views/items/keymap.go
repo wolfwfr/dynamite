@@ -51,6 +51,7 @@ type ItemPaneKeyMap struct {
 	Back             key.Binding
 	Continue         key.Binding
 	ColWidth         key.Binding
+	AllColWidth      key.Binding
 	ToggleFmt        key.Binding
 	Scan             key.Binding
 	ScanParameters   key.Binding
@@ -73,7 +74,7 @@ func (km *ItemPaneKeyMap) ShortHelp() []key.Binding {
 // FullHelp implements the KeyMap interface.
 func (km *ItemPaneKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{km.Search, km.Zoom, km.Reload, km.Esc, km.Continue, km.Back, km.ColWidth, km.ToggleFmt, km.Scan, km.ScanParameters, km.Query, km.QueryParameters, km.FilterParameters, km.Copy, km.Browser, km.ColVis, km.ColSort, km.ColTransform},
+		{km.Search, km.Zoom, km.Reload, km.Esc, km.Continue, km.Back, km.ColWidth, km.AllColWidth, km.ToggleFmt, km.Scan, km.ScanParameters, km.Query, km.QueryParameters, km.FilterParameters, km.Copy, km.Browser, km.ColVis, km.ColSort, km.ColTransform},
 	}
 }
 
@@ -107,6 +108,10 @@ func DefaultItemPaneKeyMap() *ItemPaneKeyMap {
 		ColWidth: key.NewBinding(
 			key.WithKeys("w"),
 			key.WithHelp("w", "toggle column width"),
+		),
+		AllColWidth: key.NewBinding(
+			key.WithKeys("W"),
+			key.WithHelp("shiwt+w", "globally toggle column width"),
 		),
 		ToggleFmt: key.NewBinding(
 			key.WithKeys("J"),
