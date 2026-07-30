@@ -127,7 +127,7 @@ func newTableSelectionPane(ctx context.Context, config *appconfig.Config, opts .
 
 	{ // contents table
 		t := table.New(
-			table.WithColumns([]table.Column{{Title: "table-name", Width: 64}}),
+			table.WithColumns([]table.Column{{Title: "table-name", Width: 64, UseDynamicWidth: true}}),
 			table.WithFocused(true),
 			table.WithFieldDelegate(p.TableRowFieldDelegate),
 		)
