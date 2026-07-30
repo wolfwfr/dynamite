@@ -41,16 +41,10 @@ func (t *ItemsTable) SetColumnSorting(cols []string, sortingOn string, ascending
 		return false
 	}
 
-	// prepare table column update
-	for i, c := range tablecols {
-		c.Suffix = getColumnSuffix(t.viewOptions, c.Title)
-		tablecols[i] = c
-	}
-
 	// NOTE: parsing rows anew assures a consistent input to update-table &
 	// sort-rows, preventing sort-rows from regurgitating its own output on when
 	// changing sorting without resets; leads to more consistent outputs.
-	t.updateTable(tablecols, parseRows(t.ColumnAttributes, t.Items.TableKeys, t.CompileTransforms()), nil)
+	t.updateTable(assembleColumns(t.viewOptions, t.ColumnAttributes), parseRows(t.ColumnAttributes, t.Items.TableKeys, t.CompileTransforms()), nil)
 	return true
 }
 
@@ -90,12 +84,7 @@ func (t *ItemsTable) SetColumnVisibility(cols []string, visible []bool) bool {
 		return false
 	}
 
-	for i, c := range tablecols {
-		_, isInvisible := invisible[c.Title]
-		tablecols[i].InVisible = isInvisible
-	}
-
-	t.updateTable(tablecols, nil, nil)
+	t.updateTable(assembleColumns(t.viewOptions, t.ColumnAttributes), nil, nil)
 
 	return true
 }
@@ -105,7 +94,7 @@ func (t *ItemsTable) SetColumnVisibility(cols []string, visible []bool) bool {
 // The function returns a boolean that indicates whether the mutation was
 // accepted and successfully applied.
 func (t *ItemsTable) SetColumnTransform(cols []string, transformed []bool) bool {
-	// map visible → transformedM
+	// map transformed → transformedM
 	transformedM := make(map[string]struct{})
 	for i, c := range cols {
 		if transformed[i] {
@@ -113,7 +102,7 @@ func (t *ItemsTable) SetColumnTransform(cols []string, transformed []bool) bool 
 		}
 	}
 
-	// ensure visibility is reset when
+	// ensure transform is reset when
 	if len(transformed) == 0 {
 		t.ResetColumnTransform()
 		return false
@@ -128,13 +117,7 @@ func (t *ItemsTable) SetColumnTransform(cols []string, transformed []bool) bool 
 		return false
 	}
 
-	tablecols := t.table.Columns()
-	// prepare table column update
-	for i, c := range tablecols {
-		c.Suffix = getColumnSuffix(t.viewOptions, c.Title)
-		tablecols[i] = c
-	}
-	t.updateTable(tablecols, parseRows(t.ColumnAttributes, t.Items.TableKeys, t.CompileTransforms()), nil)
+	t.updateTable(assembleColumns(t.viewOptions, t.ColumnAttributes), parseRows(t.ColumnAttributes, t.Items.TableKeys, t.CompileTransforms()), nil)
 	t.RebuildSearchResults()
 
 	return true

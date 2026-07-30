@@ -20,14 +20,18 @@ func assembleColumns(state view.ViewOptions, columnAttributes []ColumnAttributes
 
 	for i, attrs := range columnAttributes {
 		title := attrs.Title
-		col := table.Column{Title: title, Width: u.Clamp(len(title), 16, 32)}
+
+		col := table.Column{Title: title}
+
+		// suffix
+		col.Suffix = getColumnSuffix(state, title)
+
+		// update width, respecting suffix
+		col.Width = u.Clamp(len(title)+len(col.Suffix), 16, 32)
 
 		// visibility
 		_, isInvisible := visopts.InVisible[title]
 		col.InVisible = visopts.Enabled && isInvisible
-
-		// suffix
-		col.Suffix = getColumnSuffix(state, title)
 
 		// insert
 		cols[i] = col
