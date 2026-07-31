@@ -2,7 +2,6 @@ package ui
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"slices"
 	"strings"
@@ -16,7 +15,6 @@ import (
 	appconfig "github.com/wolfwfr/dynamite/pkg"
 	"github.com/wolfwfr/dynamite/pkg/aws"
 	"github.com/wolfwfr/dynamite/pkg/aws/dynamodb"
-	"github.com/wolfwfr/dynamite/pkg/logging"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/dialogs"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	commonstyles "github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
@@ -421,7 +419,6 @@ func (m Model) applySize(height, width int) tea.Model {
 }
 
 func (m Model) handleSwitchView(msg messages.SwitchView) (Model, tea.Cmd) {
-	logging.LogDebug(fmt.Sprintf("switching to %d", msg.NewView))
 	switch msg.NewView {
 	case messages.Table_selection:
 		m.activeView = tables_view
