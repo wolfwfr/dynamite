@@ -86,7 +86,7 @@ func (t *ItemsTable) TableRowFieldDelegate(row table.Row, col table.Column, colI
 	enforceWidth := lipgloss.NewStyle().Width(fullWidth).MaxWidth(fullWidth).Inline(true).Render
 	raw := field.RawValue
 
-	// note trimming styling end, because with a trimmed input string, that
+	// not trimming styling end, because with a trimmed input string, that
 	// section never gets executed anyway, expect little to no performance
 	// gains.
 	if offL > padL && // padL already included
