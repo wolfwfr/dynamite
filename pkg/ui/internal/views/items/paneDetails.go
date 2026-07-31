@@ -84,6 +84,10 @@ func (m *detailsPane) Init() tea.Cmd {
 	return nil
 }
 
+func (m *detailsPane) KeyMapExecutionSafe(k tea.KeyPressMsg) bool {
+	return true
+}
+
 func (m *detailsPane) Update(msg tea.Msg) (cmd tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:

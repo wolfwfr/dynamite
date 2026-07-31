@@ -224,6 +224,19 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 	return p
 }
 
+func (m *ItemSelectionPane) KeyMapExecutionSafe(k tea.KeyPressMsg) bool {
+	var (
+		opts   = m.table.GetViewOptionsState()
+		search = opts.GetSearchResultsOptions()
+	)
+	if search.Enabled && m.search.IsFocused() {
+		if k.String() != "ctrl+c" { // FIX: hotfix
+			return false
+		}
+	}
+	return true
+}
+
 func (m *ItemSelectionPane) activateSpinner() tea.Cmd {
 	m.spinner.text = fmt.Sprintf("obtaining next page (%d) (press Esc to cancel)...", m.pageCount+1)
 	m.spinner.active = true

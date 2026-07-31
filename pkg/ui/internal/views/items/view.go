@@ -105,7 +105,9 @@ func (m *ItemSelection) Update(msg tea.Msg) tea.Cmd {
 	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, m.KeyMap.Back):
-			return m.back()
+			if m.keyExecutionSafe(msg) {
+				return m.back()
+			}
 		case key.Matches(msg, m.KeyMap.MoveFocus):
 			m.moveFocus()
 			return nil
@@ -123,6 +125,16 @@ func (m *ItemSelection) Update(msg tea.Msg) tea.Cmd {
 	}
 
 	return tea.Batch(cmd, m.forward(msg))
+}
+
+func (m *ItemSelection) keyExecutionSafe(k tea.KeyPressMsg) bool {
+	switch m.focused {
+	case itemsPaneID:
+		return m.itemsPane.KeyMapExecutionSafe(k)
+	case detailsPaneID:
+		return m.detailsPane.KeyMapExecutionSafe(k)
+	}
+	return true
 }
 
 // forward takes a message and decides to broadcast or to forward only to focused
