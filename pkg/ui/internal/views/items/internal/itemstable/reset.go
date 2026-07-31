@@ -14,6 +14,7 @@ func (t *ItemsTable) Reset() {
 	t.viewOptions.ResetColumnVisibilityState()
 	t.viewOptions.ResetSearchState()
 	t.viewOptions.ResetColumnTransformState()
+	t.viewOptions.ResetColumnDynWidthState()
 
 	t.table.SetCursor(0)
 
