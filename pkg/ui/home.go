@@ -2,6 +2,7 @@ package ui
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"slices"
 	"strings"
@@ -15,6 +16,7 @@ import (
 	appconfig "github.com/wolfwfr/dynamite/pkg"
 	"github.com/wolfwfr/dynamite/pkg/aws"
 	"github.com/wolfwfr/dynamite/pkg/aws/dynamodb"
+	"github.com/wolfwfr/dynamite/pkg/logging"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/dialogs"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	commonstyles "github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
@@ -224,10 +226,24 @@ func (m Model) Init() tea.Cmd {
 		return tea.Batch(cmds...)
 	}
 
+	// custom initialisation
+	if m.config.Initialisation.Table != "" {
+		cmds = append(cmds, func() tea.Msg {
+			return messages.SwitchView{
+				OldView: messages.Table_selection,
+				NewView: messages.Item_selection,
+			}
+		})
+	}
+
 	// set and reinitialise
 	m.config.Client = dynamodb.NewClient(cfg, m.config.URL)
 	cmds = append(cmds, m.tableSelection.Init())
 	cmds = append(cmds, m.itemselection.Init())
+
+	// reset initialisation parameters after setup in case model.Init methods
+	// are manually triggered by user
+	m.config.Initialisation = appconfig.Initialisation{}
 
 	return tea.Batch(cmds...)
 }
@@ -405,6 +421,7 @@ func (m Model) applySize(height, width int) tea.Model {
 }
 
 func (m Model) handleSwitchView(msg messages.SwitchView) (Model, tea.Cmd) {
+	logging.LogDebug(fmt.Sprintf("switching to %d", msg.NewView))
 	switch msg.NewView {
 	case messages.Table_selection:
 		m.activeView = tables_view

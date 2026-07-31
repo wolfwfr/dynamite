@@ -17,6 +17,28 @@ type Config struct {
 	// credentials
 	MFACredentialCB func() (string, error)
 	MFACredentialC  chan<- CredentialsResponse
+
+	// initialisation (CLI flags)
+	Initialisation Initialisation
+}
+
+type Initialisation struct {
+	Table       string
+	Index       string
+	Query       Queryinitialisation
+	ViewOptions ViewOptionsInitialisation
+}
+
+type Queryinitialisation struct {
+	HashkeyValue     string
+	RangekeyValue1   *string
+	RangekeyValue2   *string
+	RangeKeyOperator string
+	RangeDescending  bool
+}
+
+// TODO: consider
+type ViewOptionsInitialisation struct {
 }
 
 type Tables struct {

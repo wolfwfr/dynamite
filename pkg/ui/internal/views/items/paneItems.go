@@ -237,7 +237,62 @@ func (m *ItemSelectionPane) deactivateSpinner() {
 }
 
 func (m *ItemSelectionPane) Init() tea.Cmd {
-	return m.softReset()
+	cmds := []tea.Cmd{}
+
+	cmds = append(cmds, m.softReset())
+	cmds = append(cmds, m.applyCustomInitialization())
+
+	return tea.Batch(cmds...)
+}
+
+func (m *ItemSelectionPane) applyCustomInitialization() tea.Cmd {
+	var (
+		customInit = m.config.Initialisation
+		query      = customInit.Query
+	)
+
+	// return if no table is specified
+	if customInit.Table == "" {
+		return nil
+	}
+
+	cmds := make([]tea.Cmd, 0)
+
+	// obtain table details early
+	cmds = append(cmds, m.obtainTableDetails(customInit.Table))
+	if m.err != nil {
+		return tea.Batch(cmds...)
+	}
+
+	// leverage sessions to cleanly set parameters & perform side-effects (e.g.
+	// call pageNext) only upon selecting table at the end.
+
+	// scan-mode
+	if customInit.Index != "" && query.HashkeyValue == "" {
+		session := SessionData{
+			queryMode: messages.ScanMode,
+		}
+		session.scanParams.index = &customInit.Index
+		m.sessions[*m.selectedTable.TableArn] = session
+	}
+
+	// query-mode
+	if query.HashkeyValue != "" {
+		session := SessionData{
+			queryMode: messages.QueryMode,
+		}
+		session.queryParams.index = &customInit.Index
+		session.queryParams.hashKeyValue = query.HashkeyValue
+		session.queryParams.rangeKeyValue1 = query.RangekeyValue1
+		session.queryParams.rangeKeyValue2 = query.RangekeyValue2
+		session.queryParams.rangeKeyOperator = messages.QueryOperator(query.RangeKeyOperator)
+		session.queryParams.rangeOrderDescending = query.RangeDescending
+		m.sessions[*m.selectedTable.TableArn] = session
+	}
+
+	// select table, 'restoring' session and conduct paging
+	cmds = append(cmds, m.selectTable(customInit.Table))
+	return tea.Batch(cmds...)
 }
 
 // softReset initalises stateful parameters except for sessions and the selected
@@ -548,22 +603,14 @@ func (m *ItemSelectionPane) ProcessPage(msg messages.PageReady) tea.Cmd {
 // item-selection-view is opened because a table has been selected. It will
 // default to scanning the first page of items.
 func (m *ItemSelectionPane) selectTable(tableName string) tea.Cmd {
-	ctx, cc := context.WithTimeout(m.ctx, m.stdTO)
-	defer cc()
-	// TODO: consider async (in case user wants to bail out maybe?)
-	details, err := m.dynamodbClient.DescribeTable(m.config.Client, ctx, tableName)
-	if err != nil {
-		m.err = err
-		return nil
-	}
-	if details == nil {
-		notifyError(fmt.Errorf("table '%s' returned nil response", tableName))
-		return m.exit()
-	}
-
-	m.selectedTable = *details
 	cmds := make([]tea.Cmd, 0)
-	if session, remembered := m.sessions[*details.TableArn]; remembered {
+	if m.selectedTable.TableArn == nil || *m.selectedTable.TableName != tableName {
+		cmds = append(cmds, m.obtainTableDetails(tableName))
+		if m.err != nil {
+			return tea.Batch(cmds...)
+		}
+	}
+	if session, remembered := m.sessions[*m.selectedTable.TableArn]; remembered {
 		// restore session parameters
 		m.scanParameters.index = session.scanParams.index
 		m.queryParameters.index = session.queryParams.index
@@ -583,14 +630,14 @@ func (m *ItemSelectionPane) selectTable(tableName string) tea.Cmd {
 			cmds = append(cmds, m.enableQueryMode(true))
 		}
 		if m.tableIndex.activeIndex == nil {
-			m.tableIndex.indexItemCount = *details.ItemCount
+			m.tableIndex.indexItemCount = *m.selectedTable.ItemCount
 		} else {
-			m.tableIndex.indexItemCount = indexCountFromTable(*m.tableIndex.activeIndex, *details)
+			m.tableIndex.indexItemCount = indexCountFromTable(*m.tableIndex.activeIndex, m.selectedTable)
 		}
 	} else {
 		// defaults on newly opened table
 		m.tableIndex.activeIndex = nil
-		m.tableIndex.indexItemCount = *details.ItemCount
+		m.tableIndex.indexItemCount = *m.selectedTable.ItemCount
 		cmds = append(cmds, m.enableScanMode(true))
 	}
 
@@ -598,6 +645,24 @@ func (m *ItemSelectionPane) selectTable(tableName string) tea.Cmd {
 	m.table.ResetSearch()
 
 	return tea.Batch(cmds...)
+}
+
+func (m *ItemSelectionPane) obtainTableDetails(tableName string) tea.Cmd {
+	ctx, cc := context.WithTimeout(m.ctx, m.stdTO)
+	defer cc()
+	// TODO: consider async (in case user wants to bail out maybe?)
+	details, err := m.dynamodbClient.DescribeTable(m.config.Client, ctx, tableName)
+	if err != nil {
+		m.err = err
+		return nil
+	}
+	if details == nil {
+		notifyError(fmt.Errorf("table '%s' returned nil response", tableName))
+		return m.exit()
+	}
+
+	m.selectedTable = *details
+	return nil
 }
 
 func (m *ItemSelectionPane) resolveBrowserURL() string {
@@ -1046,11 +1111,15 @@ func (m *ItemSelectionPane) ChangeScanIndex(msg messages.ScanIndexChanged) tea.C
 		return nil
 	}
 
+	return m.changeScanIndex(msg.IndexName)
+}
+
+func (m *ItemSelectionPane) changeScanIndex(index string) tea.Cmd {
 	reset := m.resetContents()
 
 	m.queryMode = messages.ScanMode
 
-	idx := u.Ternary(&msg.IndexName, nil, msg.IndexName != "")
+	idx := u.Ternary(&index, nil, index != "")
 
 	m.scanParameters.index = idx
 	m.tableIndex.activeIndex = idx
@@ -1068,26 +1137,29 @@ func (m *ItemSelectionPane) ChangeQueryParameters(msg messages.QueryParametersCh
 		return nil
 	}
 
+	return m.changeQueryParameters(msg.IndexName, msg.HashKeyValue, msg.RangeKeyValue1, msg.RangeKeyValue2, msg.RangeKeyOperator, msg.RangeOrderDescending)
+}
+
+func (m *ItemSelectionPane) changeQueryParameters(index string, hkval string, rkval1, rkval2 *string, rkop messages.QueryOperator, dsc bool) tea.Cmd {
 	cmds := make([]tea.Cmd, 0)
 
 	// cancel paging, and refresh table contents
 	cmds = append(cmds, m.resetContents())
 
-	idx := u.Ternary(&msg.IndexName, nil, msg.IndexName != "")
+	idx := u.Ternary(&index, nil, index != "")
 
 	m.queryParameters.index = idx
 	m.tableIndex.activeIndex = idx
 
-	m.tableIndex.activeIndex = u.Ternary(&msg.IndexName, nil, msg.IndexName != "")
 	m.tableIndex.indexItemCount = u.IfNotNil(m.selectedTable.ItemCount, 0)
 	if m.tableIndex.activeIndex != nil {
 		m.tableIndex.indexItemCount = indexCountFromTable(*m.tableIndex.activeIndex, m.selectedTable)
 	}
-	m.queryParameters.hashKeyValue = msg.HashKeyValue
-	m.queryParameters.rangeKeyValue1 = msg.RangeKeyValue1
-	m.queryParameters.rangeKeyValue2 = msg.RangeKeyValue2
-	m.queryParameters.rangeKeyOperator = msg.RangeKeyOperator
-	m.queryParameters.rangeOrderDescending = msg.RangeOrderDescending
+	m.queryParameters.hashKeyValue = hkval
+	m.queryParameters.rangeKeyValue1 = rkval1
+	m.queryParameters.rangeKeyValue2 = rkval2
+	m.queryParameters.rangeKeyOperator = rkop
+	m.queryParameters.rangeOrderDescending = dsc
 
 	cmds = append(cmds, m.resetContents())
 

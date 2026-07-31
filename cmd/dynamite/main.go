@@ -6,6 +6,8 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/urfave/cli/v3"
@@ -20,6 +22,13 @@ const (
 	config_key      = "cfg"
 	dynamo_url_key  = "url"
 	region_key      = "region"
+	table_key       = "table"
+	index_key       = "index"
+	hash_val_key    = "hash_key_value"
+	range_val_1_key = "range_key_value"
+	range_val_2_key = "range_key_value_2"
+	range_op_key    = "range_operator"
+	range_order_key = "range_order_descending"
 
 	corrupt_config_dir = "<config_dir_not_found>"
 
@@ -72,6 +81,49 @@ func main() {
 				Value:   "",
 				Usage:   "override the dynamodb host URL, useful for connecting to a local dynamodb compatible API (e.g. 'http://localhost:8000')",
 			},
+			&cli.StringFlag{
+				Name:    table_key,
+				Aliases: []string{},
+				Value:   "",
+				Usage:   "select the specified table, circumvents the table-view",
+			},
+			&cli.StringFlag{
+				Name:    index_key,
+				Aliases: []string{},
+				Value:   "",
+				Usage:   fmt.Sprintf("specify a table-index, only takes effect when '%s' is specified", table_key),
+			},
+			&cli.StringFlag{
+				Name:    hash_val_key,
+				Aliases: []string{"hk"},
+				Value:   "",
+				Usage:   fmt.Sprintf("specify a hash-key-value, only takes effect when '%s' is specified", table_key),
+			},
+			&cli.StringFlag{
+				Name:    range_val_1_key,
+				Aliases: []string{"rk"},
+				Value:   "",
+				Usage:   fmt.Sprintf("specify a range-key-value, only takes effect when '%s' is specified", table_key),
+			},
+			&cli.StringFlag{
+				Name:    range_val_2_key,
+				Aliases: []string{"rk2"},
+				Value:   "",
+				Usage:   fmt.Sprintf("specify a second range-key-value, only takes effect when '%s' is specified, and the 'BETWEEN' operator is used", table_key),
+			},
+			&cli.StringFlag{
+				Name:      range_op_key,
+				Aliases:   []string{"op"},
+				Value:     "equals",
+				Usage:     fmt.Sprintf("specify the range-key operator, only takes effect when '%s' is specified", table_key),
+				Validator: validateRangeOp(),
+			},
+			&cli.BoolFlag{
+				Name:    range_order_key,
+				Aliases: []string{"descending", "dsc"},
+				Value:   false,
+				Usage:   fmt.Sprintf("specify the range order, defaults to true ⇒ 'ascending', only takes effect when '%s' is specified", table_key),
+			},
 		},
 		Action: runApplication,
 	}
@@ -104,6 +156,8 @@ func runApplication(ctx context.Context, cmd *cli.Command) error {
 		return resp.Token, resp.Error
 	}
 
+	rk1, rk2 := resolveQueryRangeKeyValues(cmd)
+
 	cfg := appconfig.Config{
 		Profile:          resolveProfile(cmd, cfgf),
 		Region:           resolveRegion(cmd, cfgf),
@@ -111,7 +165,7 @@ func runApplication(ctx context.Context, cmd *cli.Command) error {
 		AvailableRegions: cfgf.AWSRegions,
 		StarredRegions:   cfgf.StarredRegions,
 		Tables: appconfig.Tables{
-			MaxTables:     cfgf.TablesMax,
+			MaxTables:    cfgf.TablesMax,
 			Pagesize:     cfgf.TablesPageSize,
 			PrimaryWidth: cfgf.TablesPrimaryWidth,
 		},
@@ -121,6 +175,18 @@ func runApplication(ctx context.Context, cmd *cli.Command) error {
 		},
 		MFACredentialCB: f,
 		MFACredentialC:  credsC,
+
+		Initialisation: appconfig.Initialisation{
+			Table: cmd.String(table_key),
+			Index: cmd.String(index_key),
+			Query: appconfig.Queryinitialisation{
+				HashkeyValue:     resolveQueryHashKey(cmd),
+				RangekeyValue1:   rk1,
+				RangekeyValue2:   rk2,
+				RangeKeyOperator: resolveQueryRangeOp(cmd),
+				RangeDescending:  resolveQueryRangeOrder(cmd),
+			},
+		},
 	}
 
 	p = tea.NewProgram(ui.NewModel(ctx, cfg, uiopts...))
@@ -145,6 +211,50 @@ func loadConfig(path string) (configfile.Config, *configfile.ConfigManager, erro
 	}
 
 	return cfgf, configman, nil
+}
+
+func resolveQueryHashKey(cmd *cli.Command) string {
+	return cmd.String(hash_val_key)
+}
+
+func resolveQueryRangeKeyValues(cmd *cli.Command) (v1, v2 *string) {
+	flags := cmd.FlagNames()
+	if slices.Contains(flags, range_val_1_key) {
+		vv1 := cmd.String(range_val_1_key)
+		v1 = &vv1
+	}
+	if slices.Contains(flags, range_val_2_key) {
+		vv1 := cmd.String(range_val_2_key)
+		v1 = &vv1
+	}
+	return
+}
+
+// TODO: parsing & validation
+func resolveQueryRangeOp(cmd *cli.Command) string {
+	return strings.ToLower(cmd.String(range_op_key))
+}
+
+func validateRangeOp() func(s string) error {
+	ss := []string{
+		"equals",
+		"greater than or equal",
+		"greater than",
+		"less than or equal",
+		"less than",
+		"between",
+		"begins with",
+	}
+	return func(s string) error {
+		if slices.Contains(ss, strings.ToLower(s)) {
+			return nil
+		}
+		return fmt.Errorf("operator '%s', not supported. Must be one of %q.", s, ss)
+	}
+}
+
+func resolveQueryRangeOrder(cmd *cli.Command) bool {
+	return cmd.Bool(range_order_key)
 }
 
 func resolveProfile(cmd *cli.Command, cfg configfile.Config) *string {
