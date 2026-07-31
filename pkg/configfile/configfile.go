@@ -91,7 +91,7 @@ type Config struct {
 	DefaultProfile      string
 	TablesPrimaryWidth  int
 	TablesPageSize      int
-	TablesMax      int
+	TablesMax           int
 	ItemsPrimaryWidth   int
 	ItemsPageSize       int
 }
@@ -106,19 +106,19 @@ func defaultConfig() Config {
 		DefaultProfile:      "",
 		TablesPrimaryWidth:  50,
 		TablesPageSize:      0, // initialised by view, based on window size
-		TablesMax:      1000,
+		TablesMax:           1000,
 		ItemsPrimaryWidth:   50,
 		ItemsPageSize:       0, // initialised by view, based on window size
 	}
 }
 
 type ConfigManager struct {
-	full string
+	path string
 }
 
 func NewConfigManager(absPath string) *ConfigManager {
 	return &ConfigManager{
-		full: absPath,
+		path: absPath,
 	}
 }
 
@@ -127,7 +127,7 @@ func NewConfigManager(absPath string) *ConfigManager {
 func (m *ConfigManager) LoadConfig() (Config, error) {
 	dflt := defaultConfig()
 
-	f, err := os.Open(m.full)
+	f, err := os.Open(m.path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return dflt, nil

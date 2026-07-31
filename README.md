@@ -165,7 +165,7 @@ Among others, Dynamite offers:
 
 ## 🔧 Configuration
 
-By default, the `config.yaml` is stored at your OS default config location:
+By default, the `config.yaml` is stored in a `dynamite-tui` sub-directory at your OS default config location:
 
 - **Unix/Linux**: `{XDG_CONFIG_HOME}` or`{HOME}/.config/`
 - **windows**: `{AppData}/`

@@ -72,7 +72,7 @@ func main() {
 				Name:    config_key,
 				Sources: cli.EnvVars(env_config_dir),
 				Aliases: []string{"c"},
-				Value:   filepath.Join(configDir, "dynamite/"),
+				Value:   filepath.Join(configDir, "dynamite-tui/"),
 				Usage:   "path to directory hosting 'config.yaml' (relative or absolute)",
 			},
 			&cli.StringFlag{
@@ -194,14 +194,14 @@ func runApplication(ctx context.Context, cmd *cli.Command) error {
 	return err
 }
 
-func loadConfig(path string) (configfile.Config, *configfile.ConfigManager, error) {
-	path = filepath.Join(path, "config.yaml")
-	full, err1 := filepath.Abs(path)
+func loadConfig(dirpath string) (configfile.Config, *configfile.ConfigManager, error) {
+	dirpath = filepath.Join(dirpath, "config.yaml")
+	path, err1 := filepath.Abs(dirpath)
 	if err1 != nil {
 		err1 = fmt.Errorf("failed to construct a valid config-path: %w", err1)
 	}
 
-	configman := configfile.NewConfigManager(full)
+	configman := configfile.NewConfigManager(path)
 	cfgf, err2 := configman.LoadConfig()
 	if err1 != nil {
 		return cfgf, configman, err1
