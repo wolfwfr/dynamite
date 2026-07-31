@@ -249,3 +249,9 @@ If not all pages have been retrieved, it is possible that pagination is disabled
 **My scan or query is not returning the expected results**
 
 If filter parameters were left enabled, then they will affect your search results. Check for the `FILTER` box in the bottom-left corner, if it is depicted, then filters are being applied. Open the filter-parameters dialog (default key: `f`), reset (default key: `ctrl+r`), and commit (default key: `alt+enter`). This should remove any applied filters to your current operation. Note that Dynamite maintains a separate set of filter-parameters for scan- & query-modes and stores a session per table that restores any scan-, query-, and filter-parameters when re-selecting that table within the same Dynamite session.
+
+<br/>
+
+**I cannot enable search or sort**
+
+The search and sorting features are mutually exclusive. If you cannot use one of them, then you likely have the other enabled. They are not compatible because search implements its own sorting based on match-score.
