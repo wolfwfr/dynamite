@@ -1,8 +1,14 @@
 package appconfig
 
-import "github.com/aws/aws-sdk-go-v2/service/dynamodb"
+import (
+	"log/slog"
+
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+)
 
 type Config struct {
+	Logger *slog.Logger
+
 	Profile          *string
 	URL              *string
 	Region           string

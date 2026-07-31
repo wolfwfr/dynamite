@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"slices"
@@ -17,12 +19,17 @@ import (
 	"github.com/wolfwfr/dynamite/pkg/ui"
 )
 
+// CLI flags
 const (
-	version_key     = "version"
+	version_key = "version"
+
 	aws_profile_key = "profile"
-	config_key      = "cfg"
-	dynamo_url_key  = "url"
-	region_key      = "region"
+
+	config_key = "cfg"
+
+	dynamo_url_key = "url"
+	region_key     = "region"
+
 	table_key       = "table"
 	index_key       = "index"
 	hash_val_key    = "hash_key_value"
@@ -31,15 +38,36 @@ const (
 	range_op_key    = "range_operator"
 	range_order_key = "range_order_descending"
 
-	corrupt_config_dir = "<config_dir_not_found>"
+	debug_log_key = "debug"
+	log_key       = "log"
+	log_loc_key   = "log_location"
+	log_level_key = "log_level"
+	log_text_key  = "log_text"
+)
 
+// categories
+const (
+	cat_query   = "query/scan"
+	cat_logging = "logging"
+)
+
+// environment variables
+const (
 	env_config_dir  = "DYNAMITE_TUI_CONFIG_DIR"
 	env_aws_profile = "AWS_PROFILE"
 	env_aws_region  = "AWS_REGION"
 )
 
+// other
+const (
+	corrupt_config_dir = "<config_dir_not_found>"
+	dynamite_subdir    = "dynamite-tui"
+	dynamite_logfile   = "dynamite.log"
+)
+
 var (
 	configDir string
+	logDir    string
 	version   = ">v0.0.0"
 	commit    = ">b99208e0e5532df6c62e6a2011195084d3eb7a0d"
 	buildDate = ">2026-07-31"
@@ -51,6 +79,11 @@ func init() {
 	configDir, _ = os.UserConfigDir()
 	if err != nil {
 		configDir = corrupt_config_dir
+	}
+
+	logDir = configDir
+	if logDir != "" {
+		logDir = filepath.Join(logDir, dynamite_subdir)
 	}
 }
 
@@ -83,7 +116,7 @@ func main() {
 				Name:    config_key,
 				Sources: cli.EnvVars(env_config_dir),
 				Aliases: []string{"c"},
-				Value:   filepath.Join(configDir, "dynamite-tui/"),
+				Value:   filepath.Join(configDir, dynamite_subdir),
 				Usage:   "path to directory hosting 'config.yaml' (relative or absolute)",
 			},
 			&cli.StringFlag{
@@ -93,47 +126,98 @@ func main() {
 				Usage:   "override the dynamodb host URL, useful for connecting to a local dynamodb compatible API (e.g. 'http://localhost:8000')",
 			},
 			&cli.StringFlag{
-				Name:    table_key,
-				Aliases: []string{},
-				Value:   "",
-				Usage:   "select the specified table, circumvents the table-view",
+				Name:     table_key,
+				Category: cat_query,
+				Aliases:  []string{},
+				Value:    "",
+				Usage:    "select the specified table, circumvents the table-view",
 			},
 			&cli.StringFlag{
-				Name:    index_key,
-				Aliases: []string{},
-				Value:   "",
-				Usage:   fmt.Sprintf("specify a table-index, only takes effect when '%s' is specified", table_key),
+				Name:     index_key,
+				Category: cat_query,
+				Aliases:  []string{},
+				Value:    "",
+				Usage:    fmt.Sprintf("specify a table-index, only takes effect when '%s' is specified", table_key),
 			},
 			&cli.StringFlag{
-				Name:    hash_val_key,
-				Aliases: []string{"hk"},
-				Value:   "",
-				Usage:   fmt.Sprintf("specify a hash-key-value, only takes effect when '%s' is specified", table_key),
+				Name:     hash_val_key,
+				Category: cat_query,
+				Aliases:  []string{"hk"},
+				Value:    "",
+				Usage:    fmt.Sprintf("specify a hash-key-value, only takes effect when '%s' is specified", table_key),
 			},
 			&cli.StringFlag{
-				Name:    range_val_1_key,
-				Aliases: []string{"rk"},
-				Value:   "",
-				Usage:   fmt.Sprintf("specify a range-key-value, only takes effect when '%s' is specified", table_key),
+				Name:     range_val_1_key,
+				Category: cat_query,
+				Aliases:  []string{"rk"},
+				Value:    "",
+				Usage:    fmt.Sprintf("specify a range-key-value, only takes effect when '%s' is specified", table_key),
 			},
 			&cli.StringFlag{
-				Name:    range_val_2_key,
-				Aliases: []string{"rk2"},
-				Value:   "",
-				Usage:   fmt.Sprintf("specify a second range-key-value, only takes effect when '%s' is specified, and the 'BETWEEN' operator is used", table_key),
+				Name:     range_val_2_key,
+				Category: cat_query,
+				Aliases:  []string{"rk2"},
+				Value:    "",
+				Usage:    fmt.Sprintf("specify a second range-key-value, only takes effect when '%s' is specified, and the 'BETWEEN' operator is used", table_key),
 			},
 			&cli.StringFlag{
 				Name:      range_op_key,
+				Category:  cat_query,
 				Aliases:   []string{"op"},
 				Value:     "equals",
 				Usage:     fmt.Sprintf("specify the range-key operator, only takes effect when '%s' is specified", table_key),
 				Validator: validateRangeOp(),
 			},
 			&cli.BoolFlag{
-				Name:    range_order_key,
-				Aliases: []string{"descending", "dsc"},
-				Value:   false,
-				Usage:   fmt.Sprintf("specify the range order, defaults to true ⇒ 'ascending', only takes effect when '%s' is specified", table_key),
+				Name:     range_order_key,
+				Category: cat_query,
+				Aliases:  []string{"descending", "dsc"},
+				Value:    false,
+				Usage:    fmt.Sprintf("specify the range order, defaults to true ⇒ 'ascending', only takes effect when '%s' is specified", table_key),
+			},
+			&cli.StringFlag{
+				Name:     log_loc_key,
+				Category: cat_logging,
+				Aliases:  []string{""},
+				Value:    logDir,
+				Usage:    fmt.Sprintf("location of the logfile, when logging is enabled with '%s'", debug_log_key),
+			},
+			&cli.BoolFlag{
+				Name:     debug_log_key,
+				Category: cat_logging,
+				Aliases:  []string{},
+				Value:    false,
+				Usage:    fmt.Sprintf("enable debug-level logging to '%s' or the location specified with '%s'", logDir, log_loc_key),
+			},
+			&cli.BoolFlag{
+				Name:     log_key,
+				Category: cat_logging,
+				Aliases:  []string{},
+				Value:    false,
+				Usage:    fmt.Sprintf("enable logging to '%s' or the location specified with '%s'", logDir, log_loc_key),
+			},
+			&cli.BoolFlag{
+				Name:     log_text_key,
+				Category: cat_logging,
+				Aliases:  []string{},
+				Value:    false,
+				Usage:    "log in text instead of JSON format",
+			},
+			&cli.StringFlag{
+				Name:     log_level_key,
+				Category: cat_logging,
+				Aliases:  []string{"level"},
+				Value:    "info",
+				Usage:    "log-level",
+				Validator: func(s string) error {
+					switch strings.ToLower(s) {
+					case "debug", "info", "warn", "error":
+						return nil
+					default:
+						return fmt.Errorf("only %q supported", []string{"debug", "info", "warn", "error"})
+
+					}
+				},
 			},
 		},
 		Action: runApplication,
@@ -146,6 +230,15 @@ func main() {
 
 func runApplication(ctx context.Context, cmd *cli.Command) error {
 	var uiopts []ui.Option
+
+	logger, logFile, err := initialiliseLogger(cmd)
+	if err != nil {
+		return err
+	}
+
+	if logFile != nil {
+		defer logFile.Close()
+	}
 
 	cfgf, _, err := loadConfig(cmd.String(config_key))
 	if err != nil {
@@ -170,6 +263,7 @@ func runApplication(ctx context.Context, cmd *cli.Command) error {
 	rk1, rk2 := resolveQueryRangeKeyValues(cmd)
 
 	cfg := appconfig.Config{
+		Logger:           logger,
 		Profile:          resolveProfile(cmd, cfgf),
 		Region:           resolveRegion(cmd, cfgf),
 		URL:              urlP,
@@ -200,6 +294,8 @@ func runApplication(ctx context.Context, cmd *cli.Command) error {
 			},
 		},
 	}
+
+	logger.Info("New DYNAMITE session")
 
 	p = tea.NewProgram(ui.NewModel(ctx, cfg, uiopts...))
 	_, err = p.Run()
@@ -242,7 +338,6 @@ func resolveQueryRangeKeyValues(cmd *cli.Command) (v1, v2 *string) {
 	return
 }
 
-// TODO: parsing & validation
 func resolveQueryRangeOp(cmd *cli.Command) string {
 	return strings.ToLower(cmd.String(range_op_key))
 }
@@ -290,4 +385,69 @@ func resolveRegion(cmd *cli.Command, cfg configfile.Config) string {
 		return r
 	}
 	return "us-east-1"
+}
+
+func initialiliseLogger(cmd *cli.Command) (*slog.Logger, *os.File, error) {
+	var logging bool
+	var logLevel slog.Level
+	switch strings.ToLower(cmd.String(log_level_key)) {
+	case "debug":
+		logLevel = slog.LevelDebug
+	case "info":
+		logLevel = slog.LevelInfo
+	case "warn":
+		logLevel = slog.LevelWarn
+	case "error":
+		logLevel = slog.LevelError
+	}
+	logging = cmd.Bool(log_key)
+	if cmd.Bool(debug_log_key) {
+		logging = true
+		logLevel = slog.LevelDebug
+	}
+	if !logging {
+		// noop by default
+		return slog.New(slog.NewTextHandler(io.Discard, nil)), nil, nil
+	}
+	if err := findOrCreateLogLocation(cmd); err != nil {
+		return nil, nil, err
+	}
+	file, err := os.OpenFile(filepath.Join(logDir, dynamite_logfile), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		return nil, nil, fmt.Errorf("creating/opening logfile: %w", err)
+	}
+
+	opts := &slog.HandlerOptions{
+		Level: logLevel,
+	}
+	logger := slog.New(slog.NewJSONHandler(file, opts))
+	if cmd.Bool(log_text_key) {
+		logger = slog.New(slog.NewTextHandler(file, opts))
+	}
+	return logger, file, nil
+}
+
+func findOrCreateLogLocation(cmd *cli.Command) error {
+	if customDir := cmd.String(log_loc_key); customDir != "" {
+		logDir = customDir
+	}
+	if cmd.Bool(debug_log_key) && logDir == "" {
+		return fmt.Errorf("could not resolve an appropriate location for logging, please provide a '--%s' value", log_loc_key)
+	}
+	absPath, err := filepath.Abs(logDir)
+	if err != nil {
+		return fmt.Errorf("failed to resolve the absolute location of logging directory: %w", err)
+	}
+	err = os.MkdirAll(absPath, 0o755)
+	if err != nil {
+		return fmt.Errorf("failed to create the required directories for storing the logfile: %w", err)
+	}
+	info, err := os.Stat(absPath)
+	if err != nil {
+		return fmt.Errorf("failed to verify the log directory: %w", err)
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("path '%s' is not a directory", absPath)
+	}
+	return nil
 }

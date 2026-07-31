@@ -4,6 +4,7 @@ package itemselection
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/url"
 	"os/exec"
 	"runtime"
@@ -24,6 +25,7 @@ import (
 	"github.com/wolfwfr/dynamite/pkg/adapters/dynamodb/types"
 	apitypes "github.com/wolfwfr/dynamite/pkg/adapters/dynamodb/types"
 	"github.com/wolfwfr/dynamite/pkg/common"
+	"github.com/wolfwfr/dynamite/pkg/logging"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/components/search"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/components/table"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
@@ -68,6 +70,9 @@ type SessionData struct {
 type ItemSelectionPane struct {
 	// top-level context
 	ctx context.Context
+
+	// logger
+	logger *slog.Logger
 
 	// spinner
 	spinner struct {
@@ -188,6 +193,7 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 
 	p := &ItemSelectionPane{
 		ctx:            ctx,
+		logger:         config.Logger.With(slog.String(logging.ViewKey, Log_ItemsView), slog.String(logging.PaneKey, "items")),
 		config:         config,
 		dynamodbClient: dynamodb.NewAdapter(dynamodb.WithObjectStyling(st)),
 		stdTO:          30 * time.Second,
@@ -585,12 +591,26 @@ func (m *ItemSelectionPane) Zoom() tea.Cmd {
 }
 
 func (m *ItemSelectionPane) ProcessPage(msg messages.PageReady) tea.Cmd {
+	m.logger.Debug("Received a new page",
+		slog.String("Table ARN", msg.TableARN),
+		slog.Uint64("Page ID", uint64(msg.PageID)),
+		slog.Int("PageSize", len(u.IfNotNil(msg.Response, messages.Page{}).Items.JSON)),
+	)
 	if _, ok := m.pageIgnore[msg.PageID]; ok {
+		m.logger.Debug("page scheduled for ignore",
+			slog.String("Table ARN", msg.TableARN),
+			slog.Uint64("Page ID", uint64(msg.PageID)),
+		)
 		delete(m.pageIgnore, msg.PageID)
 		return nil
 	}
 
 	if msg.Err != nil {
+		m.logger.Error(
+			"received error on new page",
+			slog.String("Table ARN", msg.TableARN),
+			slog.Any("Error", msg.Err),
+		)
 		m.err = msg.Err
 	}
 
