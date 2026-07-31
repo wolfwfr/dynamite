@@ -14,6 +14,8 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
+
+	"github.com/wolfwfr/dynamite/pkg/util"
 )
 
 // New creates a new model for the table widget.
@@ -547,13 +549,15 @@ func (m *Model) renderRow(r int) (rendered string) {
 		}
 	}()
 
-	// local func predents requirement for downstream recursion
+	// local func prevents requirement for downstream recursion
 	renderRowFunc := func() string {
 		for i := range rows[r].Fields {
 			var (
 				width     = ternary(m.cols[i].DynamicWidth, m.cols[i].Width, m.cols[i].UseDynamicWidth && m.cols[i].DynamicWidth > 0)
 				cellwidth = width + pL + pR
 				inview    = x < tL+cellwidth && x+w >= tL
+				offL      = util.Clamp(x-tL, 0, cellwidth)
+				offR      = util.Clamp((tL+(cellwidth))-(x+w), 0, cellwidth)
 			)
 
 			if m.cols[i].InVisible || width <= 0 {
@@ -564,7 +568,7 @@ func (m *Model) renderRow(r int) (rendered string) {
 
 			// apply field-delegate if available
 			if m.fieldDelegate != nil {
-				s = append(s, m.fieldDelegate(rows[r], m.cols[i], i, r, width, pL, pR, r == m.cursor, inview))
+				s = append(s, m.fieldDelegate(rows[r], m.cols[i], i, r, width, pL, pR, r == m.cursor, inview, offL, offR))
 				continue
 			}
 

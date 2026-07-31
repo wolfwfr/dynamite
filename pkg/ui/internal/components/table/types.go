@@ -47,7 +47,84 @@ type Model struct {
 	end   int // exclusive
 }
 
-type FieldDelegate func(row Row, col Column, colIdx, rowIdx, colWidth, padL, padR int, selected, inview bool) string
+// FieldDelegate delegates the rendering of the row cell (including padding) to
+// the implementer.
+//
+// It provides the following information:
+//
+// [row (Row)]
+// The `Row` object containing the field being rendered.
+//
+// [col (Column)]
+// The `Column` object containing column information, such as title and
+// the visibility flag.
+//
+// [colIdx (int)]
+// The column-index for the field currently being rendered. Can be used to
+// access the field with `row.Fields[colIdx]`.
+//
+// [rowIdx (int)]
+// The row-index of the row for which a field is currently being rendered.
+//
+// [colWidth (int)]
+// The allowed width for cell contents, excluding padding.
+//
+// [padL (int)]
+// The padding to be added to the left side of the rendered cell.
+//
+// [padR (int)]
+// The padding to be added to the right side of the rendered cell.
+//
+// [selected (bool)]
+// A boolean flag that indicates whether or not the field is part of the
+// currently selected (a.k.a. focused) row.
+//
+// [inview (bool)]
+// A boolean flag that indicates whether or not the field is (either in part or
+// in full) within the boundaries of the viewport, i.e. in view for the user.
+// Note that when rendering cells left of the viewport that are out-of-view, the
+// width still needs to be respected to prevent unintended shifts when scrolling
+// sideways through the data.
+//
+// [offL (int)]
+// The number of terminal cells (not table cell, but the monospace cell for
+// rendering text in the terminal emulator) left of the viewport leftmost border
+// that are out of view. Only returns values in the inclusive range [0,
+// column-width] where column-width includes padding.
+//
+// [offR (int)]
+// The number of terminal cells (not table cell, but the monospace cell for
+// rendering text in the terminal emulator) right of the viewport rightmost
+// border that are out of view. Only returns values in the inclusive range [0,
+// column-width] where column-width includes padding.
+type FieldDelegate func(row Row, col Column, colIdx, rowIdx, colWidth, padL, padR int, selected, inview bool, offL, offR int) string
+
+// HeaderDelegate delegates the rendering of the header cell (including padding) to
+// the implementer.
+//
+// It provides the following information:
+//
+// [col (Column)]
+// The `Column` object for which the header cell is currently being rendered.
+//
+// [colIdx (int)]
+// The column-index for the header cell currently being rendered.
+//
+// [colWidth (int)]
+// The allowed width for header cell contents, excluding padding.
+//
+// [padL (int)]
+// The padding to be added to the left side of the rendered cell.
+//
+// [padR (int)]
+// The padding to be added to the right side of the rendered cell.
+//
+// [inview (bool)]
+// A boolean flag that indicates whether or not the header cell is (either in
+// part or in full) within the boundaries of the viewport, i.e. in view for the
+// user. Note that when rendering columns left of the viewport that are
+// out-of-view, the width still needs to be respected to prevent unintended
+// shifts when scrolling sideways through the data.
 type HeaderDelegate func(col Column, colIdx, colWidth, padL, padR int, inview bool) string
 
 // Row represents one line in the table.

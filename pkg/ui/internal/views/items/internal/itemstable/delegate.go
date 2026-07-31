@@ -19,7 +19,7 @@ func cacheKey(rowIdx, colIdx, colW int) string {
 // item, whether the row is selected, and search-matching.
 //
 // It returns cached responses when possible.
-func (t *ItemsTable) TableRowFieldDelegate(row table.Row, col table.Column, colIdx, rowIdx, colW, padL, padR int, selected, inview bool) string {
+func (t *ItemsTable) TableRowFieldDelegate(row table.Row, col table.Column, colIdx, rowIdx, colW, padL, padR int, selected, inview bool, offL, offR int) string {
 	fullWidth := colW + padL + padR
 
 	// obtain field in question
@@ -38,7 +38,7 @@ func (t *ItemsTable) TableRowFieldDelegate(row table.Row, col table.Column, colI
 
 	// attempt to obtain cached value to prevent rerendering
 	cachekey := cacheKey(rowIdx, colIdx, colW)
-	cachCond := !selected && (!itemfiltering.Enabled || itemfiltering.ColumnIndex != colIdx)
+	cachCond := !selected && (!itemfiltering.Enabled || itemfiltering.ColumnIndex != colIdx) && offL+offR == 0
 	cc, ok := t.renderCache[cachekey]
 	if ok && cachCond {
 		return cc
@@ -84,7 +84,30 @@ func (t *ItemsTable) TableRowFieldDelegate(row table.Row, col table.Column, colI
 	}
 
 	enforceWidth := lipgloss.NewStyle().Width(fullWidth).MaxWidth(fullWidth).Inline(true).Render
-	res := enforceWidth(style.Render(field.RawValue))
+	raw := field.RawValue
+
+	// note trimming styling end, because with a trimmed input string, that
+	// section never gets executed anyway, expect little to no performance
+	// gains.
+	if offL > padL && // padL already included
+		style.Len() > 1 { // ensure there is at least 1 styled rune left, for selection background
+		style = style.TrimStart(offL - padL)
+		style = style.SetLeftPaddingFirst(offL)
+	}
+	runes := []rune(raw)
+	cutSize := offR - padR - (colW - len(runes))
+	if offR > padR && len(runes) <= colW && cutSize > 0 {
+		runes = runes[0:max(0, len(runes)-cutSize)]
+	}
+	if offL > padL {
+		// empty runes if necessary to prevent truncation symbol (…) from appearing out of bounds
+		runes = u.Ternary(runes[:0], runes[min(len(runes)-1, offL-padL):], offL-padL >= len(runes))
+	}
+
+	// replace "" with " " to prevent background styling (selected row) from disappearing
+	raw = u.Ternary(" ", string(runes), string(runes) == "")
+
+	res := enforceWidth(style.RenderNoTrim(raw))
 
 	// cache when appropriate for improved performance
 	if cachCond {

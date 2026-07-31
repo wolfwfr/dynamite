@@ -55,6 +55,36 @@ func (l LineStyle) Override(n int, st textStyle) LineStyle {
 	return l
 }
 
+// Cut removes styles from the line before `i` and at and beyond `j` If `i` < 0,
+// it will be interpreted as 0. If `j` > len(styles), then `j` is
+// interpreted as len(styles). It returns the new line-style object.
+func (l LineStyle) Cut(i, j int) LineStyle {
+	l = l.copy()
+	if len(l.styles) < i {
+		return l
+	}
+	if i < 0 {
+		i = 0
+	}
+	if len(l.styles) < j {
+		j = len(l.styles)
+	}
+	l.styles = slices.Clip(l.styles[i:j])
+	return l
+}
+
+// TrimStart removes the specified number of styles from the line's start. If the
+// line contains less than the `n` styles, it removes all styles and returns the
+// new line-style object.
+func (l LineStyle) TrimStart(n int) LineStyle {
+	l = l.copy()
+	if len(l.styles) < n {
+		return LineStyle{}
+	}
+	l.styles = slices.Clip(l.styles[n:])
+	return l
+}
+
 // TrimEnd removes the specified number of styles from the line's end. If the
 // line contains less than the `n` styles, it removes all styles and returns the
 // new line-style object.
@@ -231,7 +261,15 @@ func (l LineStyle) AppendStringLG(in string, style lipgloss.Style, opts ...Strin
 // the number of runes of the specified string, it will apply the styles in
 // order and fallback to empty styling when it runs out.
 func (l LineStyle) Render(in string) string {
-	in = strings.TrimSpace(in)
+	return l.render(strings.TrimSpace(in))
+}
+
+// like Render but without trimming spaces
+func (l LineStyle) RenderNoTrim(in string) string {
+	return l.render(in)
+}
+
+func (l LineStyle) render(in string) string {
 	b := strings.Builder{}
 
 	var stylingThis string
