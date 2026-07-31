@@ -18,6 +18,7 @@ import (
 )
 
 const (
+	version_key     = "version"
 	aws_profile_key = "profile"
 	config_key      = "cfg"
 	dynamo_url_key  = "url"
@@ -37,7 +38,12 @@ const (
 	env_aws_region  = "AWS_REGION"
 )
 
-var configDir string
+var (
+	configDir string
+	version   = ">v0.0.0"
+	commit    = ">b99208e0e5532df6c62e6a2011195084d3eb7a0d"
+	buildDate = ">2026-07-31"
+)
 
 func init() {
 	// Local user configuration.
@@ -49,8 +55,13 @@ func init() {
 }
 
 func main() {
+	cli.VersionPrinter = func(cmd *cli.Command) {
+		fmt.Printf("version=%s commit=%s buildDate=%s\n", cmd.Root().Version, commit, buildDate)
+	}
+
 	cmd := &cli.Command{
 		Name:        "Dynamite",
+		Version:     version,
 		Description: "TUI for Amazon DynamoDB queries",
 		Usage:       "Amazon DynamoDB query engine",
 		Flags: []cli.Flag{
