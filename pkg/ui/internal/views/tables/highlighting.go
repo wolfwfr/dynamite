@@ -1,6 +1,7 @@
 package tableselection
 
 import (
+	"log/slog"
 	"regexp"
 
 	"charm.land/lipgloss/v2"
@@ -11,10 +12,14 @@ import (
 var regexMatchs []*regexp.Regexp
 
 func (m *tableSelectionPane) initialiseRegex(exprs []string) {
-	for _, expr := range exprs {
+	for i, expr := range exprs {
 		c, err := regexp.Compile(expr)
 		if err != nil {
-			// TODO: log
+			m.logger.Error("failed to parse regular expression",
+				slog.Int("index", i),
+				slog.String("expression", expr),
+				slog.Any("error", err),
+			)
 			continue
 		}
 		regexMatchs = append(regexMatchs, c)

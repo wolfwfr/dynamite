@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"image/color"
+	"log/slog"
 	"net/url"
 	"os/exec"
 	"runtime"
@@ -22,6 +23,7 @@ import (
 	appconfig "github.com/wolfwfr/dynamite/pkg"
 	"github.com/wolfwfr/dynamite/pkg/adapters/dynamodb"
 	apitypes "github.com/wolfwfr/dynamite/pkg/adapters/dynamodb/types"
+	"github.com/wolfwfr/dynamite/pkg/logging"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/components/search"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/components/table"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
@@ -38,6 +40,9 @@ type TableStyles struct {
 type tableSelectionPane struct {
 	// top-level context
 	ctx context.Context
+
+	// logger
+	logger *slog.Logger
 
 	// styles
 	styles struct {
@@ -117,6 +122,7 @@ func withTablePaneKeys(keys keymaps.AdditionalKeys) tablePaneOption {
 func newTableSelectionPane(ctx context.Context, config *appconfig.Config, opts ...tablePaneOption) *tableSelectionPane {
 	p := &tableSelectionPane{
 		ctx:            ctx,
+		logger:         config.Logger.With(slog.String(logging.ViewKey, Log_TablesView), slog.String(logging.PaneKey, "tables-pane")),
 		cancelDetails:  func() {}, // noop on init
 		cancelTables:   func() {}, // noop on init
 		debounceDur:    50 * time.Millisecond,
@@ -222,6 +228,8 @@ func (m *tableSelectionPane) cleanSlate() {
 }
 
 func (m *tableSelectionPane) Init() tea.Cmd {
+	m.logger.Info("initialising...")
+
 	m.search.Reset()
 	m.content.SetRows([]table.Row{})
 	m.content.ResetVirtualRows()
@@ -234,7 +242,11 @@ func (m *tableSelectionPane) Init() tea.Cmd {
 	// cancel any lingering calls
 	m.cancelTables()
 	m.cancelDetails()
-	return m.pageNext(true)
+	cmd := m.pageNext(true)
+
+	m.logger.Info("initilasation complete")
+
+	return cmd
 }
 
 func (m *tableSelectionPane) activateSpinner() tea.Cmd {
@@ -249,8 +261,13 @@ func (m *tableSelectionPane) deactivateSpinner() {
 }
 
 func (m *tableSelectionPane) pageNext(init bool) tea.Cmd {
+	m.logger.Log(m.ctx, logging.LevelTrace, "attempting paging", slog.Bool("init_flag", init))
 	spinnerCmd := m.activateSpinner()
 	if !init && m.lastPageKey == nil { // done paginating
+		m.logger.Log(m.ctx, logging.LevelTrace, "not eligible for paging; aborting",
+			slog.Bool("page_key_not_nil", m.lastPageKey != nil),
+			slog.String("page_key", u.IfNotNil(m.lastPageKey, "")),
+		)
 		m.deactivateSpinner()
 		return nil
 	}
@@ -263,6 +280,7 @@ func (m *tableSelectionPane) pageNext(init bool) tea.Cmd {
 		defer cc()
 		limit := min(pagesize, m.config.Tables.MaxTables-len(m.tables)) // 100 is max
 		if limit == 0 {
+			m.logger.Warn("limit is 0; aborting paging")
 			return nil
 		}
 		out, err := m.dynamodbClient.ListTables(client, ctx, apitypes.ListTablesRequest{
@@ -284,10 +302,21 @@ func (m *tableSelectionPane) pageNext(init bool) tea.Cmd {
 }
 
 func (m *tableSelectionPane) processPage(msg messages.TablePageReady, preview bool) tea.Cmd {
+	m.logger.Debug("received a new page",
+		slog.Int("page_size", len(msg.Tables)),
+	)
 	if msg.Region != m.config.Region { // expired
+		m.logger.Info("ignoring message due to outdated region",
+			slog.String("current_region", m.config.Region),
+			slog.String("message_region", msg.Region),
+		)
 		return nil
 	}
 	if msg.Err != nil {
+		m.logger.Error(
+			"received error on new page",
+			slog.Any("error", msg.Err),
+		)
 		m.err = msg.Err
 		return nil
 	}
@@ -435,6 +464,7 @@ func (m *tableSelectionPane) TableRowFieldDelegate(row table.Row, col table.Colu
 }
 
 func (m *tableSelectionPane) copy() tea.Cmd {
+	m.logger.Debug("executing copy operation")
 	r := m.content.VisualRows()
 	c := max(0, m.content.Cursor())
 	if c >= len(r) {
@@ -442,6 +472,7 @@ func (m *tableSelectionPane) copy() tea.Cmd {
 	}
 
 	if err := clipboard.WriteAll(r[c].String()); err != nil {
+		m.logger.Error("copy to clipboard returned an error", slog.Any("error", err))
 		return func() tea.Msg {
 			return messages.ToggleNotificationDialog{Error: fmt.Errorf("failed to copy: %w", err)}
 		}
@@ -451,7 +482,16 @@ func (m *tableSelectionPane) copy() tea.Cmd {
 
 // force is used on new pane initialization because lastPreviewItem could be 0
 func (m *tableSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
+	m.logger.Log(m.ctx, logging.LevelTrace,
+		"received request to preview table details",
+		slog.Bool("force", force),
+	)
 	if len(m.tables) == 0 || (m.tablefiltering.enabled && len(m.tablefiltering.matchedTables) == 0) {
+		m.logger.Debug("nothing to view; emptying details pane",
+			slog.Int("len_tables", len(m.tables)),
+			slog.Bool("search_enabled", m.tablefiltering.enabled),
+			slog.Int("seach_matches", len(m.tablefiltering.matchedTables)),
+		)
 		return func() tea.Msg {
 			return messages.TableDetails{
 				Details: nil,
@@ -464,6 +504,11 @@ func (m *tableSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
 		idx = m.tablefiltering.matchedTables[idx]
 	}
 	if idx == m.lastTableDetails && !force {
+		m.logger.Debug("preview request is a duplicate; skipping",
+			slog.Int("table_index", idx),
+			slog.Int("last_previewed_index", m.lastTableDetails),
+			slog.Bool("force", force),
+		)
 		return nil
 	}
 	m.lastTableDetails = idx
@@ -477,6 +522,7 @@ func (m *tableSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
 	return func() tea.Msg {
 		time.Sleep(m.debounceDur)
 		if ctx.Err() != nil { // context canceled
+			m.logger.Log(m.ctx, logging.LevelTrace, "debounce encountered on describing table")
 			return nil // debounce
 		}
 
@@ -484,6 +530,8 @@ func (m *tableSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
 		defer cc()
 		details, err := m.dynamodbClient.DescribeTable(m.config.Client, ctx, table)
 		if err != nil {
+			// logging at debug because almost certainly a deliberately canceled call
+			m.logger.Debug("encountered error describing table", slog.Any("error", err))
 			return nil
 		}
 
@@ -510,10 +558,12 @@ func (m *tableSelectionPane) selectTable() tea.Cmd {
 	}
 	rowP := m.content.SelectedRow()
 	if rowP == nil {
+		m.logger.Debug("table selected, but row returned nil; aborting")
 		return nil
 	}
 	row := *rowP
 	if len(row.Fields) == 0 {
+		m.logger.Debug("table selected, but row returned no fields; aborting")
 		return nil // nothing to select
 	}
 
@@ -569,12 +619,22 @@ func (m *tableSelectionPane) openInBrowser() tea.Cmd {
 		cmd = "xdg-open"
 	}
 	args = append(args, weburl)
+
+	m.logger.Debug("opening in browser",
+		slog.String("url", weburl),
+	)
+
 	if err := exec.Command(cmd, args...).Start(); err != nil {
+		m.logger.Debug("encountered error opening url in browser",
+			slog.String("url", weburl),
+			slog.String("cmd", cmd),
+			slog.String("args", fmt.Sprintf("%q", args)),
+			slog.Any("error", err),
+		)
 		return notifyError(err)
 	}
 
 	return nil
-
 }
 
 func (m *tableSelectionPane) applySize(height, width int) {

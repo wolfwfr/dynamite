@@ -52,7 +52,7 @@ func TestTableSelectionDetails(t *testing.T) {
 
 	// factory initialising a new system-under-test
 	newSUT := func(m *mocks.MockdynamodbClient) *tableSelectionPane {
-		sut := newTableSelectionPane(context.Background(), &appconfig.Config{Region: region})
+		sut := newTableSelectionPane(context.Background(), &appconfig.Config{Region: region, Logger: tu.DiscardLogger()})
 		sut.dynamodbClient = m
 		return sut
 	}

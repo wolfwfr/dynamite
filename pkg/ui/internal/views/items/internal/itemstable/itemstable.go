@@ -59,7 +59,7 @@ func NewItemsTable(ctx context.Context, l *slog.Logger) *ItemsTable {
 func (t *ItemsTable) Init() tea.Cmd {
 	t.logger.Info("initialising...")
 	t.renderCache = map[string]string{}
-	t.logger.Info("initialised")
+	t.logger.Info("initialisation complete")
 	return nil
 }
 

@@ -2,6 +2,7 @@ package tableselection
 
 import (
 	"context"
+	"log/slog"
 	"strings"
 
 	"charm.land/bubbles/v2/key"
@@ -9,6 +10,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	appconfig "github.com/wolfwfr/dynamite/pkg"
+	"github.com/wolfwfr/dynamite/pkg/logging"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/theme"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/util/keymaps"
@@ -29,6 +31,9 @@ type paneProperties struct {
 }
 
 type TableSelection struct {
+	// logger
+	logger *slog.Logger
+
 	// shared config
 	config *appconfig.Config
 
@@ -80,6 +85,7 @@ func WithAdditionalKeys(keys keymaps.AdditionalKeys) Option {
 
 func NewTableSelectionView(ctx context.Context, config *appconfig.Config, opts ...Option) *TableSelection {
 	t := &TableSelection{
+		logger: config.Logger.With(slog.String(logging.ViewKey, Log_TablesView)),
 		config: config,
 		KeyMap: DefaultTableViewKeyMap(),
 		panes:  make(map[paneID]paneProperties),
@@ -96,7 +102,12 @@ func NewTableSelectionView(ctx context.Context, config *appconfig.Config, opts .
 }
 
 func (m *TableSelection) Init() tea.Cmd {
-	return tea.Batch(m.tablesPane.Init(), m.detailPane.Init())
+	m.logger.Info("initialising...")
+	cmds := make([]tea.Cmd, 0)
+	cmds = append(cmds, m.tablesPane.Init())
+	cmds = append(cmds, m.detailPane.Init())
+	m.logger.Info("initialisation complete")
+	return tea.Batch(cmds...)
 }
 
 // update handles the message and if it does not detect a keypress that it can
@@ -153,18 +164,20 @@ func (m *TableSelection) routeToFocusedOnly(msg tea.Msg) tea.Cmd {
 	case detailPaneID:
 		return m.detailPane.Update(msg)
 	default:
-		panic("focused pane not found")
+		panic("BUG: focused pane not found; report to maintainer")
 	}
 }
 
 func (m *TableSelection) handleZoom(msg tea.Msg) tea.Cmd {
 	switch msg.(type) {
 	case messages.ZoomToggleTableSelectionPane:
+		m.logger.Debug("zoom selection-pane")
 		m.zoomEnabled = !m.zoomEnabled
 		m.zoomtarget = tablesPaneID
 		m.focused = tablesPaneID
 		m.KeyMap.MoveFocus.SetEnabled(!m.KeyMap.MoveFocus.Enabled())
 	case messages.ZoomToggleTableDetailsPane:
+		m.logger.Debug("zoom details-pane")
 		m.zoomEnabled = !m.zoomEnabled
 		m.zoomtarget = detailPaneID
 		m.focused = detailPaneID
@@ -181,12 +194,18 @@ func (m TableSelection) ToggleRegionsDialog() tea.Cmd {
 }
 
 func (m *TableSelection) moveWidthLeft() tea.Cmd {
+	m.logger.Debug("moving width left",
+		slog.Int("current_width", int(m.config.Tables.PrimaryWidth)),
+	)
 	m.config.Tables.PrimaryWidth = max(0, m.config.Tables.PrimaryWidth-5)
 	m.applySize()
 	return nil
 }
 
 func (m *TableSelection) moveWidthRight() tea.Cmd {
+	m.logger.Debug("moving width right",
+		slog.Int("current_width", int(m.config.Tables.PrimaryWidth)),
+	)
 	m.config.Tables.PrimaryWidth = min(100, m.config.Tables.PrimaryWidth+5)
 	m.applySize()
 	return nil
@@ -241,6 +260,7 @@ func (m *TableSelection) applySize() {
 }
 
 func (m *TableSelection) moveFocus() {
+	m.logger.Debug("moving focus", slog.Int("current_focus", int(m.focused)))
 	m.focused++
 	if m.focused > detailPaneID {
 		m.focused = tablesPaneID

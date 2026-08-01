@@ -448,6 +448,7 @@ func initialiseLogger(cmd *cli.Command) (*slog.Logger, *os.File, error) {
 			return logging.ReplaceLevelName(a)
 		},
 	}
+
 	logger := slog.New(slog.NewJSONHandler(file, opts))
 	if cmd.Bool(log_text_key) {
 		logger = slog.New(slog.NewTextHandler(file, opts))

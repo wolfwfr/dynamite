@@ -93,7 +93,7 @@ func (m *detailsPane) Init() tea.Cmd {
 	m.logger.Info("initialising...")
 	m.previewing = messages.PreviewItem{}
 	m.cleanSlate()
-	m.logger.Info("initialised")
+	m.logger.Info("initialisation complete")
 	return nil
 }
 

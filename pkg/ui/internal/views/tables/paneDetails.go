@@ -3,6 +3,7 @@ package tableselection
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 
 	appconfig "github.com/wolfwfr/dynamite/pkg"
 	apitypes "github.com/wolfwfr/dynamite/pkg/adapters/dynamodb/types"
+	"github.com/wolfwfr/dynamite/pkg/logging"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/theme"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/util/keymaps"
@@ -24,6 +26,9 @@ import (
 type detailsPane struct {
 	// shared config
 	config *appconfig.Config
+
+	// logger
+	logger *slog.Logger
 
 	// errorText
 	err error
@@ -66,6 +71,7 @@ func newDetailsPane(ctx context.Context, config *appconfig.Config, opts ...detai
 	c.KeyMap.Left.SetHelp("←/h", "left")
 	c.KeyMap.Right.SetHelp("→/l", "right")
 	p := &detailsPane{
+		logger:  config.Logger.With(slog.String(logging.ViewKey, Log_TablesView), slog.String(logging.PaneKey, "details-pane")),
 		config:  config,
 		content: c,
 		KeyMap:  DefaultDetailsKeyMap(),
@@ -91,7 +97,9 @@ func (m *detailsPane) cleanSlate() {
 }
 
 func (m *detailsPane) Init() tea.Cmd {
+	m.logger.Info("initialising...")
 	m.cleanSlate()
+	m.logger.Info("initialisation complete")
 	return nil
 }
 
