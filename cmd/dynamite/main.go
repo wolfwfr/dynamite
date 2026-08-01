@@ -39,11 +39,12 @@ const (
 	range_op_key    = "range_operator"
 	range_order_key = "range_order_descending"
 
-	debug_log_key = "debug"
-	log_key       = "log"
-	log_loc_key   = "log_location"
-	log_level_key = "log_level"
-	log_text_key  = "log_text"
+	log_debug_key  = "debug"
+	log_key        = "log"
+	log_loc_key    = "log_location"
+	log_level_key  = "log_level"
+	log_text_key   = "log_text"
+	log_append_key = "log_append"
 )
 
 // categories
@@ -181,10 +182,10 @@ func main() {
 				Category: cat_logging,
 				Aliases:  []string{""},
 				Value:    logDir,
-				Usage:    fmt.Sprintf("location of the logfile, when logging is enabled with '%s'", debug_log_key),
+				Usage:    fmt.Sprintf("location of the logfile, when logging is enabled with '%s'", log_debug_key),
 			},
 			&cli.BoolFlag{
-				Name:     debug_log_key,
+				Name:     log_debug_key,
 				Category: cat_logging,
 				Aliases:  []string{},
 				Value:    false,
@@ -203,6 +204,13 @@ func main() {
 				Aliases:  []string{},
 				Value:    false,
 				Usage:    "log in text instead of JSON format",
+			},
+			&cli.BoolFlag{
+				Name:     log_append_key,
+				Category: cat_logging,
+				Aliases:  []string{},
+				Value:    false,
+				Usage:    "append the existing logfile (truncates by default)",
 			},
 			&cli.StringFlag{
 				Name:     log_level_key,
@@ -389,7 +397,7 @@ func resolveRegion(cmd *cli.Command, cfg configfile.Config) string {
 }
 
 func initialiseLogger(cmd *cli.Command) (*slog.Logger, *os.File, error) {
-	var isLogging bool
+	// loglevel
 	var logLevel slog.Level
 	switch strings.ToLower(cmd.String(log_level_key)) {
 	case "trace":
@@ -403,8 +411,9 @@ func initialiseLogger(cmd *cli.Command) (*slog.Logger, *os.File, error) {
 	case "error":
 		logLevel = slog.LevelError
 	}
-	isLogging = cmd.Bool(log_key)
-	if cmd.Bool(debug_log_key) {
+
+	var isLogging = cmd.Bool(log_key)
+	if cmd.Bool(log_debug_key) {
 		isLogging = true
 		logLevel = min(slog.LevelDebug, logLevel)
 	}
@@ -412,14 +421,27 @@ func initialiseLogger(cmd *cli.Command) (*slog.Logger, *os.File, error) {
 		// noop by default
 		return slog.New(slog.NewTextHandler(io.Discard, nil)), nil, nil
 	}
+
+	// logpath
 	if err := findOrCreateLogLocation(cmd); err != nil {
 		return nil, nil, err
 	}
-	file, err := os.OpenFile(filepath.Join(logDir, dynamite_logfile), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	path := filepath.Join(logDir, dynamite_logfile)
+
+	// file
+	fileAppend := cmd.Bool(log_append_key)
+	fileopts := os.O_RDWR | os.O_CREATE
+	if !fileAppend {
+		os.Truncate(path, 0)
+	} else {
+		fileopts = fileopts | os.O_APPEND
+	}
+	file, err := os.OpenFile(path, fileopts, 0666)
 	if err != nil {
 		return nil, nil, fmt.Errorf("creating/opening logfile: %w", err)
 	}
 
+	// logger
 	opts := &slog.HandlerOptions{
 		Level: logLevel,
 		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
@@ -430,6 +452,7 @@ func initialiseLogger(cmd *cli.Command) (*slog.Logger, *os.File, error) {
 	if cmd.Bool(log_text_key) {
 		logger = slog.New(slog.NewTextHandler(file, opts))
 	}
+
 	return logger, file, nil
 }
 
@@ -437,7 +460,7 @@ func findOrCreateLogLocation(cmd *cli.Command) error {
 	if customDir := cmd.String(log_loc_key); customDir != "" {
 		logDir = customDir
 	}
-	if cmd.Bool(debug_log_key) && logDir == "" {
+	if logDir == "" {
 		return fmt.Errorf("could not resolve an appropriate location for logging, please provide a '--%s' value", log_loc_key)
 	}
 	absPath, err := filepath.Abs(logDir)
