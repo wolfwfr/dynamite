@@ -212,15 +212,8 @@ items:
 ☝️ This is a work in progress and the following is required for a first release:
 
 - **Code Polish**: the code and its style require some polishing
-- **Testing**: Improve and extend unit testing
-- **Compatibility**: Test in different terminals & at different resolution scales
 - **Theme Configuration**: use the config file to configure the colours to your liking
 - **README Polish**: expand the README with images and video among others
-
-✌️ Other features I have in mind are:
-
-- **CLI Extension**: use CLI flags to hop straight into a table of choice or launch a query.
-- **Pane Configurability**: configure width distribution of the 2 panes
 
 <br/>
 
