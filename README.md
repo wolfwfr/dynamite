@@ -273,6 +273,37 @@ The above configuration will match as follows:
 
 ## 🩼 Troubleshooting
 
+### Logging
+
+`Dynamite` offers logging capabilities, review CLI help to see all options:
+
+```bash
+dynamite --help
+```
+
+Enable logs at the specified level:
+
+```bash
+# level options: [ trace debug info warn error ]
+dynamite --log --level warn
+```
+
+Direct logs to a path of choice:
+
+```bash
+# prints logs to relative path: ./dynamite.log
+dynamite --log --log_path .
+```
+
+Enable debug logs:
+
+```bash
+# equivalent to `dynamite --log --level debug`
+dynamite --debug
+```
+
+### FAQ
+
 **Scrolling down doesn't automatically retrieve the next page**
 
 If not all pages have been retrieved, it is possible that pagination is disabled because of an enabled search (default key: `/`) or because page-retrieval had been explicitly canceled by pressing the `Esc` key during page-retrieval (in which case a ~PAGING~ box should appear in the bottom-left corner). Re-enable pagination with the `c` key, or view the help menu (default key: `?`) for the appropriate key-binding.

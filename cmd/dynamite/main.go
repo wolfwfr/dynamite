@@ -41,7 +41,7 @@ const (
 
 	log_debug_key  = "debug"
 	log_key        = "log"
-	log_loc_key    = "log_location"
+	log_loc_key    = "log_path"
 	log_level_key  = "log_level"
 	log_text_key   = "log_text"
 	log_append_key = "log_append"
@@ -180,7 +180,7 @@ func main() {
 			&cli.StringFlag{
 				Name:     log_loc_key,
 				Category: cat_logging,
-				Aliases:  []string{""},
+				Aliases:  []string{},
 				Value:    logDir,
 				Usage:    fmt.Sprintf("location of the logfile, when logging is enabled with '%s'", log_debug_key),
 			},
