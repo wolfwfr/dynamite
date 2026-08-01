@@ -482,10 +482,12 @@ func (m *ScanDialog) renderIndexInfo() string {
 
 	sel, ok := m.content.SelectedItem().(headed.Item)
 	if !ok {
+		m.logger.Warn("failed to convert list item", slog.Any("item", sel))
 		return ""
 	}
 	meta, ok := sel.Meta[metaKey].(indexItemMeta)
 	if !ok {
+		m.logger.Warn("failed to obtain index meta-data from item", slog.Any("metadata", meta))
 		return ""
 	}
 	switch meta.indexType {

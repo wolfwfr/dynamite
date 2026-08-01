@@ -262,7 +262,11 @@ func (m *ColumnSorting) selectItem() tea.Cmd {
 	sel := m.content.SelectedItem().(sortingItem)
 	idx := sel.idx
 	items := m.content.Items()
-	if idx > len(m.state.AllColumns) {
+	if idx >= len(m.state.AllColumns) {
+		m.logger.Error("content returned index that exceeds maximum",
+			slog.Int("selected_item_index", idx),
+			slog.Int("n_columns", len(m.state.AllColumns)),
+		)
 		panic("dialog state not up to date")
 	}
 	cmds := make([]tea.Cmd, 0)

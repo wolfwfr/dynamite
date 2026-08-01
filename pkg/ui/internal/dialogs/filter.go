@@ -382,6 +382,7 @@ func (m *FilterDialog) Update(msg tea.Msg) tea.Cmd {
 func (m *FilterDialog) safeToClose(msg tea.KeyPressMsg) bool {
 	bts := []byte(msg.String())
 	if (m.focus == filterAttrNameInput || m.focus == filterAttrValueInput1 || m.focus == filterAttrValueInput2) && alphanum.Match(bts) && singleChar.Match(bts) {
+		m.logger.Debug("preventing close", slog.String("keypress", msg.String()))
 		return false
 	}
 	return true
@@ -584,7 +585,11 @@ func (m *FilterDialog) recalculateFocusVertically(i int) {
 			m.contentIdx = u.Ternary(0, m.contentIdx, i > 0)
 		default:
 			if m.contentIdx < 0 || m.contentIdx >= len(m.content) {
-				return // TODO: log; bug
+				m.logger.Warn("BUG: content-index out of bounds",
+					slog.Int("content_index", m.contentIdx),
+					slog.Int("len_content", len(m.content)),
+				)
+				return
 			}
 			if m.contentIdx == 0 && i < 0 {
 				m.contentIdx = -1

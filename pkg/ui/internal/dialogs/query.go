@@ -452,6 +452,7 @@ func (m *Queryialog) Update(msg tea.Msg) tea.Cmd {
 func (m *Queryialog) safeToClose(msg tea.KeyPressMsg) bool {
 	bts := []byte(msg.String())
 	if (m.focus == queryHashKeyInput || m.focus == queryRangeKeyInput1 || m.focus == queryRangeKeyInput2) && alphanum.Match(bts) && singleChar.Match(bts) {
+		m.logger.Debug("preventing close", slog.String("keypress", msg.String()))
 		return false
 	}
 	return true

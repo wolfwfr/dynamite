@@ -206,15 +206,29 @@ func (m *CopyDialog) updateContent() tea.Cmd {
 
 func (m *CopyDialog) selectItem() tea.Cmd {
 	idx := m.content.Index()
-	if idx > len(m.state.ColValues) {
+	if idx >= len(m.state.ColValues) {
+		m.logger.Error("content returned index that exceeds maximum",
+			slog.Int("selected_item_index", idx),
+			slog.Int("n_values", len(m.state.ColValues)),
+		)
 		panic("dialog state not up to date")
 	}
 
 	v, ok := m.content.SelectedItem().(regular.ListItem).Meta["colval"]
 	if !ok {
-		return notifyError(fmt.Errorf("could not identify column value"))
+		err := fmt.Errorf("could not identify column value")
+		m.logger.Error("failed to detect meta-data",
+			slog.Int("item_index", idx),
+			slog.Any("error", err),
+		)
+		return notifyError(err)
 	}
 	if err := clipboard.WriteAll(v.(string)); err != nil {
+		m.logger.Error("encountered error copying column value",
+			slog.Int("item_index", idx),
+			slog.String("value", v.(string)),
+			slog.Any("error", err),
+		)
 		return notifyError(fmt.Errorf("failed to copy: %w", err))
 	}
 

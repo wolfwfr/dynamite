@@ -236,7 +236,11 @@ func (m *ColumnVis) selectItem() tea.Cmd {
 		return nil
 	}
 	idx := itm.Meta["idx"].(int)
-	if idx > len(m.state.AllColumns) {
+	if idx >= len(m.state.AllColumns) {
+		m.logger.Error("content returned index that exceeds maximum",
+			slog.Int("selected_item_index", idx),
+			slog.Int("n_columns", len(m.state.AllColumns)),
+		)
 		panic("dialog state not up to date")
 	}
 	m.state.Visible[idx] = !m.state.Visible[idx]
