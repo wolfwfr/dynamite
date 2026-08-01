@@ -2,7 +2,7 @@ package ui
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"slices"
 	"strings"
 
@@ -14,6 +14,7 @@ import (
 
 	appconfig "github.com/wolfwfr/dynamite/pkg"
 	"github.com/wolfwfr/dynamite/pkg/aws"
+	"github.com/wolfwfr/dynamite/pkg/logging"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/dialogs"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/theme"
@@ -124,6 +125,9 @@ type Model struct {
 	// top-level context
 	ctx context.Context
 
+	// logger
+	logger *slog.Logger
+
 	// shared config
 	config *appconfig.Config
 
@@ -153,6 +157,7 @@ func WithInitialErrorNotification(err error) Option {
 func NewModel(ctx context.Context, cfg appconfig.Config, opts ...Option) Model {
 	m := Model{
 		ctx:    ctx,
+		logger: cfg.Logger.With(slog.String(logging.ComponentKey, "UI_HOME")),
 		config: &cfg,
 
 		activeView: tables_view,
@@ -208,6 +213,7 @@ func NewModel(ctx context.Context, cfg appconfig.Config, opts ...Option) Model {
 }
 
 func (m Model) Init() tea.Cmd {
+	m.logger.Info("initialising...")
 	var cmds []tea.Cmd
 
 	// notify user of any initialisation errors
@@ -219,6 +225,7 @@ func (m Model) Init() tea.Cmd {
 	// load a new aws client
 	cfg, err := aws.LoadAWSConfig(m.ctx, m.config.Region, m.config.Profile, m.config.MFACredentialCB)
 	if err != nil {
+		m.logger.Error("encountered error initialising AWS config", slog.Any("error", err))
 		cmds = append(cmds, errorMsg("", err))
 		return tea.Batch(cmds...)
 	}
@@ -242,6 +249,7 @@ func (m Model) Init() tea.Cmd {
 	// are manually triggered by user
 	m.config.Initialisation = appconfig.Initialisation{}
 
+	m.logger.Info("initialisation complete")
 	return tea.Batch(cmds...)
 }
 
@@ -378,7 +386,7 @@ func (m Model) routeToActiveOnly(msg tea.Msg) (Model, tea.Cmd) {
 	case items_view:
 		return m, m.itemselection.Update(msg)
 	default:
-		log.Fatalf("could not identify active view '%d'", int(m.activeView))
+		m.logger.Error("could not identify active view", slog.Int("view_id", int(m.activeView)))
 	}
 
 	return m, nil
