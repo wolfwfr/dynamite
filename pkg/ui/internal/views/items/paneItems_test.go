@@ -671,7 +671,7 @@ func simpleSortItems(sut *ItemSelectionPane, tableARN string, sortOn string, asc
 // convenience function to send a 'ScanIndexChanged' message to the
 // system-under-test
 func simpleChangeScanIndex(sut *ItemSelectionPane, tableARN, index string) tea.Cmd {
-	return sut.Update(messages.ScanIndexChanged{
+	return sut.Update(messages.UpdateScanIndex{
 		TableARN:  tableARN,
 		IndexName: index,
 	})
@@ -680,7 +680,7 @@ func simpleChangeScanIndex(sut *ItemSelectionPane, tableARN, index string) tea.C
 // convenience function to send a 'QueryParametersChanged' message to the
 // system-under-test
 func simpleChangeQParams(sut *ItemSelectionPane, tableARN, index string) tea.Cmd {
-	return sut.Update(messages.QueryParametersChanged{
+	return sut.Update(messages.UpdateQueryParameters{
 		TableARN:  tableARN,
 		IndexName: index,
 	})

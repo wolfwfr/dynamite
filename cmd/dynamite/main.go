@@ -232,7 +232,7 @@ func main() {
 func runApplication(ctx context.Context, cmd *cli.Command) error {
 	var uiopts []ui.Option
 
-	logger, logFile, err := initialiliseLogger(cmd)
+	logger, logFile, err := initialiseLogger(cmd)
 	if err != nil {
 		return err
 	}
@@ -388,7 +388,7 @@ func resolveRegion(cmd *cli.Command, cfg configfile.Config) string {
 	return "us-east-1"
 }
 
-func initialiliseLogger(cmd *cli.Command) (*slog.Logger, *os.File, error) {
+func initialiseLogger(cmd *cli.Command) (*slog.Logger, *os.File, error) {
 	var isLogging bool
 	var logLevel slog.Level
 	switch strings.ToLower(cmd.String(log_level_key)) {

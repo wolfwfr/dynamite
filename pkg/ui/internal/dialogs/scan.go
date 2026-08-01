@@ -329,7 +329,7 @@ func (m *ScanDialog) selectIndex() tea.Cmd {
 func (m *ScanDialog) changeIndex() tea.Cmd {
 	m.selected = m.content.SelectedItem().(headed.Item).Name
 	return func() tea.Msg {
-		return messages.ScanIndexChanged{
+		return messages.UpdateScanIndex{
 			TableARN:  m.state.TableARN,
 			IndexName: u.Ternary(m.selected, "", m.selected != tableIndexName),
 		}

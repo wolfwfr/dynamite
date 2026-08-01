@@ -233,12 +233,12 @@ type ColumnSortingUpdate struct {
 	Ascending  bool // if false, descending
 }
 
-type ScanIndexChanged struct {
+type UpdateScanIndex struct {
 	TableARN  string
 	IndexName string // empty == table index
 }
 
-type QueryParametersChanged struct {
+type UpdateQueryParameters struct {
 	TableARN             string
 	IndexName            string // empty == table index
 	HashKeyValue         string
@@ -248,7 +248,7 @@ type QueryParametersChanged struct {
 	RangeOrderDescending bool // ascending by default
 }
 
-type FilterParametersChanged struct {
+type UpdateFilterParameters struct {
 	TableARN string
 	State    []FilterState
 }

@@ -1,6 +1,8 @@
 package itemselection
 
 import (
+	"log/slog"
+
 	tea "charm.land/bubbletea/v2"
 
 	apitypes "github.com/wolfwfr/dynamite/pkg/adapters/dynamodb/types"
@@ -8,8 +10,13 @@ import (
 	u "github.com/wolfwfr/dynamite/pkg/util"
 )
 
-func (m *ItemSelectionPane) ChangeFilterParameters(msg messages.FilterParametersChanged) tea.Cmd {
+func (m *ItemSelectionPane) UpdateFilterParameters(msg messages.UpdateFilterParameters) tea.Cmd {
+	m.logger.Debug("received update-filter-parameters message",
+		slog.String("table_arn", msg.TableARN),
+		slog.Int("n_filters", len(msg.State)),
+	)
 	if u.IfNotNil(m.selectedTable.TableArn, "") != msg.TableARN { // expired
+		m.logMessageTableARNMismatch("update-filter-parameters", msg.TableARN)
 		return nil
 	}
 
@@ -53,6 +60,7 @@ func filterParamMessage(enabled bool) tea.Cmd {
 
 // toggle filter-parameters diagram
 func (m *ItemSelectionPane) ToggleFilterParametersDialog() tea.Cmd {
+	m.logger.Debug("toggle filter-parameters-dialog")
 	arn := u.IfNotNil(m.selectedTable.TableArn, "")
 	toggle := func() tea.Msg {
 		return messages.ToggleFilterParameters{}

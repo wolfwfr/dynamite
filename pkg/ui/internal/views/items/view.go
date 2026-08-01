@@ -2,6 +2,7 @@ package itemselection
 
 import (
 	"context"
+	"log/slog"
 	"strings"
 
 	"charm.land/bubbles/v2/key"
@@ -9,6 +10,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	appconfig "github.com/wolfwfr/dynamite/pkg"
+	"github.com/wolfwfr/dynamite/pkg/logging"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/theme"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/util/keymaps"
@@ -29,6 +31,9 @@ type paneProperties struct {
 }
 
 type ItemSelection struct {
+	// logger
+	logger *slog.Logger
+
 	// shared config
 	config *appconfig.Config
 
@@ -79,6 +84,7 @@ func WithAdditionalKeys(keys keymaps.AdditionalKeys) Option {
 
 func NewItemSelectionView(ctx context.Context, config *appconfig.Config, opts ...Option) *ItemSelection {
 	i := &ItemSelection{
+		logger: config.Logger.With(slog.String(logging.ViewKey, Log_ItemsView)),
 		config: config,
 		KeyMap: DefaultItemViewKeyMap(),
 		panes:  make(map[paneID]paneProperties),
@@ -94,7 +100,10 @@ func NewItemSelectionView(ctx context.Context, config *appconfig.Config, opts ..
 }
 
 func (m *ItemSelection) Init() tea.Cmd {
-	return m.itemsPane.Init()
+	m.logger.Info("initialising...")
+	cmd := m.itemsPane.Init()
+	m.logger.Info("initialisation complete")
+	return cmd
 }
 
 // update handles the message and if it does not detect a keypress that it can
@@ -163,17 +172,20 @@ func (m *ItemSelection) routeToFocusedOnly(msg tea.Msg) tea.Cmd {
 	case detailsPaneID:
 		return m.detailsPane.Update(msg)
 	default:
-		panic("focused pane not found")
+		panic("BUG: focused pane not found; report to maintainer")
 	}
 }
+
 func (m *ItemSelection) handleZoom(msg tea.Msg) tea.Cmd {
 	switch msg.(type) {
 	case messages.ZoomToggleItemSelectionPane:
+		m.logger.Debug("zoom selection-pane")
 		m.zoomEnabled = !m.zoomEnabled
 		m.zoomtarget = itemsPaneID
 		m.focused = itemsPaneID
 		m.KeyMap.MoveFocus.SetEnabled(!m.KeyMap.MoveFocus.Enabled())
 	case messages.ZoomToggleItemDetailsPane:
+		m.logger.Debug("zoom details-pane")
 		m.zoomEnabled = !m.zoomEnabled
 		m.zoomtarget = detailsPaneID
 		m.focused = detailsPaneID
@@ -184,6 +196,7 @@ func (m *ItemSelection) handleZoom(msg tea.Msg) tea.Cmd {
 }
 
 func (m *ItemSelection) back() tea.Cmd {
+	m.logger.Debug("backing out of items-view")
 	// switch to previous view
 	switchView := func() tea.Msg {
 		return messages.SwitchView{
@@ -198,6 +211,7 @@ func (m *ItemSelection) back() tea.Cmd {
 }
 
 func (m *ItemSelection) moveFocus() {
+	m.logger.Debug("moving focus", slog.Int("current_focus", int(m.focused)))
 	m.focused++
 	if m.focused > detailsPaneID {
 		m.focused = itemsPaneID
@@ -205,12 +219,18 @@ func (m *ItemSelection) moveFocus() {
 }
 
 func (m *ItemSelection) moveWidthLeft() tea.Cmd {
+	m.logger.Debug("moving width left",
+		slog.Int("current_width", int(m.config.Items.PrimaryWidth)),
+	)
 	m.config.Items.PrimaryWidth = max(0, m.config.Items.PrimaryWidth-5)
 	m.applySize()
 	return nil
 }
 
 func (m *ItemSelection) moveWidthRight() tea.Cmd {
+	m.logger.Debug("moving width right",
+		slog.Int("current_width", int(m.config.Items.PrimaryWidth)),
+	)
 	m.config.Items.PrimaryWidth = min(100, m.config.Items.PrimaryWidth+5)
 	m.applySize()
 	return nil

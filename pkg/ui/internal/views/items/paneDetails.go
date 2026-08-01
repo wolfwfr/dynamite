@@ -3,6 +3,7 @@ package itemselection
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"charm.land/bubbles/v2/key"
@@ -12,13 +13,20 @@ import (
 	"github.com/atotto/clipboard"
 
 	appconfig "github.com/wolfwfr/dynamite/pkg"
+	"github.com/wolfwfr/dynamite/pkg/logging"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/util/keymaps"
 )
 
 type detailsPane struct {
+	// top-level context
+	ctx context.Context
+
 	// shared config
 	config *appconfig.Config
+
+	// logger
+	logger *slog.Logger
 
 	// errorText
 	err error
@@ -55,7 +63,9 @@ func newDetailsPane(ctx context.Context, config *appconfig.Config, opts ...detai
 	c.KeyMap.Left.SetHelp("←/h", "left")
 	c.KeyMap.Right.SetHelp("→/l", "right")
 	p := &detailsPane{
+		ctx:     ctx,
 		config:  config,
+		logger:  config.Logger.With(slog.String(logging.ViewKey, Log_ItemsView), slog.String(logging.PaneKey, "details-pane")),
 		content: c,
 		KeyMap:  DefaultDetailsKeyMap(),
 	}
@@ -74,13 +84,16 @@ func (m *detailsPane) cleanSlate() {
 }
 
 func (m *detailsPane) exit() tea.Cmd {
+	m.logger.Debug("exiting")
 	m.content.SetContent("")
 	return nil
 }
 
 func (m *detailsPane) Init() tea.Cmd {
+	m.logger.Info("initialising...")
 	m.previewing = messages.PreviewItem{}
 	m.cleanSlate()
+	m.logger.Info("initialised")
 	return nil
 }
 
@@ -117,20 +130,24 @@ func (m *detailsPane) Update(msg tea.Msg) (cmd tea.Cmd) {
 }
 
 func (m *detailsPane) ToggleFmt() tea.Cmd {
+	m.logger.Debug("emitting toggle-format message")
 	return func() tea.Msg {
 		return messages.ToggleJSONYAML{}
 	}
 }
 
 func (m *detailsPane) Zoom() tea.Cmd {
+	m.logger.Debug("emitting zoom message")
 	return func() tea.Msg {
 		return messages.ZoomToggleItemDetailsPane{}
 	}
 }
 
 func (m *detailsPane) copy() tea.Cmd {
+	m.logger.Debug("executing copy operation")
 	c := m.previewing.RawItem
 	if err := clipboard.WriteAll(c); err != nil {
+		m.logger.Error("copy to clipboard returned an error", slog.Any("error", err))
 		return func() tea.Msg {
 			return messages.ToggleNotificationDialog{Error: fmt.Errorf("failed to copy: %w", err)}
 		}

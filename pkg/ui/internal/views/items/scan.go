@@ -1,9 +1,12 @@
 package itemselection
 
 import (
+	"log/slog"
+
 	tea "charm.land/bubbletea/v2"
 
 	apitypes "github.com/wolfwfr/dynamite/pkg/adapters/dynamodb/types"
+	"github.com/wolfwfr/dynamite/pkg/logging"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	u "github.com/wolfwfr/dynamite/pkg/util"
 )
@@ -11,7 +14,12 @@ import (
 // enableScanMode immediately returns when already enabled and forc == false. It
 // calls pageNext with initialisation when enabling.
 func (m *ItemSelectionPane) enableScanMode(force bool) tea.Cmd {
+	m.logger.Log(m.ctx, logging.LevelTrace, "enabling scan mode", slog.Bool("force", force))
 	if m.queryMode == messages.ScanMode && !force {
+		m.logger.Log(m.ctx, logging.LevelTrace, "already in scan mode; aborting",
+			slog.Int("query_mode", int(m.queryMode)),
+			slog.Bool("force", force),
+		)
 		return nil
 	}
 
@@ -30,10 +38,16 @@ func (m *ItemSelectionPane) enableScanMode(force bool) tea.Cmd {
 			NewMode: messages.ScanMode,
 		}
 	}
+
+	m.logger.Debug("enabled scan mode",
+		slog.Bool("force", force),
+	)
+
 	return tea.Batch(reset, switchM, filterParamMessage(len(m.filterParameters.scan) > 0), m.PageNext(true))
 }
 
 func (m *ItemSelectionPane) ToggleScanParametersDialog() tea.Cmd {
+	m.logger.Debug("toggle scan-dialog")
 	if m.queryMode != messages.ScanMode {
 		return nil
 	}

@@ -830,7 +830,7 @@ func (m *FilterDialog) filterParametersUpdate() tea.Cmd {
 	}
 
 	return func() tea.Msg {
-		return messages.FilterParametersChanged{
+		return messages.UpdateFilterParameters{
 			TableARN: tableARN,
 			State:    state,
 		}

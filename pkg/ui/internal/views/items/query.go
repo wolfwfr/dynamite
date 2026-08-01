@@ -1,9 +1,12 @@
 package itemselection
 
 import (
+	"log/slog"
+
 	tea "charm.land/bubbletea/v2"
 
 	apitypes "github.com/wolfwfr/dynamite/pkg/adapters/dynamodb/types"
+	"github.com/wolfwfr/dynamite/pkg/logging"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	u "github.com/wolfwfr/dynamite/pkg/util"
 )
@@ -11,7 +14,12 @@ import (
 // enableQueryMode immediately returns when already enabled & force == false. It
 // calls pageNext with initialisation when enabling.
 func (m *ItemSelectionPane) enableQueryMode(force bool) tea.Cmd {
+	m.logger.Log(m.ctx, logging.LevelTrace, "enabling query mode", slog.Bool("force", force))
 	if m.queryMode == messages.QueryMode && !force {
+		m.logger.Log(m.ctx, logging.LevelTrace, "already in query mode; aborting",
+			slog.Int("query_mode", int(m.queryMode)),
+			slog.Bool("force", force),
+		)
 		return nil
 	}
 
@@ -30,13 +38,20 @@ func (m *ItemSelectionPane) enableQueryMode(force bool) tea.Cmd {
 			NewMode: messages.QueryMode,
 		}
 	}
+
+	m.logger.Debug("enabled query mode",
+		slog.Bool("force", force),
+	)
+
 	if m.queryParameters.hashKeyValue == "" {
+		m.logger.Debug("empty hash_key_value; toggling query-dialog")
 		return tea.Batch(reset, switchM, filterParamMessage(len(m.filterParameters.query) > 0), m.ToggleQueryParametersDialog())
 	}
 	return tea.Batch(reset, switchM, filterParamMessage(len(m.filterParameters.query) > 0), m.PageNext(true))
 }
 
 func (m *ItemSelectionPane) ToggleQueryParametersDialog() tea.Cmd {
+	m.logger.Debug("toggle query-dialog")
 	if m.queryMode != messages.QueryMode {
 		return nil
 	}

@@ -739,7 +739,7 @@ func (m *Queryialog) queryParametersUpdate() tea.Cmd {
 	rkorder := m.content.rangeOrderSelection.SelectedItem().(regular.ListItem).Value == string(rangeDescending)
 
 	return func() tea.Msg {
-		return messages.QueryParametersChanged{
+		return messages.UpdateQueryParameters{
 			TableARN:             tableARN,
 			IndexName:            indexName,
 			HashKeyValue:         hkval,

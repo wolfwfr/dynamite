@@ -22,7 +22,6 @@ import (
 
 	appconfig "github.com/wolfwfr/dynamite/pkg"
 	"github.com/wolfwfr/dynamite/pkg/adapters/dynamodb"
-	"github.com/wolfwfr/dynamite/pkg/adapters/dynamodb/types"
 	apitypes "github.com/wolfwfr/dynamite/pkg/adapters/dynamodb/types"
 	"github.com/wolfwfr/dynamite/pkg/common"
 	"github.com/wolfwfr/dynamite/pkg/logging"
@@ -161,7 +160,7 @@ type ItemSelectionPane struct {
 	paging          bool
 
 	// the currently active table
-	selectedTable types.DescribeTableResponse
+	selectedTable apitypes.DescribeTableResponse
 
 	// json/yaml format for preview
 	previewFormat previewFormat
@@ -268,10 +267,13 @@ func (m *ItemSelectionPane) deactivateSpinner() {
 }
 
 func (m *ItemSelectionPane) Init() tea.Cmd {
+	m.logger.Info("initialising...")
 	cmds := []tea.Cmd{}
 
 	cmds = append(cmds, m.softReset())
 	cmds = append(cmds, m.applyCustomInitialization())
+
+	m.logger.Info("initilasation complete")
 
 	return tea.Batch(cmds...)
 }
@@ -284,9 +286,9 @@ func (m *ItemSelectionPane) applyCustomInitialization() tea.Cmd {
 
 	// return if no table is specified
 	if customInit.Table == "" {
+		m.logger.Debug("no custom table provided; skipping custom initialisation")
 		return nil
 	}
-
 	cmds := make([]tea.Cmd, 0)
 
 	// obtain table details early
@@ -329,6 +331,8 @@ func (m *ItemSelectionPane) applyCustomInitialization() tea.Cmd {
 // softReset initalises stateful parameters except for sessions and the selected
 // table
 func (m *ItemSelectionPane) softReset() tea.Cmd {
+	m.logger.Debug("executing soft reset")
+
 	m.err = nil
 	// cancel any lingering calls
 	m.pageCancel()
@@ -400,7 +404,7 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 		case key.Matches(msg, m.KeyMap.FilterParameters):
 			return m.ToggleFilterParametersDialog()
 		case key.Matches(msg, m.KeyMap.Copy):
-			return m.copy()
+			return m.toggleCopyDialog()
 		case key.Matches(msg, m.KeyMap.Browser):
 			return m.openInBrowser(m.resolveBrowserURL())
 		case key.Matches(msg, m.KeyMap.ColVis):
@@ -429,12 +433,12 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 		return m.UpdateColumnTransform(msg)
 	case messages.ColumnWidthUpdate:
 		return m.UpdateColumnDynamicWidth(msg)
-	case messages.ScanIndexChanged:
-		return m.ChangeScanIndex(msg)
-	case messages.QueryParametersChanged:
-		return m.ChangeQueryParameters(msg)
-	case messages.FilterParametersChanged:
-		return m.ChangeFilterParameters(msg)
+	case messages.UpdateScanIndex:
+		return m.UpdateScanIndex(msg)
+	case messages.UpdateQueryParameters:
+		return m.UpdateQueryParameters(msg)
+	case messages.UpdateFilterParameters:
+		return m.UpdateFilterParameters(msg)
 	case messages.PageReady:
 		return m.ProcessPage(msg)
 	case messages.ColumnSortingReset:
@@ -457,8 +461,14 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 }
 
 func (m *ItemSelectionPane) PageNext(init bool) tea.Cmd {
+	m.logger.Log(m.ctx, logging.LevelTrace, "attempting paging", slog.Bool("init_flag", init))
 	// don't page when at end of paging and not the initialising call
 	if (len(m.pageKey) == 0 && !init) || (m.pagingSuspended && !init) || m.paging {
+		m.logger.Log(m.ctx, logging.LevelTrace, "not eligible for paging; aborting",
+			slog.Int("page_key_len", len(m.pageKey)),
+			slog.Bool("paging suspended", m.pagingSuspended),
+			slog.Bool("already_paging", m.paging),
+		)
 		return nil
 	}
 	m.paging = true
@@ -487,6 +497,7 @@ func (m *ItemSelectionPane) PageNext(init bool) tea.Cmd {
 		switch mode {
 		case messages.QueryMode:
 			if hash == "" { // prevent impossible query
+				m.logger.Debug("no hash_key_value configured; returning empty page", slog.String("query_mode", "query"))
 				return messages.PageReady{
 					PageID:   pageID,
 					TableARN: u.IfNotNil(table.TableArn, ""),
@@ -495,7 +506,7 @@ func (m *ItemSelectionPane) PageNext(init bool) tea.Cmd {
 					Err:      nil,
 				}
 			}
-			result, err := m.dynamodbClient.QueryTable(client, ctx, *table.TableName, types.QueryParameters{
+			result, err := m.dynamodbClient.QueryTable(client, ctx, *table.TableName, apitypes.QueryParameters{
 				KeyDetails:       table.AttributeDefinitions,
 				IndexName:        idx,
 				KeySchema:        keysFromIndex(idx, table),
@@ -508,6 +519,7 @@ func (m *ItemSelectionPane) PageNext(init bool) tea.Cmd {
 				Limit:            queryLimit,
 				LastEvaluatedKey: key,
 			})
+			m.logger.Debug("requesting next page", slog.String("query_mode", "query"))
 			return messages.PageReady{
 				PageID:   pageID,
 				TableARN: u.IfNotNil(table.TableArn, ""),
@@ -516,7 +528,7 @@ func (m *ItemSelectionPane) PageNext(init bool) tea.Cmd {
 				Err:      err,
 			}
 		case messages.ScanMode:
-			result, err := m.dynamodbClient.ScanTable(client, ctx, *table.TableName, types.ScanParameters{
+			result, err := m.dynamodbClient.ScanTable(client, ctx, *table.TableName, apitypes.ScanParameters{
 				KeyDetails:       table.AttributeDefinitions,
 				IndexName:        idx,
 				KeySchema:        keysFromIndex(idx, table),
@@ -524,6 +536,7 @@ func (m *ItemSelectionPane) PageNext(init bool) tea.Cmd {
 				Limit:            scanLimit,
 				LastEvaluatedKey: key,
 			})
+			m.logger.Debug("requesting next page", slog.String("query_mode", "scan"))
 			return messages.PageReady{
 				PageID:   pageID,
 				TableARN: u.IfNotNil(table.TableArn, ""),
@@ -532,12 +545,14 @@ func (m *ItemSelectionPane) PageNext(init bool) tea.Cmd {
 				Err:      err,
 			}
 		}
+		m.logger.Debug("query_mode not recognised; aborting", slog.Int("query_mode", int(m.queryMode)))
 		return nil
 	}
 	return tea.Batch(pageCmd, m.activateSpinner())
 }
 
 func (m *ItemSelectionPane) ToggleJSONYAMLFormat() tea.Cmd {
+	m.logger.Debug("toggle json/yaml formatting")
 	m.previewFormat += 1
 	if m.previewFormat > JSONformat {
 		m.previewFormat = YAMLformat
@@ -547,18 +562,37 @@ func (m *ItemSelectionPane) ToggleJSONYAMLFormat() tea.Cmd {
 
 // force is used on new pane initialization because lastPreviewItem could be 0
 func (m *ItemSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
+	m.logger.Log(m.ctx, logging.LevelTrace,
+		"received request to preview item",
+		slog.Bool("force", force),
+	)
+
 	if !m.initialised {
+		m.logger.Log(m.ctx, logging.LevelTrace, "not initialised; aborting preview",
+			slog.Bool("initialised", m.initialised),
+			slog.Bool("force", force),
+		)
 		return nil
 	}
+
+	m.logger.Debug("proceeding with request to preview item",
+		slog.Bool("force", force),
+		slog.Bool("initialised", m.initialised),
+	)
 
 	item, idx := m.table.GetSelectedItem()
 
 	// if no item or preview was already instructed to preview this item, skip
 	if idx == m.lastPreviewItem && !force {
+		m.logger.Debug("eligible to skip; aborting preview",
+			slog.Int("selected_item_index", idx),
+			slog.Int("last_preview_index", m.lastPreviewItem),
+		)
 		return nil
 	}
 	m.lastPreviewItem = idx
 	if item == nil {
+		m.logger.Debug("no item; sending empty preview message")
 		// empty preview
 		return func() tea.Msg { return messages.PreviewItem{} }
 	}
@@ -585,21 +619,22 @@ func (m *ItemSelectionPane) Reload() tea.Cmd {
 }
 
 func (m *ItemSelectionPane) Zoom() tea.Cmd {
+	m.logger.Debug("emitting zoom message")
 	return func() tea.Msg {
 		return messages.ZoomToggleItemSelectionPane{}
 	}
 }
 
 func (m *ItemSelectionPane) ProcessPage(msg messages.PageReady) tea.Cmd {
-	m.logger.Debug("Received a new page",
-		slog.String("Table ARN", msg.TableARN),
-		slog.Uint64("Page ID", uint64(msg.PageID)),
-		slog.Int("PageSize", len(u.IfNotNil(msg.Response, messages.Page{}).Items.JSON)),
+	m.logger.Debug("received a new page",
+		slog.String("table_arn", msg.TableARN),
+		slog.Uint64("page_id", uint64(msg.PageID)),
+		slog.Int("page_size", len(u.IfNotNil(msg.Response, messages.Page{}).Items.JSON)),
 	)
 	if _, ok := m.pageIgnore[msg.PageID]; ok {
 		m.logger.Debug("page scheduled for ignore",
-			slog.String("Table ARN", msg.TableARN),
-			slog.Uint64("Page ID", uint64(msg.PageID)),
+			slog.String("table_arn", msg.TableARN),
+			slog.Uint64("page_id", uint64(msg.PageID)),
 		)
 		delete(m.pageIgnore, msg.PageID)
 		return nil
@@ -608,8 +643,8 @@ func (m *ItemSelectionPane) ProcessPage(msg messages.PageReady) tea.Cmd {
 	if msg.Err != nil {
 		m.logger.Error(
 			"received error on new page",
-			slog.String("Table ARN", msg.TableARN),
-			slog.Any("Error", msg.Err),
+			slog.String("table_arn", msg.TableARN),
+			slog.Any("error", msg.Err),
 		)
 		m.err = msg.Err
 	}
@@ -618,10 +653,24 @@ func (m *ItemSelectionPane) ProcessPage(msg messages.PageReady) tea.Cmd {
 	details := m.selectedTable
 
 	if u.IfNotNil(m.selectedTable.TableArn, "") != msg.TableARN || m.tableIndex.activeIndex != msg.Index { // expired
+		m.logger.Info("ignoring message due to outdated table_arn",
+			slog.String("message", "new-page"),
+			slog.Bool("current_arn_not_nil", m.selectedTable.TableArn != nil),
+			slog.String("current_arn", u.IfNotNil(m.selectedTable.TableArn, "")),
+			slog.String("message_arn", msg.TableARN),
+			slog.Bool("current_index_not_nil", m.tableIndex.activeIndex != nil),
+			slog.Bool("message_index_not_nil", msg.Index != nil),
+			slog.String("current_index", u.IfNotNil(m.tableIndex.activeIndex, "")),
+			slog.String("message_index", u.IfNotNil(msg.Index, "")),
+		)
 		return nil
 	}
 
 	if page == nil {
+		m.logger.Debug("page was nil",
+			slog.String("table_arn", msg.TableARN),
+			slog.Uint64("page_id", uint64(msg.PageID)),
+		)
 		return nil
 	}
 
@@ -648,6 +697,7 @@ func (m *ItemSelectionPane) ProcessPage(msg messages.PageReady) tea.Cmd {
 // item-selection-view is opened because a table has been selected. It will
 // default to scanning the first page of items.
 func (m *ItemSelectionPane) selectTable(tableName string) tea.Cmd {
+	m.logger.Info("selecting table", slog.String("table_name", tableName))
 	cmds := make([]tea.Cmd, 0)
 	if m.selectedTable.TableArn == nil || *m.selectedTable.TableName != tableName {
 		cmds = append(cmds, m.obtainTableDetails(tableName))
@@ -656,6 +706,7 @@ func (m *ItemSelectionPane) selectTable(tableName string) tea.Cmd {
 		}
 	}
 	if session, remembered := m.sessions[*m.selectedTable.TableArn]; remembered {
+		m.logger.Info("restoring table session", slog.String("table_arn", *m.selectedTable.TableArn))
 		// restore session parameters
 		m.scanParameters.index = session.scanParams.index
 		m.queryParameters.index = session.queryParams.index
@@ -680,6 +731,7 @@ func (m *ItemSelectionPane) selectTable(tableName string) tea.Cmd {
 			m.tableIndex.indexItemCount = indexCountFromTable(*m.tableIndex.activeIndex, m.selectedTable)
 		}
 	} else {
+		m.logger.Info("no table session found", slog.String("table_arn", *m.selectedTable.TableArn))
 		// defaults on newly opened table
 		m.tableIndex.activeIndex = nil
 		m.tableIndex.indexItemCount = *m.selectedTable.ItemCount
@@ -693,15 +745,23 @@ func (m *ItemSelectionPane) selectTable(tableName string) tea.Cmd {
 }
 
 func (m *ItemSelectionPane) obtainTableDetails(tableName string) tea.Cmd {
+	m.logger.Debug("obtaining table details", slog.String("table_name", tableName))
 	ctx, cc := context.WithTimeout(m.ctx, m.stdTO)
 	defer cc()
 	// TODO: consider async (in case user wants to bail out maybe?)
 	details, err := m.dynamodbClient.DescribeTable(m.config.Client, ctx, tableName)
 	if err != nil {
+		m.logger.Error("encountered error describing table",
+			slog.String("table_name", tableName),
+			slog.Any("error", err),
+		)
 		m.err = err
 		return nil
 	}
 	if details == nil {
+		m.logger.Debug("encountered nil-response describing table",
+			slog.String("table_name", tableName),
+		)
 		notifyError(fmt.Errorf("table '%s' returned nil response", tableName))
 		return m.exit()
 	}
@@ -754,6 +814,8 @@ func (m *ItemSelectionPane) resolveBrowserURL() string {
 		weburl = fmt.Sprintf("%s%s%s=%s", weburl, sep, paramkeys[i], paramVals[i])
 	}
 
+	m.logger.Debug("browser url resolved", slog.String("url", weburl))
+
 	return weburl
 }
 
@@ -778,6 +840,12 @@ func (m *ItemSelectionPane) openInBrowser(url string) tea.Cmd {
 	}
 	args = append(args, url)
 	if err := exec.Command(cmd, args...).Start(); err != nil {
+		m.logger.Error("encountered error opening url in browser",
+			slog.String("url", url),
+			slog.String("cmd", cmd),
+			slog.String("args", fmt.Sprintf("%q", args)),
+			slog.Any("error", err),
+		)
 		return notifyError(err)
 	}
 
@@ -846,6 +914,7 @@ func (m *ItemSelectionPane) resetKeyMap() {
 // reset contents resets any table modifications and resets the table contents
 // to empty. It also cancels and resets paging and resets preview tracking.
 func (m *ItemSelectionPane) resetContents() tea.Cmd {
+	m.logger.Debug("resetting pane contents", slog.Bool("currently_paging", m.paging))
 	m.err = nil
 	cmd := m.resetPaging()
 	m.initialised = false
@@ -860,6 +929,7 @@ func (m *ItemSelectionPane) resetContents() tea.Cmd {
 // resetPaging resets any paging related parameters and calcels any lingering
 // paging calls
 func (m *ItemSelectionPane) resetPaging() tea.Cmd {
+	m.logger.Debug("paging reset", slog.Bool("currently_paging", m.paging))
 	m.pageIgnore[m.pageLatestID] = struct{}{} // ignore any errors from latest page
 	m.pageCancel()
 	m.paging = false
@@ -870,6 +940,7 @@ func (m *ItemSelectionPane) resetPaging() tea.Cmd {
 }
 
 func (m *ItemSelectionPane) cancelPaging() tea.Cmd {
+	m.logger.Debug("paging suspended", slog.Bool("currently_paging", m.paging))
 	m.pageCancel()
 	m.pageIgnore[m.pageLatestID] = struct{}{}
 	m.paging = false
@@ -879,6 +950,7 @@ func (m *ItemSelectionPane) cancelPaging() tea.Cmd {
 }
 
 func (m *ItemSelectionPane) continuePaging() tea.Cmd {
+	m.logger.Debug("paging continued")
 	m.pagingSuspended = false
 	msg := pagingSuspendedMsg(false)
 	if m.table.PaginationEligible() {
@@ -898,6 +970,7 @@ func pagingSuspendedMsg(suspended bool) tea.Cmd {
 // resetQueryParameters resets any parameters required for sanning or querying a
 // dynamodb table
 func (m *ItemSelectionPane) resetQueryParameters() tea.Cmd {
+	m.logger.Debug("resetting query parameters", slog.Int("current_mode", int(m.queryMode)))
 	var cmd tea.Cmd
 	if m.queryMode != messages.ScanMode {
 		cmd = func() tea.Msg {
@@ -923,7 +996,9 @@ func (m *ItemSelectionPane) resetQueryParameters() tea.Cmd {
 }
 
 func (m *ItemSelectionPane) handleResetColumnSortingMessage(msg messages.ColumnSortingReset) tea.Cmd {
+	m.logger.Debug("received reset-column-sorting message")
 	if msg.TableARN != u.IfNotNil(m.selectedTable.TableArn, "") { // expired
+		m.logMessageTableARNMismatch("reset-column-sorting", msg.TableARN)
 		return nil
 	}
 	m.table.ResetColumnSorting()
@@ -931,6 +1006,7 @@ func (m *ItemSelectionPane) handleResetColumnSortingMessage(msg messages.ColumnS
 }
 
 func (m *ItemSelectionPane) exit() tea.Cmd {
+	m.logger.Debug("exiting")
 	// immediately cancel pending calls
 	m.pageCancel()
 
@@ -960,16 +1036,23 @@ func (m *ItemSelectionPane) exit() tea.Cmd {
 }
 
 func (m *ItemSelectionPane) UpdateColumnVisibility(msg messages.ColumnVisibilityUpdate) tea.Cmd {
+	m.logger.Debug("received update-column-visibility message",
+		slog.String("columns", fmt.Sprintf("%s", msg.AllColumns)),
+		slog.String("visible", fmt.Sprintf("%t", msg.Visible)),
+	)
 	if msg.TableARN != u.IfNotNil(m.selectedTable.TableArn, "") { // expired
+		m.logMessageTableARNMismatch("update-column-visibility", msg.TableARN)
 		return nil
 	}
-	_ = m.table.SetColumnVisibility(msg.AllColumns, msg.Visible)
+	ok := m.table.SetColumnVisibility(msg.AllColumns, msg.Visible)
+	m.logger.Debug("completed setting visibility", slog.Bool("success", ok))
 	m.updateKeyMaps()
 	return nil
 }
 
 // toggle column visibility dialog & provide current state (in case dialog opens)
 func (m *ItemSelectionPane) toggleColumnVisibilityDialog(msg tea.Msg) tea.Cmd {
+	m.logger.Debug("toggle column-visibility-dialog")
 	cols := m.table.GetColumns()
 	st := m.table.GetViewOptionsState()
 	vis := st.GetColumnVisibilityOptions().InVisible
@@ -996,16 +1079,23 @@ func (m *ItemSelectionPane) toggleColumnVisibilityDialog(msg tea.Msg) tea.Cmd {
 }
 
 func (m *ItemSelectionPane) UpdateColumnDynamicWidth(msg messages.ColumnWidthUpdate) tea.Cmd {
+	m.logger.Debug("received update-column-width message",
+		slog.String("columns", fmt.Sprintf("%s", msg.AllColumns)),
+		slog.String("width", fmt.Sprintf("%t", msg.DynWidth)),
+	)
 	if msg.TableARN != u.IfNotNil(m.selectedTable.TableArn, "") { // expired
+		m.logMessageTableARNMismatch("update-column-width", msg.TableARN)
 		return nil
 	}
-	_ = m.table.SetColumnDynamicWidth(msg.AllColumns, msg.DynWidth)
+	ok := m.table.SetColumnDynamicWidth(msg.AllColumns, msg.DynWidth)
+	m.logger.Debug("completed setting column-width", slog.Bool("success", ok))
 	m.updateKeyMaps()
 	return nil
 }
 
 // toggle column dynamicWidth dialog & provide current state (in case dialog opens)
 func (m *ItemSelectionPane) toggleColumnWidthDialog(msg tea.Msg) tea.Cmd {
+	m.logger.Debug("toggle column-width-dialog")
 	cols := m.table.GetColumns()
 	st := m.table.GetViewOptionsState()
 	dw := st.GetColumnDynWidthOptions().DynWidth
@@ -1032,10 +1122,12 @@ func (m *ItemSelectionPane) toggleColumnWidthDialog(msg tea.Msg) tea.Cmd {
 }
 
 func (m *ItemSelectionPane) toggleColumnWidthForAll() tea.Cmd {
+	m.logger.Debug("toggle column-width for all columns")
 	cols := m.table.GetColumns()
 	st := m.table.GetViewOptionsState()
 	dw := st.GetColumnDynWidthOptions().DynWidth
 	if len(cols) == 0 {
+		m.logger.Debug("no columns; aborting toggle column-width for all columns")
 		return nil
 	}
 	_, b := dw[cols[0].Title] // existing
@@ -1049,17 +1141,24 @@ func (m *ItemSelectionPane) toggleColumnWidthForAll() tea.Cmd {
 	}
 
 	// automatically enable dynamic-column-width for transformed columns
-	_ = m.table.SetColumnDynamicWidth(colsS, dwB)
+	ok := m.table.SetColumnDynamicWidth(colsS, dwB)
+	m.logger.Debug("completed setting column-width", slog.Bool("success", ok))
 
 	m.updateKeyMaps()
 	return nil
 }
 
 func (m *ItemSelectionPane) UpdateColumnTransform(msg messages.ColumnTransformUpdate) tea.Cmd {
+	m.logger.Debug("received update-column-transform message",
+		slog.String("columns", fmt.Sprintf("%s", msg.AllColumns)),
+		slog.String("transformed", fmt.Sprintf("%t", msg.Transform)),
+	)
 	if msg.TableARN != u.IfNotNil(m.selectedTable.TableArn, "") { // expired
+		m.logMessageTableARNMismatch("update-column-transform", msg.TableARN)
 		return nil
 	}
-	_ = m.table.SetColumnTransform(msg.AllColumns, msg.Transform)
+	ok := m.table.SetColumnTransform(msg.AllColumns, msg.Transform)
+	m.logger.Debug("completed setting transform", slog.Bool("success", ok))
 	transformedM := make(map[string]struct{})
 	for i, col := range msg.AllColumns {
 		if msg.Transform[i] {
@@ -1078,7 +1177,12 @@ func (m *ItemSelectionPane) UpdateColumnTransform(msg messages.ColumnTransformUp
 	}
 
 	// automatically enable dynamic-column-width for transformed columns
-	_ = m.table.SetColumnDynamicWidth(colsS, dwB)
+	ok = m.table.SetColumnDynamicWidth(colsS, dwB)
+	m.logger.Debug("completed updating column width for transfrom",
+		slog.Bool("success", ok),
+		slog.String("columns", fmt.Sprintf("%s", colsS)),
+		slog.String("dynamic-width", fmt.Sprintf("%t", dwB)),
+	)
 
 	m.updateKeyMaps()
 	return nil
@@ -1086,6 +1190,7 @@ func (m *ItemSelectionPane) UpdateColumnTransform(msg messages.ColumnTransformUp
 
 // toggle column transform dialog & provide current state (in case dialog opens)
 func (m *ItemSelectionPane) toggleColumnTransformDialog(msg tea.Msg) tea.Cmd {
+	m.logger.Debug("toggle column-visibility-dialog")
 	cols := m.table.GetColumnTypes()
 	st := m.table.GetViewOptionsState()
 	trans := st.GetColumnTransformOptions().Transformed
@@ -1117,16 +1222,24 @@ func (m *ItemSelectionPane) toggleColumnTransformDialog(msg tea.Msg) tea.Cmd {
 }
 
 func (m *ItemSelectionPane) UpdateColumnSorting(msg messages.ColumnSortingUpdate) tea.Cmd {
+	m.logger.Debug("received update-column-sorting message",
+		slog.String("columns", fmt.Sprintf("%s", msg.AllColumns)),
+		slog.String("sorting_on", msg.SortingOn),
+		slog.Bool("ascending", msg.Ascending),
+	)
 	if msg.TableARN != u.IfNotNil(m.selectedTable.TableArn, "") { // expired
+		m.logMessageTableARNMismatch("update-column-sorting", msg.TableARN)
 		return nil
 	}
-	_ = m.table.SetColumnSorting(msg.AllColumns, msg.SortingOn, msg.Ascending)
+	ok := m.table.SetColumnSorting(msg.AllColumns, msg.SortingOn, msg.Ascending)
+	m.logger.Debug("completed setting sorting", slog.Bool("success", ok))
 	m.updateKeyMaps()
 	return nil
 }
 
 // toggle column sorting dialog & provide current state (in case dialog opens)
 func (m *ItemSelectionPane) toggleColumnSortingDialog(msg tea.Msg) tea.Cmd {
+	m.logger.Debug("toggle column-sorting-dialog")
 	cols := m.table.GetColumns()
 	colsS := make([]string, 0, len(cols))
 	for _, c := range cols {
@@ -1151,15 +1264,25 @@ func (m *ItemSelectionPane) toggleColumnSortingDialog(msg tea.Msg) tea.Cmd {
 	return tea.Batch(toggle, state)
 }
 
-func (m *ItemSelectionPane) ChangeScanIndex(msg messages.ScanIndexChanged) tea.Cmd {
+func (m *ItemSelectionPane) UpdateScanIndex(msg messages.UpdateScanIndex) tea.Cmd {
+	m.logger.Debug("received update-scan-index message",
+		slog.String("index", msg.IndexName),
+	)
 	if u.IfNotNil(m.selectedTable.TableArn, "") != msg.TableARN || m.queryMode != messages.ScanMode { // expired
+		m.logger.Info("ignoring message due to table_arn or query_mode mismatch",
+			slog.String("message", "update-scan-index"),
+			slog.Bool("current_arn_not_nil", m.selectedTable.TableArn != nil),
+			slog.String("current_arn", u.IfNotNil(m.selectedTable.TableArn, "")),
+			slog.String("message_arn", msg.TableARN),
+			slog.Int("current_query_mode", int(m.queryMode)),
+		)
 		return nil
 	}
 
-	return m.changeScanIndex(msg.IndexName)
+	return m.updateScanIndex(msg.IndexName)
 }
 
-func (m *ItemSelectionPane) changeScanIndex(index string) tea.Cmd {
+func (m *ItemSelectionPane) updateScanIndex(index string) tea.Cmd {
 	reset := m.resetContents()
 
 	m.queryMode = messages.ScanMode
@@ -1177,8 +1300,25 @@ func (m *ItemSelectionPane) changeScanIndex(index string) tea.Cmd {
 	return tea.Batch(reset, m.enableScanMode(true))
 }
 
-func (m *ItemSelectionPane) ChangeQueryParameters(msg messages.QueryParametersChanged) tea.Cmd {
+func (m *ItemSelectionPane) UpdateQueryParameters(msg messages.UpdateQueryParameters) tea.Cmd {
+	m.logger.Debug("received update-query-parameters message",
+		slog.String("index", msg.IndexName),
+		slog.String("hash_key_value", msg.HashKeyValue),
+		slog.Bool("range_key_value_1_not_nil", msg.RangeKeyValue1 != nil),
+		slog.Bool("range_key_value_2_not_nil", msg.RangeKeyValue2 != nil),
+		slog.String("range_key_value_1", u.IfNotNil(msg.RangeKeyValue1, "")),
+		slog.String("range_key_value_2", u.IfNotNil(msg.RangeKeyValue2, "")),
+		slog.String("range_key_operator", string(msg.RangeKeyOperator)),
+		slog.Bool("range_order_descending", msg.RangeOrderDescending),
+	)
 	if u.IfNotNil(m.selectedTable.TableArn, "") != msg.TableARN || m.queryMode != messages.QueryMode { // expired
+		m.logger.Info("ignoring message due to table_arn or query_mode mismatch",
+			slog.String("message", "update-query-parameters"),
+			slog.Bool("current_arn_not_nil", m.selectedTable.TableArn != nil),
+			slog.String("current_arn", u.IfNotNil(m.selectedTable.TableArn, "")),
+			slog.String("message_arn", msg.TableARN),
+			slog.Int("current_query_mode", int(m.queryMode)),
+		)
 		return nil
 	}
 
@@ -1213,7 +1353,8 @@ func (m *ItemSelectionPane) changeQueryParameters(index string, hkval string, rk
 	return tea.Batch(cmds...)
 }
 
-func (m *ItemSelectionPane) copy() tea.Cmd {
+func (m *ItemSelectionPane) toggleCopyDialog() tea.Cmd {
+	m.logger.Debug("toggle copy-dialog")
 	copyDialog := func() tea.Msg {
 		return messages.ToggleColumnCopy{}
 	}
@@ -1304,6 +1445,15 @@ func (m *ItemSelectionPane) renderTableInfo() string {
 	))
 }
 
+func (m *ItemSelectionPane) logMessageTableARNMismatch(messageName, messageTableARN string) {
+	m.logger.Info("ignoring message due to outdated table_arn",
+		slog.String("message", messageName),
+		slog.Bool("current_arn_not_nil", m.selectedTable.TableArn != nil),
+		slog.String("current_arn", u.IfNotNil(m.selectedTable.TableArn, "")),
+		slog.String("message_arn", messageTableARN),
+	)
+}
+
 func ternary[T any](first T, second T, cond bool) T {
 	if cond {
 		return first
@@ -1322,7 +1472,7 @@ func primaryKeysFromSchema(s []dynamotypes.KeySchemaElement) (hash string, rang 
 	return
 }
 
-func keysFromIndex(idx *string, details types.DescribeTableResponse) []dynamotypes.KeySchemaElement {
+func keysFromIndex(idx *string, details apitypes.DescribeTableResponse) []dynamotypes.KeySchemaElement {
 	if idx == nil {
 		return details.KeySchema
 	}
@@ -1339,7 +1489,7 @@ func keysFromIndex(idx *string, details types.DescribeTableResponse) []dynamotyp
 	return details.KeySchema
 }
 
-func indexCountFromTable(indexName string, tableDetails types.DescribeTableResponse) int64 {
+func indexCountFromTable(indexName string, tableDetails apitypes.DescribeTableResponse) int64 {
 	for _, g := range tableDetails.GlobalSecondaryIndexes {
 		if *g.IndexName == indexName {
 			return *g.ItemCount
