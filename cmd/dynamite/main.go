@@ -16,6 +16,7 @@ import (
 
 	appconfig "github.com/wolfwfr/dynamite/pkg"
 	"github.com/wolfwfr/dynamite/pkg/configfile"
+	"github.com/wolfwfr/dynamite/pkg/logging"
 	"github.com/wolfwfr/dynamite/pkg/ui"
 )
 
@@ -211,10 +212,10 @@ func main() {
 				Usage:    "log-level",
 				Validator: func(s string) error {
 					switch strings.ToLower(s) {
-					case "debug", "info", "warn", "error":
+					case "trace", "debug", "info", "warn", "error":
 						return nil
 					default:
-						return fmt.Errorf("only %q supported", []string{"debug", "info", "warn", "error"})
+						return fmt.Errorf("only %q supported", []string{"trace", "debug", "info", "warn", "error"})
 
 					}
 				},
@@ -388,9 +389,11 @@ func resolveRegion(cmd *cli.Command, cfg configfile.Config) string {
 }
 
 func initialiliseLogger(cmd *cli.Command) (*slog.Logger, *os.File, error) {
-	var logging bool
+	var isLogging bool
 	var logLevel slog.Level
 	switch strings.ToLower(cmd.String(log_level_key)) {
+	case "trace":
+		logLevel = logging.LevelTrace
 	case "debug":
 		logLevel = slog.LevelDebug
 	case "info":
@@ -400,12 +403,12 @@ func initialiliseLogger(cmd *cli.Command) (*slog.Logger, *os.File, error) {
 	case "error":
 		logLevel = slog.LevelError
 	}
-	logging = cmd.Bool(log_key)
+	isLogging = cmd.Bool(log_key)
 	if cmd.Bool(debug_log_key) {
-		logging = true
-		logLevel = slog.LevelDebug
+		isLogging = true
+		logLevel = min(slog.LevelDebug, logLevel)
 	}
-	if !logging {
+	if !isLogging {
 		// noop by default
 		return slog.New(slog.NewTextHandler(io.Discard, nil)), nil, nil
 	}
@@ -419,6 +422,9 @@ func initialiliseLogger(cmd *cli.Command) (*slog.Logger, *os.File, error) {
 
 	opts := &slog.HandlerOptions{
 		Level: logLevel,
+		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+			return logging.ReplaceLevelName(a)
+		},
 	}
 	logger := slog.New(slog.NewJSONHandler(file, opts))
 	if cmd.Bool(log_text_key) {
