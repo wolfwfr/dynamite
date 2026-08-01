@@ -178,7 +178,7 @@ func NewModel(ctx context.Context, cfg appconfig.Config, opts ...Option) Model {
 	}
 
 	{ // mfa dialog
-		m.dialogs.mfa = dialogs.NewMFADialog(cfg.MFACredentialC)
+		m.dialogs.mfa = dialogs.NewMFADialog(ctx, cfg.Logger, cfg.MFACredentialC)
 	}
 
 	{ // views
@@ -189,19 +189,19 @@ func NewModel(ctx context.Context, cfg appconfig.Config, opts ...Option) Model {
 	{ // table view bound dialogs
 		tableViewDialogKeys := m.tableSelection.DialogKeyMaps()
 		m.dialogs.help = dialogs.NewHelp(m.tableSelection, m.itemselection, DialogCloseKeymapFrom(m.KeyMap.Help))
-		m.dialogs.region = dialogs.NewRegionsDialog(m.config.AvailableRegions, m.config.StarredRegions, m.config.Region, DialogCloseKeymapFrom(tableViewDialogKeys.RegionDialog))
+		m.dialogs.region = dialogs.NewRegionsDialog(ctx, cfg.Logger, m.config.AvailableRegions, m.config.StarredRegions, m.config.Region, DialogCloseKeymapFrom(tableViewDialogKeys.RegionDialog))
 	}
 
 	{ // items view bound dialogs
 		itemViewDialogKeys := m.itemselection.DialogKeyMaps()
-		m.dialogs.columnVisibility = dialogs.NewColumnVisibilityDialog(DialogCloseKeymapFrom(itemViewDialogKeys.ColumnVisibility))
-		m.dialogs.columnSorting = dialogs.NewColumnSortingDialog(DialogCloseKeymapFrom(itemViewDialogKeys.ColumnSorting))
-		m.dialogs.columnTransform = dialogs.NewTransformDialog(DialogCloseKeymapFrom(itemViewDialogKeys.ColumnTransform))
-		m.dialogs.columnWidth = dialogs.NewWidthDialog(DialogCloseKeymapFrom(itemViewDialogKeys.ColumnWidth))
-		m.dialogs.scanParams = dialogs.NewScanDialog(DialogCloseKeymapFrom(itemViewDialogKeys.ScanParams))
-		m.dialogs.queryParams = dialogs.NewQueryDialog(DialogCloseKeymapFrom(itemViewDialogKeys.QueryParams))
-		m.dialogs.filterParams = dialogs.NewFilterDialog(DialogCloseKeymapFrom(itemViewDialogKeys.FilterParams))
-		m.dialogs.copy = dialogs.NewCopyDialog(DialogCloseKeymapFrom(itemViewDialogKeys.Copy))
+		m.dialogs.columnVisibility = dialogs.NewColumnVisibilityDialog(ctx, cfg.Logger, DialogCloseKeymapFrom(itemViewDialogKeys.ColumnVisibility))
+		m.dialogs.columnSorting = dialogs.NewColumnSortingDialog(ctx, cfg.Logger, DialogCloseKeymapFrom(itemViewDialogKeys.ColumnSorting))
+		m.dialogs.columnTransform = dialogs.NewTransformDialog(ctx, cfg.Logger, DialogCloseKeymapFrom(itemViewDialogKeys.ColumnTransform))
+		m.dialogs.columnWidth = dialogs.NewWidthDialog(ctx, cfg.Logger, DialogCloseKeymapFrom(itemViewDialogKeys.ColumnWidth))
+		m.dialogs.scanParams = dialogs.NewScanDialog(ctx, cfg.Logger, DialogCloseKeymapFrom(itemViewDialogKeys.ScanParams))
+		m.dialogs.queryParams = dialogs.NewQueryDialog(ctx, cfg.Logger, DialogCloseKeymapFrom(itemViewDialogKeys.QueryParams))
+		m.dialogs.filterParams = dialogs.NewFilterDialog(ctx, cfg.Logger, DialogCloseKeymapFrom(itemViewDialogKeys.FilterParams))
+		m.dialogs.copy = dialogs.NewCopyDialog(ctx, cfg.Logger, DialogCloseKeymapFrom(itemViewDialogKeys.Copy))
 	}
 
 	return m

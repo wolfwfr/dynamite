@@ -1,7 +1,9 @@
 package dialogs
 
 import (
+	"context"
 	"fmt"
+	"log/slog"
 
 	"charm.land/bubbles/v2/help"
 	"charm.land/bubbles/v2/key"
@@ -10,12 +12,17 @@ import (
 	"charm.land/lipgloss/v2"
 
 	appconfig "github.com/wolfwfr/dynamite/pkg"
+	"github.com/wolfwfr/dynamite/pkg/logging"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/theme"
 )
 
 // the MFA dialog requests an MFA token for AWS credits
 type MFA struct {
+	ctx context.Context
+
+	logger *slog.Logger
+
 	styles mfaStyles
 
 	keyMap mfaKeyMap
@@ -70,8 +77,11 @@ func newMFAStyles() mfaStyles {
 	return s
 }
 
-func NewMFADialog(credsC chan<- appconfig.CredentialsResponse) *MFA {
-	d := &MFA{}
+func NewMFADialog(ctx context.Context, logger *slog.Logger, credsC chan<- appconfig.CredentialsResponse) *MFA {
+	d := &MFA{
+		ctx:    ctx,
+		logger: logger.With(slog.String(logging.DialogKey, "mfa")),
+	}
 
 	{ // keymap
 		d.keyMap = mfaKeyMap{

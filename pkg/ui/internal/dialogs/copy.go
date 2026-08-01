@@ -1,7 +1,9 @@
 package dialogs
 
 import (
+	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"charm.land/bubbles/v2/key"
@@ -11,6 +13,7 @@ import (
 
 	"github.com/atotto/clipboard"
 
+	"github.com/wolfwfr/dynamite/pkg/logging"
 	regular "github.com/wolfwfr/dynamite/pkg/ui/internal/components/regular_list"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/theme"
@@ -28,6 +31,10 @@ func (h copyKeyMap) ShortHelp() []key.Binding {
 
 // the CopyDialog dialog enables the user to select a column for copying its contents
 type CopyDialog struct {
+	ctx context.Context
+
+	logger *slog.Logger
+
 	selected string
 
 	keyMap copyKeyMap
@@ -79,8 +86,10 @@ func newCopyStyles(darkBG bool) copyStyles {
 	return s
 }
 
-func NewCopyDialog(close key.Binding) *CopyDialog {
+func NewCopyDialog(ctx context.Context, logger *slog.Logger, close key.Binding) *CopyDialog {
 	c := &CopyDialog{
+		ctx:    ctx,
+		logger: logger.With(slog.String(logging.DialogKey, "column-copy")),
 		keyMap: copyKeyMap{
 			close: close,
 			enter: key.NewBinding(

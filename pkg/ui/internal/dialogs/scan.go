@@ -1,13 +1,16 @@
 package dialogs
 
 import (
+	"context"
 	"fmt"
+	"log/slog"
 
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/list"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
+	"github.com/wolfwfr/dynamite/pkg/logging"
 	headed "github.com/wolfwfr/dynamite/pkg/ui/internal/components/headed_list"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/theme"
@@ -38,6 +41,10 @@ func (h scanKeyMap) ShortHelp() []key.Binding {
 
 // the ScanDialog dialog enables the user to select an index to scan
 type ScanDialog struct {
+	ctx context.Context
+
+	logger *slog.Logger
+
 	selected string
 
 	keyMap scanKeyMap
@@ -124,8 +131,10 @@ type indexItemMeta struct {
 	sliceIndex int
 }
 
-func NewScanDialog(close key.Binding) *ScanDialog {
+func NewScanDialog(ctx context.Context, logger *slog.Logger, close key.Binding) *ScanDialog {
 	r := &ScanDialog{
+		ctx:    ctx,
+		logger: logger.With(slog.String(logging.DialogKey, "scan-parameters")),
 		keyMap: scanKeyMap{
 			close: close,
 			enter: key.NewBinding(

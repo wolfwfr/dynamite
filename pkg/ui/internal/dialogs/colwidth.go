@@ -1,11 +1,15 @@
 package dialogs
 
 import (
+	"context"
+	"log/slog"
+
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/list"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
+	"github.com/wolfwfr/dynamite/pkg/logging"
 	checkbox "github.com/wolfwfr/dynamite/pkg/ui/internal/components/checkbox_list"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/theme"
@@ -49,6 +53,10 @@ func newWidthStyles(darkBG bool) widthListStyles {
 
 // the WidthDialog dialog enables the user to select a column to adjust the width
 type WidthDialog struct {
+	ctx context.Context
+
+	logger *slog.Logger
+
 	keyMap widthKeyMap
 
 	defaultDialogHeight int
@@ -75,8 +83,10 @@ type WidthDialog struct {
 	content list.Model
 }
 
-func NewWidthDialog(close key.Binding) *WidthDialog {
+func NewWidthDialog(ctx context.Context, logger *slog.Logger, close key.Binding) *WidthDialog {
 	c := &WidthDialog{
+		ctx:    ctx,
+		logger: logger.With(slog.String(logging.DialogKey, "column-width")),
 		keyMap: widthKeyMap{
 			close: close,
 			enter: key.NewBinding(

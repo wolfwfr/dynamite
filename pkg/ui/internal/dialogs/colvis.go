@@ -1,11 +1,15 @@
 package dialogs
 
 import (
+	"context"
+	"log/slog"
+
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/list"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
+	"github.com/wolfwfr/dynamite/pkg/logging"
 	checkbox "github.com/wolfwfr/dynamite/pkg/ui/internal/components/checkbox_list"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/theme"
@@ -49,6 +53,10 @@ func newColumnStyles(darkBG bool) columnsListStyles {
 // the ColumnVis dialog enables the user to enable and disable visibility of
 // individual columns
 type ColumnVis struct {
+	ctx context.Context
+
+	logger *slog.Logger
+
 	keyMap columnsKeyMap
 
 	defaultDialogHeight int
@@ -75,8 +83,10 @@ type ColumnVis struct {
 	content list.Model
 }
 
-func NewColumnVisibilityDialog(close key.Binding) *ColumnVis {
+func NewColumnVisibilityDialog(ctx context.Context, logger *slog.Logger, close key.Binding) *ColumnVis {
 	c := &ColumnVis{
+		ctx:    ctx,
+		logger: logger.With(slog.String(logging.DialogKey, "column-visibility")),
 		keyMap: columnsKeyMap{
 			close: close,
 			enter: key.NewBinding(

@@ -11,6 +11,7 @@ const (
 	ViewKey      = "view"
 	PaneKey      = "pane"
 	ComponentKey = "component"
+	DialogKey    = "dialog"
 )
 
 const logfile = "dynamite.log"

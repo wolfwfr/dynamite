@@ -1,6 +1,8 @@
 package dialogs
 
 import (
+	"context"
+	"log/slog"
 	"slices"
 	"strings"
 
@@ -13,6 +15,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 
+	"github.com/wolfwfr/dynamite/pkg/logging"
 	headed "github.com/wolfwfr/dynamite/pkg/ui/internal/components/headed_list"
 	regular "github.com/wolfwfr/dynamite/pkg/ui/internal/components/regular_list"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
@@ -64,6 +67,10 @@ type FilterStateInit struct {
 // the FilterDialog dialog enables the user to specify a filter for the scan or
 // query
 type FilterDialog struct {
+	ctx context.Context
+
+	logger *slog.Logger
+
 	focus      filterDialogFocus
 	contentIdx int
 
@@ -188,8 +195,10 @@ func newFilterStyles(darkBG bool) filterListStyles {
 	return s
 }
 
-func NewFilterDialog(close key.Binding) *FilterDialog {
+func NewFilterDialog(ctx context.Context, logger *slog.Logger, close key.Binding) *FilterDialog {
 	d := &FilterDialog{
+		ctx:    ctx,
+		logger: logger.With(slog.String(logging.DialogKey, "filter-parameters")),
 		keyMap: filterKeyMap{
 			close: close,
 			up: key.NewBinding(

@@ -1,7 +1,9 @@
 package dialogs
 
 import (
+	"context"
 	"fmt"
+	"log/slog"
 	"slices"
 
 	"charm.land/bubbles/v2/key"
@@ -9,6 +11,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
+	"github.com/wolfwfr/dynamite/pkg/logging"
 	headed "github.com/wolfwfr/dynamite/pkg/ui/internal/components/headed_list"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/theme"
@@ -26,6 +29,10 @@ func (h regionsKeyMap) ShortHelp() []key.Binding {
 
 // the Regions dialog enables the user to select an AWS-region
 type Regions struct {
+	ctx context.Context
+
+	logger *slog.Logger
+
 	available []string
 	starred   []string
 	unstarred []string
@@ -96,8 +103,10 @@ func newRegionStyles(darkBG bool) regionListStyles {
 	return s
 }
 
-func NewRegionsDialog(available, starred []string, current string, close key.Binding) *Regions {
+func NewRegionsDialog(ctx context.Context, logger *slog.Logger, available, starred []string, current string, close key.Binding) *Regions {
 	r := &Regions{
+		ctx:       ctx,
+		logger:    logger.With(slog.String(logging.DialogKey, "regions")),
 		available: available,
 		starred:   starred,
 		selected:  current,

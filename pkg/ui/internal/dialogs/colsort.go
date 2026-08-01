@@ -1,8 +1,10 @@
 package dialogs
 
 import (
+	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"strings"
 
 	"charm.land/bubbles/v2/key"
@@ -10,6 +12,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
+	"github.com/wolfwfr/dynamite/pkg/logging"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/theme"
 	u "github.com/wolfwfr/dynamite/pkg/util"
@@ -28,6 +31,10 @@ func (h columnSortingKeyMap) ShortHelp() []key.Binding {
 // the ColumnSorting dialog enables the user to select a column for sorting ASC
 // or DESC
 type ColumnSorting struct {
+	ctx context.Context
+
+	logger *slog.Logger
+
 	selected string
 
 	keyMap columnSortingKeyMap
@@ -113,8 +120,10 @@ func (d sortingItemDelegate) Render(w io.Writer, m list.Model, index int, listIt
 	fmt.Fprint(w, fn(str))
 }
 
-func NewColumnSortingDialog(close key.Binding) *ColumnSorting {
+func NewColumnSortingDialog(ctx context.Context, logger *slog.Logger, close key.Binding) *ColumnSorting {
 	c := &ColumnSorting{
+		ctx:    ctx,
+		logger: logger.With(slog.String(logging.DialogKey, "column-sorting")),
 		keyMap: columnSortingKeyMap{
 			close: close,
 			enter: key.NewBinding(

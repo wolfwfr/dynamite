@@ -1,7 +1,9 @@
 package dialogs
 
 import (
+	"context"
 	"fmt"
+	"log/slog"
 	"slices"
 
 	"charm.land/bubbles/v2/help"
@@ -11,6 +13,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
+	"github.com/wolfwfr/dynamite/pkg/logging"
 	headed "github.com/wolfwfr/dynamite/pkg/ui/internal/components/headed_list"
 	regular "github.com/wolfwfr/dynamite/pkg/ui/internal/components/regular_list"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
@@ -47,6 +50,10 @@ const (
 // the Queryialog dialog enables the user to select an index to query and
 // provide inputs for the table or index keys
 type Queryialog struct {
+	ctx context.Context
+
+	logger *slog.Logger
+
 	focus queryDialogFocus
 
 	keyMap queryKeyMap
@@ -195,8 +202,10 @@ func newQueryStyles(darkBG bool) queryListStyles {
 	return s
 }
 
-func NewQueryDialog(close key.Binding) *Queryialog {
+func NewQueryDialog(ctx context.Context, logger *slog.Logger, close key.Binding) *Queryialog {
 	d := &Queryialog{
+		ctx:    ctx,
+		logger: logger.With(slog.String(logging.DialogKey, "query-parameters")),
 		keyMap: queryKeyMap{
 			close: close,
 			enter: key.NewBinding(

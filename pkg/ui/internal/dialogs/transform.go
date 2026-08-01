@@ -1,11 +1,15 @@
 package dialogs
 
 import (
+	"context"
+	"log/slog"
+
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/list"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
+	"github.com/wolfwfr/dynamite/pkg/logging"
 	checkbox "github.com/wolfwfr/dynamite/pkg/ui/internal/components/checkbox_list"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/theme"
@@ -48,6 +52,10 @@ func newTransformStyles(darkBG bool) transformListStyles {
 // the TransformDialog dialog enables the user to select a column to apply a
 // transform to
 type TransformDialog struct {
+	ctx context.Context
+
+	logger *slog.Logger
+
 	keyMap transformKeyMap
 
 	defaultDialogHeight int
@@ -74,8 +82,10 @@ type TransformDialog struct {
 	content list.Model
 }
 
-func NewTransformDialog(close key.Binding) *TransformDialog {
+func NewTransformDialog(ctx context.Context, logger *slog.Logger, close key.Binding) *TransformDialog {
 	c := &TransformDialog{
+		ctx:    ctx,
+		logger: logger.With(slog.String(logging.DialogKey, "column-transform")),
 		keyMap: transformKeyMap{
 			close: close,
 			enter: key.NewBinding(
