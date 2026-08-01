@@ -89,11 +89,11 @@ Or build it from source:
 git clone git@github.com/wolfwfr/dynamite.git
 cd dynamite
 
-# build
-go build -o dynamite ./cmd/dynamite/
+# install
+make install
 
 # execute
-./dynamite
+dynamite
 ```
 
 <br/>
@@ -207,6 +207,8 @@ items:
   page_size: 0
 ```
 
+<br/>
+
 ### Highlighting Table Names
 
 Table names can be highlighted by matching them against regular expressions that
@@ -245,8 +247,13 @@ The above configuration will match as follows:
 ☝️ This is a work in progress and the following is required for a first release:
 
 - **Code Polish**: the code and its style require some polishing
-- **Theme Configuration**: use the config file to configure the colours to your liking
+- **Theme Polish**: dark & light theme compatibility & tweaking of theme colours
 - **README Polish**: expand the README with images and video among others
+
+✌️ Other features I have in mind are:
+
+- **Theme Configuration**: use the config file to configure the colours to your liking
+- **Keymap Configuration**: use the config file to change the keymapping
 
 <br/>
 
