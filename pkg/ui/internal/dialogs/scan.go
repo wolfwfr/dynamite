@@ -480,6 +480,10 @@ func (m *ScanDialog) renderIndexInfo() string {
 	var hash, hashType, rangType string
 	var rang *string
 
+	if len(m.content.Items()) == 0 {
+		return ""
+	}
+
 	sel, ok := m.content.SelectedItem().(headed.Item)
 	if !ok {
 		m.logger.Warn("failed to convert list item", slog.Any("item", sel))
