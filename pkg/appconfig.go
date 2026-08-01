@@ -42,9 +42,10 @@ type ViewOptionsInitialisation struct {
 }
 
 type Tables struct {
-	MaxTables    int
-	Pagesize     int
-	PrimaryWidth int
+	MaxTables       int
+	Pagesize        int
+	PrimaryWidth    int
+	HighlightRegexp []string
 }
 
 type Items struct {

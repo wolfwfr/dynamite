@@ -228,6 +228,7 @@ func (m *tableSelectionPane) Init() tea.Cmd {
 	m.cleanSlate()
 	m.lastPageKey = nil
 	m.tables = []string{}
+	m.initialiseRegex(m.config.Tables.HighlightRegexp)
 
 	// cancel any lingering calls
 	m.cancelTables()
@@ -396,15 +397,12 @@ func (m *tableSelectionPane) TableRowFieldDelegate(row table.Row, col table.Colu
 	field := row.Fields[colIdx].(enrichedField)
 
 	enforceWidth := lipgloss.NewStyle().Width(fullWidth).MaxWidth(fullWidth).Inline(true).Render
-	padding := lipgloss.NewStyle().Padding(0, 1).Render
 
-	// no special styling if not selected or no filtering is applied
-	if !selected && (!m.tablefiltering.enabled) {
-		return padding(enforceWidth(field.value))
+	segments, styles := compileMatchedStyles(field.value)
+	var style commonstyles.LineStyle
+	for i := range segments {
+		style = style.AppendStringLG(segments[i], styles[i])
 	}
-
-	// empty style to start with
-	style := commonstyles.LineStyle{}.AppendStringLG(field.value, lipgloss.NewStyle())
 
 	// add padding
 	style = style.SetRightPaddingLast(padR)

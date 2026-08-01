@@ -42,6 +42,15 @@ var (
 	QueryModeBoxAdminBg = lipgloss.Color("#0E5680")
 	HelpBoxBg           = lipgloss.Color("#042B19")
 
+	TableHighlightDefault1 = lipgloss.Color("#B0B0B0")
+	TableHighlightDefault2 = lipgloss.Color("#a7bc85")
+	TableHighlightDefault3 = lipgloss.Color("#489C7F")
+	TableHighlightDefault4 = lipgloss.Color("#B59226")
+	TableHighlightDefault5 = lipgloss.Color("#668C82")
+	TableHighlightDefault6 = lipgloss.Color("#D97604")
+	TableHighlightDefault7 = lipgloss.Color("#A18975")
+
+
 	SearchFg = lipgloss.Color("#4F4F4F")
 
 	BorderStyle = lipgloss.NewStyle().

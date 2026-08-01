@@ -176,9 +176,10 @@ func runApplication(ctx context.Context, cmd *cli.Command) error {
 		AvailableRegions: cfgf.AWSRegions,
 		StarredRegions:   cfgf.StarredRegions,
 		Tables: appconfig.Tables{
-			MaxTables:    cfgf.TablesMax,
-			Pagesize:     cfgf.TablesPageSize,
-			PrimaryWidth: cfgf.TablesPrimaryWidth,
+			MaxTables:       cfgf.TablesMax,
+			Pagesize:        cfgf.TablesPageSize,
+			PrimaryWidth:    cfgf.TablesPrimaryWidth,
+			HighlightRegexp: cfgf.TablesHighlightRegexp,
 		},
 		Items: appconfig.Items{
 			PrimaryWidth: cfgf.ItemsPrimaryWidth,

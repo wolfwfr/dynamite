@@ -196,6 +196,8 @@ tables:
   max_tables: 1000
   # page-size override, paginates tables from dynamodb with given pagesize, by default page-size depends on window-size
   page_size: 0
+  # list of strings that are parsed to regular-expressions, used to highlight table-names
+  highlight_regexp: []
 
 # settings for the item-selection-view
 items:
@@ -204,6 +206,37 @@ items:
   # page-size override, paginates items from dynamodb table with given pagesize, by default page-size depends on window-size
   page_size: 0
 ```
+
+### Highlighting Table Names
+
+Table names can be highlighted by matching them against regular expressions that
+you define in the configuration file.
+
+**how it works**
+- Expressions that fail to compile are ignored.
+- Each table name is matched against the expressions in order.
+- The first full match wins.
+- A matching expression MUST match the entire name.
+- A matching expression MUST capture each element in the name.
+- Each captured element will be uniquely highlighted.
+
+**Example**
+
+```yaml
+# <config_path>/dynamite-tui/config.yaml
+tables:
+  highlight_regexp:
+    - ^(staging|prod)(.*-service)(.*)$
+    - ^(staging|prod)(.*-api)(.*)$
+```
+
+The above configuration will match as follows:
+| table-name                        | matching expression | highlighted segments                    | number of segments |
+| --------------------------------- | ------------------- | --------------------------------------- | ------------------ |
+| `prod-happiness-service-YEF15`    | 1                   | `[prod, -happiness-service, -YEF15]`    | 3                  |
+| `staging-cataclysm-service-EFI89` | 1                   | `[staging, -cataclysm-service, -EFI89]` | 3                  |
+| `staging-chaos-api-YAK36`         | 2                   | `[staging, -chaos-service, -YAK36]`     | 3                  |
+| `NewYork-rockstar-api`            | NONE                | `[NewYork-rockstar-api]`                | 1                  |
 
 <br/>
 

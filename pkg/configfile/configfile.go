@@ -72,9 +72,10 @@ type configFile struct {
 }
 
 type TableViewSettings struct {
-	PrimaryWidth int `yaml:"primary_width_percent"`
-	MaxTables    int `yaml:"max_tables"`
-	PageSize     int `yaml:"page_size"`
+	PrimaryWidth    int      `yaml:"primary_width_percent"`
+	MaxTables       int      `yaml:"max_tables"`
+	PageSize        int      `yaml:"page_size"`
+	HighLightRegexp []string `yaml:"highlight_regexp"`
 }
 
 type ItemViewSettings struct {
@@ -83,17 +84,18 @@ type ItemViewSettings struct {
 }
 
 type Config struct {
-	AWSRegions          []string
-	StarredRegions      []string
-	DefaultRegion       string
-	LastUsedRegion      string
-	DefaultToLastRegion bool // TODO: impl
-	DefaultProfile      string
-	TablesPrimaryWidth  int
-	TablesPageSize      int
-	TablesMax           int
-	ItemsPrimaryWidth   int
-	ItemsPageSize       int
+	AWSRegions            []string
+	StarredRegions        []string
+	DefaultRegion         string
+	LastUsedRegion        string
+	DefaultToLastRegion   bool // TODO: impl
+	DefaultProfile        string
+	TablesPrimaryWidth    int
+	TablesPageSize        int
+	TablesMax             int
+	TablesHighlightRegexp []string
+	ItemsPrimaryWidth     int
+	ItemsPageSize         int
 }
 
 func defaultConfig() Config {
@@ -168,6 +170,8 @@ func mergeWithDefault(cfg configFile) Config {
 
 	res.ItemsPageSize = util.Ternary(cfg.Items.PageSize, res.ItemsPageSize, cfg.Items.PageSize > 0)
 	res.TablesPageSize = util.Ternary(cfg.Tables.PageSize, res.TablesPageSize, cfg.Tables.PageSize > 0)
+
+	res.TablesHighlightRegexp = cfg.Tables.HighLightRegexp
 
 	return res
 }
