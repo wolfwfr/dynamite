@@ -124,6 +124,10 @@ func (m *MFA) Init() tea.Cmd {
 	return nil
 }
 
+func (m *MFA) resetState() {
+	m.input.Reset()
+}
+
 func (m *MFA) Update(msg tea.Msg) tea.Cmd {
 	if msg, ok := msg.(tea.KeyPressMsg); ok {
 		switch {
@@ -151,9 +155,7 @@ func (m *MFA) cancel() tea.Cmd {
 		Token: "",
 		Error: fmt.Errorf("user canceled"),
 	}
-	return func() tea.Msg {
-		return messages.CloseMFADialog{}
-	}
+	return m.toggleDialog()
 }
 
 func (m *MFA) accept() tea.Cmd {
@@ -161,6 +163,11 @@ func (m *MFA) accept() tea.Cmd {
 		Token: m.input.Value(),
 		Error: nil,
 	}
+	return m.toggleDialog()
+}
+
+func (m *MFA) toggleDialog() tea.Cmd {
+	m.resetState()
 	return func() tea.Msg {
 		return messages.CloseMFADialog{}
 	}

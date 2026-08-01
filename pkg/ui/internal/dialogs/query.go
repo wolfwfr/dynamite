@@ -749,6 +749,7 @@ func (m *Queryialog) queryParametersUpdate() tea.Cmd {
 }
 
 func (m *Queryialog) toggleDialog() tea.Cmd {
+	m.ResetState()
 	return func() tea.Msg {
 		return messages.ToggleQueryParameters{}
 	}

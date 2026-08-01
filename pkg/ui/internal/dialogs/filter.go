@@ -634,6 +634,11 @@ func (m *FilterDialog) hasContentLineField(f filterDialogFocus, i int) bool {
 
 func (m *FilterDialog) ResetState() tea.Cmd {
 	var cmds []tea.Cmd
+	for i := range m.content { // reset inputs to ensure blink event go-routine stops
+		m.content[i].attrNameInput.Reset()
+		m.content[i].attrValueInput1.Reset()
+		m.content[i].attrValueInput2.Reset()
+	}
 	m.content = make([]filterContent, 1)
 	for i := range m.content {
 		cmds = append(cmds, m.initContentLine(i))
@@ -831,6 +836,7 @@ func (m *FilterDialog) filterParametersUpdate() tea.Cmd {
 }
 
 func (m *FilterDialog) toggleDialog() tea.Cmd {
+	m.ResetState()
 	return func() tea.Msg {
 		return messages.ToggleFilterParameters{}
 	}
