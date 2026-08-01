@@ -18,7 +18,7 @@ func ReplaceLevelName(a slog.Attr) slog.Attr {
 	if a.Key == slog.LevelKey {
 		level := a.Value.Any().(slog.Level)
 		label, exists := LevelNames[level]
-		u.Ternary(label, level.String(), exists)
+		label = u.Ternary(label, level.String(), exists)
 		a.Value = slog.StringValue(label)
 	}
 	return a
