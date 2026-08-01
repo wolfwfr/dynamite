@@ -169,7 +169,7 @@ func (p JSONParser) switchAttrValueJSON(v types.AttributeValue, hashkey string, 
 		return obj(pJSONNum(vv.Value, tokSt, numSt))
 	case *types.AttributeValueMemberNS:
 		return stringableAsListJSON(p.Styles, vv.Value, nestLevel, func(s string) (string, styles.ObjectStyle) { return obj(pJSONNum(s, tokSt, numSt)) })
-	case *types.AttributeValueMemberNULL: // TODO: ignore?
+	case *types.AttributeValueMemberNULL:
 		v := util.Ternary("NULL", "NOT NULL", vv.Value)
 		return obj(pJSONNULL(v, tokSt, nulSt))
 	case *types.AttributeValueMemberS:

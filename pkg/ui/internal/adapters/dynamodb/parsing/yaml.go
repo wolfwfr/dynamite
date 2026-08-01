@@ -141,7 +141,7 @@ func (p YAMLParser) switchAttrValueYAML(v types.AttributeValue, hashkey string, 
 		return obj(pYAMLNum(vv.Value, numSt))
 	case *types.AttributeValueMemberNS:
 		return stringableAsListYAML(p.Styles, vv.Value, nestLevel, func(s string) (string, styles.ObjectStyle) { return obj(pYAMLNum(s, numSt)) })
-	case *types.AttributeValueMemberNULL: // TODO: ignore?
+	case *types.AttributeValueMemberNULL:
 		v := util.Ternary("NULL", "NOT NULL", vv.Value)
 		return obj(pYAMLNULL(v, nulSt))
 	case *types.AttributeValueMemberS:

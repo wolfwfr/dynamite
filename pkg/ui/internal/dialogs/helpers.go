@@ -29,10 +29,10 @@ func init() {
 	var err error
 	alphanum, err = regexp.Compile("[a-zA-Z0-9]")
 	if err != nil {
-		panic(err) // TODO: log instead
+		panic(err)
 	}
 	singleChar, err = regexp.Compile("^.{1,1}$")
 	if err != nil {
-		panic(err) // TODO: log instead
+		panic(err)
 	}
 }

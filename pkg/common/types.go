@@ -37,7 +37,7 @@ func ParseDynamoAttributeType(v types.AttributeValue) DynamoDBAttributeType {
 		return DynamoDBAttributeTypeN
 	case *types.AttributeValueMemberNS:
 		return DynamoDBAttributeTypeNS
-	case *types.AttributeValueMemberNULL: // TODO: ignore?
+	case *types.AttributeValueMemberNULL:
 		return DynamoDBAttributeTypeNULL
 	case *types.AttributeValueMemberS:
 		return DynamoDBAttributeTypeS
