@@ -53,7 +53,7 @@ func TestScan(t *testing.T) {
 
 	// factory initialising a new system-under-test
 	newSUT := func(m *mocks.MockdynamodbClient) *ItemSelectionPane {
-		sut := newItemSelectionPane(context.Background(), &appconfig.Config{})
+		sut := newItemSelectionPane(context.Background(), &appconfig.Config{Logger: tu.DiscardLogger()})
 		sut.dynamodbClient = m
 		sut.config = &appconfig.Config{}
 		sut.selectedTable.TableArn = &tableARN

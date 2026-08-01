@@ -1,6 +1,8 @@
 package testutils
 
 import (
+	"io"
+	"log/slog"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -92,4 +94,8 @@ func SkipIf(t *testing.T, cond bool, msg ...any) {
 	if cond {
 		t.Skip(msg...)
 	}
+}
+
+func DiscardLogger() *slog.Logger {
+	return slog.New(slog.NewTextHandler(io.Discard, nil))
 }

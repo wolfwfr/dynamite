@@ -10,6 +10,7 @@ import (
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/components/table"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/items/internal/itemstable/viewoptions"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/items/mocks"
+	tu "github.com/wolfwfr/dynamite/test/testutils"
 )
 
 func TestSearchCallbacks(t *testing.T) {
@@ -19,7 +20,7 @@ func TestSearchCallbacks(t *testing.T) {
 
 	// factory initialising a new system-under-test
 	newSUT := func(t *testing.T) (*ItemSelectionPane, *mocks.MockitemsTable) {
-		sut := newItemSelectionPane(context.Background(), &appconfig.Config{})
+		sut := newItemSelectionPane(context.Background(), &appconfig.Config{Logger: tu.DiscardLogger()})
 		sut.selectedTable.TableArn = &tableARN
 		sut.applySize(100, 200) // required for underlying table to properly render items
 

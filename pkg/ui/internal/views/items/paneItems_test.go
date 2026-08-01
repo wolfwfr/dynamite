@@ -132,7 +132,7 @@ func TestItemSelectionPreviews(t *testing.T) {
 
 	// factory initialising a new system-under-test
 	newSUT := func() *ItemSelectionPane {
-		sut := newItemSelectionPane(context.Background(), &appconfig.Config{})
+		sut := newItemSelectionPane(context.Background(), &appconfig.Config{Logger: tu.DiscardLogger()})
 		sut.previewFormat = JSONformat
 		sut.selectedTable.TableArn = &tableARN
 		return sut
@@ -186,7 +186,7 @@ func TestItemSelectionResets(t *testing.T) {
 
 	// factory initialising a new system-under-test
 	newSUT := func(t *testing.T) (*ItemSelectionPane, *mocks.MockitemsTable) {
-		sut := newItemSelectionPane(context.Background(), &appconfig.Config{})
+		sut := newItemSelectionPane(context.Background(), &appconfig.Config{Logger: tu.DiscardLogger()})
 		sut.selectedTable.TableArn = &tableARN
 		sut.applySize(100, 200) // required for underlying table to properly render items
 
@@ -253,7 +253,7 @@ func TestItemSelectionURLResolution(t *testing.T) {
 
 	// factory initialising a new system-under-test
 	newSUT := func() *ItemSelectionPane {
-		sut := newItemSelectionPane(context.Background(), &appconfig.Config{})
+		sut := newItemSelectionPane(context.Background(), &appconfig.Config{Logger: tu.DiscardLogger()})
 		sut.selectedTable.TableArn = &tableARN
 		sut.selectedTable.TableName = &tableName
 		sut.config = &appconfig.Config{}
@@ -301,7 +301,7 @@ func TestLoadSessions(t *testing.T) {
 
 	// factory initialising a new system-under-test
 	newSUT := func(m *mocks.MockdynamodbClient) *ItemSelectionPane {
-		sut := newItemSelectionPane(context.Background(), &appconfig.Config{})
+		sut := newItemSelectionPane(context.Background(), &appconfig.Config{Logger: tu.DiscardLogger()})
 		sut.dynamodbClient = m
 		sut.selectedTable.TableArn = &tableARN1
 		sut.selectedTable.TableName = &tableName1
@@ -433,7 +433,7 @@ func TestPagination(t *testing.T) {
 
 	// factory initialising a new system-under-test
 	newSUT := func(m *mocks.MockdynamodbClient) *ItemSelectionPane {
-		sut := newItemSelectionPane(context.Background(), &appconfig.Config{})
+		sut := newItemSelectionPane(context.Background(), &appconfig.Config{Logger: tu.DiscardLogger()})
 		sut.dynamodbClient = m
 		sut.selectedTable.TableArn = &tableARN
 		sut.selectedTable.TableName = &tableName
@@ -492,7 +492,7 @@ func TestSearch(t *testing.T) {
 
 	// factory initialising a new system-under-test
 	newSUT := func(m *mocks.MockdynamodbClient) *ItemSelectionPane {
-		sut := newItemSelectionPane(context.Background(), &appconfig.Config{})
+		sut := newItemSelectionPane(context.Background(), &appconfig.Config{Logger: tu.DiscardLogger()})
 		sut.dynamodbClient = m
 		sut.selectedTable.TableArn = &tableARN
 		sut.selectedTable.TableName = &tableName
@@ -551,7 +551,7 @@ func TestReload(t *testing.T) {
 
 	// factory initialising a new system-under-test
 	newSUT := func(m *mocks.MockdynamodbClient) *ItemSelectionPane {
-		sut := newItemSelectionPane(context.Background(), &appconfig.Config{})
+		sut := newItemSelectionPane(context.Background(), &appconfig.Config{Logger: tu.DiscardLogger()})
 		sut.selectedTable.TableArn = &tableARN
 		sut.selectedTable.TableName = &tableName
 		sut.dynamodbClient = m
