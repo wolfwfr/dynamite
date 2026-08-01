@@ -203,7 +203,7 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 		scanLimit:      max(10, config.Items.PageSize),
 		queryLimit:     max(10, config.Items.PageSize),
 		pageCancel:     func() {}, // init as noop
-		table:          itemstable.NewItemsTable(),
+		table:          itemstable.NewItemsTable(ctx, config.Logger),
 		pageIgnore:     make(map[uint8]struct{}),
 	}
 
@@ -272,6 +272,7 @@ func (m *ItemSelectionPane) Init() tea.Cmd {
 
 	cmds = append(cmds, m.softReset())
 	cmds = append(cmds, m.applyCustomInitialization())
+	cmds = append(cmds, m.table.Init())
 
 	m.logger.Info("initilasation complete")
 

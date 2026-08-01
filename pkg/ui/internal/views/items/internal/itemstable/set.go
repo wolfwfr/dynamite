@@ -1,6 +1,9 @@
 package itemstable
 
 import (
+	"fmt"
+	"log/slog"
+
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/components/search"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/components/table"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/items/internal/itemstable/viewoptions"
@@ -26,6 +29,10 @@ func (t *ItemsTable) SetColumnSorting(cols []string, sortingOn string, ascending
 	// guard against mismatched states
 	tablecols := t.table.Columns()
 	if len(tablecols) != len(cols) {
+		t.logger.Warn("column length mismatch on set-column-sorting; rejecting",
+			slog.Int("len_table_columns", len(tablecols)),
+			slog.Int("len_incom_columns", len(cols)),
+		)
 		// TODO: better handling of new columns appearing in view
 		t.ResetColumnSorting()
 		return false
@@ -38,6 +45,10 @@ func (t *ItemsTable) SetColumnSorting(cols []string, sortingOn string, ascending
 		Ascending: ascending,
 		Enabled:   true,
 	}).Do(); !ok {
+		t.logger.Warn("set-column-sorting viewoptions update rejected",
+			slog.String("sorting_on", sortingOn),
+			slog.Bool("ascending", ascending),
+		)
 		return false
 	}
 
@@ -57,6 +68,10 @@ func (t *ItemsTable) SetColumnVisibility(cols []string, visible []bool) bool {
 	tablecols := t.table.Columns()
 	if len(tablecols) != len(cols) {
 		// TODO: better handling of new columns appearing in view
+		t.logger.Warn("column length mismatch on set-column-visibility; rejecting",
+			slog.Int("len_table_columns", len(tablecols)),
+			slog.Int("len_incom_columns", len(cols)),
+		)
 		t.ResetColumnVisibility()
 		return false
 	}
@@ -71,6 +86,7 @@ func (t *ItemsTable) SetColumnVisibility(cols []string, visible []bool) bool {
 
 	// ensure visibility is reset when
 	if len(invisible) == 0 {
+		t.logger.Debug("no invisible columns; resetting")
 		t.ResetColumnVisibility()
 		return false
 	}
@@ -81,6 +97,9 @@ func (t *ItemsTable) SetColumnVisibility(cols []string, visible []bool) bool {
 		Enabled:   true,
 		InVisible: invisible,
 	}).Do(); !ok {
+		t.logger.Warn("set-column-visibility viewoptions update rejected",
+			slog.Any("invisible_set", invisible),
+		)
 		return false
 	}
 
@@ -94,6 +113,7 @@ func (t *ItemsTable) SetColumnVisibility(cols []string, visible []bool) bool {
 // The function returns a boolean that indicates whether the mutation was
 // accepted and successfully applied.
 func (t *ItemsTable) SetColumnTransform(cols []string, transformed []bool) bool {
+	// ensure transform is reset when
 	// map transformed → transformedM
 	transformedM := make(map[string]struct{})
 	for i, c := range cols {
@@ -102,8 +122,8 @@ func (t *ItemsTable) SetColumnTransform(cols []string, transformed []bool) bool 
 		}
 	}
 
-	// ensure transform is reset when
-	if len(transformed) == 0 {
+	if len(transformedM) == 0 {
+		t.logger.Debug("nothing to transform; resetting")
 		t.ResetColumnTransform()
 		return false
 	}
@@ -114,6 +134,9 @@ func (t *ItemsTable) SetColumnTransform(cols []string, transformed []bool) bool 
 		Enabled:     true,
 		Transformed: transformedM,
 	}).Do(); !ok {
+		t.logger.Warn("set-column-transform viewoptions update rejected",
+			slog.Any("transformed_set", transformed),
+		)
 		return false
 	}
 
@@ -159,6 +182,11 @@ func (t *ItemsTable) SetSearchResults(col string, results []search.FilteredItem)
 		ColumnIndex:  colIdx,
 		Enabled:      true, // TODO: not set enable here
 	}).Do(); !ok {
+		t.logger.Warn("set-search viewoptions update rejected",
+			slog.String("matched_item_indices", fmt.Sprintf("%d", matchedItems)),
+			slog.Any("matched_item_runes", matchedRunes),
+			slog.Int("column_index", colIdx),
+		)
 		return false
 	}
 
@@ -173,6 +201,7 @@ func (t *ItemsTable) SetSearchResults(col string, results []search.FilteredItem)
 // underlying rows were found to be incompatible with the current state of
 // search results.
 func (t *ItemsTable) RebuildSearchResults() bool {
+	t.logger.Debug("rebuilding search results")
 	var (
 		viewopts = t.viewOptions.GetSearchResultsOptions()
 		rows     = t.table.Rows()
@@ -194,7 +223,12 @@ func (t *ItemsTable) SetColumnDynamicWidth(cols []string, dynamicWidth []bool) b
 	// guard against mismatched states
 	tablecols := t.table.Columns()
 	if len(tablecols) != len(cols) {
+		t.logger.Warn("column length mismatch on set-column-width; rejecting",
+			slog.Int("len_table_columns", len(tablecols)),
+			slog.Int("len_incom_columns", len(cols)),
+		)
 		// TODO: better handling of new columns appearing in view
+		t.ResetColumnDynWidth()
 		return false
 	}
 
@@ -208,6 +242,7 @@ func (t *ItemsTable) SetColumnDynamicWidth(cols []string, dynamicWidth []bool) b
 
 	// ensure dynamic-width is reset when no columns match
 	if len(widthM) == 0 {
+		t.logger.Debug("no widened columns; resetting")
 		t.ResetColumnDynWidth()
 		return false
 	}
@@ -218,6 +253,9 @@ func (t *ItemsTable) SetColumnDynamicWidth(cols []string, dynamicWidth []bool) b
 		Enabled:  true,
 		DynWidth: widthM,
 	}).Do(); !ok {
+		t.logger.Warn("set-column-width viewoptions update rejected",
+			slog.Any("dynamic_width_set", widthM),
+		)
 		return false
 	}
 

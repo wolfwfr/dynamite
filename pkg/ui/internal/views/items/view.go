@@ -101,9 +101,11 @@ func NewItemSelectionView(ctx context.Context, config *appconfig.Config, opts ..
 
 func (m *ItemSelection) Init() tea.Cmd {
 	m.logger.Info("initialising...")
-	cmd := m.itemsPane.Init()
+	cmds := make([]tea.Cmd, 0)
+	cmds = append(cmds, m.itemsPane.Init())
+	cmds = append(cmds, m.detailsPane.Init())
 	m.logger.Info("initialisation complete")
-	return cmd
+	return tea.Batch(cmds...)
 }
 
 // update handles the message and if it does not detect a keypress that it can

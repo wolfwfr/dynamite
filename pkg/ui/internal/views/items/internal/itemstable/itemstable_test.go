@@ -1,7 +1,10 @@
 package itemstable
 
 import (
+	"context"
 	"fmt"
+	"io"
+	"log/slog"
 	"maps"
 	"testing"
 
@@ -106,7 +109,7 @@ func genSearchResults(n int, opts ...searchGenOpts) []search.FilteredItem {
 func TestGetSelectedRow(t *testing.T) {
 	// factory initialising a new system-under-test
 	newSUT := func() *ItemsTable {
-		sut := NewItemsTable()
+		sut := NewItemsTable(context.Background(), discardLogger())
 		sut.UpdateSize(100, 200) // required for underlying table to properly render items
 
 		return sut
@@ -157,7 +160,7 @@ func TestGetSelectedRow(t *testing.T) {
 func TestCacheInvalidation(t *testing.T) {
 	// factory initialising a new system-under-test
 	newSUT := func() *ItemsTable {
-		sut := NewItemsTable()
+		sut := NewItemsTable(context.Background(), discardLogger())
 		sut.UpdateSize(100, 200) // required for underlying table to properly render items
 
 		return sut
@@ -309,7 +312,7 @@ func TestCacheInvalidation(t *testing.T) {
 func TestRowItemIndexIntegrity(t *testing.T) {
 	// factory initialising a new system-under-test
 	newSUT := func() *ItemsTable {
-		sut := NewItemsTable()
+		sut := NewItemsTable(context.Background(), discardLogger())
 		sut.UpdateSize(100, 200) // required for underlying table to properly render items
 
 		return sut
@@ -357,4 +360,8 @@ func TestRowItemIndexIntegrity(t *testing.T) {
 			assertRowIndexing(t, rows, []int{5, 4, 3, 2, 1, 0})                              // assert
 		})
 	})
+}
+
+func discardLogger() *slog.Logger {
+	return slog.New(slog.NewTextHandler(io.Discard, nil))
 }

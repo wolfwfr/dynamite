@@ -2,7 +2,9 @@ package itemstable
 
 import (
 	// "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"context"
 	"image/color"
+	"log/slog"
 
 	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 
@@ -24,8 +26,14 @@ type TableStyles struct {
 // items, including styling, and view modelations (e.g. sorting, and search)
 // TODO: consider renaming to 'Model'
 type ItemsTable struct {
+	// top-level context
+	ctx context.Context
+
 	// access to the tables current contents
 	table *table.Model
+
+	// logger
+	logger *slog.Logger
 
 	// render-cache caches row-fields rendered by the table's field-delegate
 	renderCache map[string]string

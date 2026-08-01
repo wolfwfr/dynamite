@@ -8,8 +8,9 @@ import (
 
 // logging context keys
 const (
-	ViewKey = "view"
-	PaneKey = "pane"
+	ViewKey      = "view"
+	PaneKey      = "pane"
+	ComponentKey = "component"
 )
 
 const logfile = "dynamite.log"

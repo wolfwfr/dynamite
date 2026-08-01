@@ -1,6 +1,7 @@
 package itemstable
 
 import (
+	"log/slog"
 	"strconv"
 	"strings"
 	"time"
@@ -13,8 +14,8 @@ import (
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/theme"
 )
 
-func (i *ItemsTable) CompileTransforms() []transform {
-	opts := i.viewOptions.GetColumnTransformOptions()
+func (t *ItemsTable) CompileTransforms() []transform {
+	opts := t.viewOptions.GetColumnTransformOptions()
 	if len(opts.Transformed) == 0 {
 		return make([]transform, 0)
 	}
@@ -32,7 +33,11 @@ func (i *ItemsTable) CompileTransforms() []transform {
 			v = strings.TrimSuffix(strings.TrimPrefix(v, "\""), "\"")
 			unix, err := strconv.Atoi(v)
 			if err != nil {
-				continue // TODO: debug log
+				t.logger.Warn("failed to parse field to int",
+					slog.String("field_value", v),
+					slog.Any("error", err),
+				)
+				continue
 			}
 			// NOTE: best effort distinction between unix and smaller formats
 			threshold := time.Date(1e4, time.January, 1, 0, 0, 0, 0, time.UTC).Unix()

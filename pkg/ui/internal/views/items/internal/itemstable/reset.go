@@ -2,6 +2,7 @@ package itemstable
 
 import (
 	"github.com/wolfwfr/dynamite/pkg/adapters/dynamodb/types"
+	"github.com/wolfwfr/dynamite/pkg/logging"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/components/table"
 )
 
@@ -24,6 +25,7 @@ func (t *ItemsTable) Reset() {
 // ResetColumnVisibility resets column-visibility related state parameters and
 // updates the table contents
 func (t *ItemsTable) ResetColumnVisibility() {
+	t.logger.Log(t.ctx, logging.LevelTrace, "resetting column-visibility state")
 	t.viewOptions.ResetColumnVisibilityState()
 	t.updateTable(assembleColumns(t.viewOptions, t.ColumnAttributes), nil, nil)
 }
@@ -31,6 +33,7 @@ func (t *ItemsTable) ResetColumnVisibility() {
 // ResetColumnDynWidth resets column-dynamic-width related state parameters and
 // updates the table contents
 func (t *ItemsTable) ResetColumnDynWidth() {
+	t.logger.Log(t.ctx, logging.LevelTrace, "resetting column-width state")
 	t.viewOptions.ResetColumnDynWidthState()
 	t.updateTable(assembleColumns(t.viewOptions, t.ColumnAttributes), nil, nil)
 }
@@ -38,6 +41,7 @@ func (t *ItemsTable) ResetColumnDynWidth() {
 // ResetColumnSorting resets column-sorting related state parameters and updates
 // the table contents
 func (t *ItemsTable) ResetColumnSorting() {
+	t.logger.Log(t.ctx, logging.LevelTrace, "resetting column-sorting state")
 	t.viewOptions.ResetColumnSortingState()
 	t.updateTable(assembleColumns(t.viewOptions, t.ColumnAttributes), parseRows(t.ColumnAttributes, t.Items.TableKeys, t.CompileTransforms()), nil)
 }
@@ -45,6 +49,7 @@ func (t *ItemsTable) ResetColumnSorting() {
 // ResetColumnTransform resets column-transform related state parameters and updates
 // the table contents
 func (t *ItemsTable) ResetColumnTransform() {
+	t.logger.Log(t.ctx, logging.LevelTrace, "resetting column-transform state")
 	t.viewOptions.ResetColumnTransformState()
 	t.updateTable(assembleColumns(t.viewOptions, t.ColumnAttributes), parseRows(t.ColumnAttributes, t.Items.TableKeys, t.CompileTransforms()), nil)
 	t.RebuildSearchResults() // to reflect changes in virtual rows too
@@ -53,6 +58,7 @@ func (t *ItemsTable) ResetColumnTransform() {
 // ResetSearch resets search related state parameters and updates the table
 // contents
 func (t *ItemsTable) ResetSearch() {
+	t.logger.Log(t.ctx, logging.LevelTrace, "resetting search state")
 	t.viewOptions.ResetSearchState()
 	t.table.ResetVirtualRows()
 	t.updateTable(nil, t.sortRows(t.table.Columns(), parseRows(t.ColumnAttributes, t.Items.TableKeys, t.CompileTransforms())), nil)
@@ -68,6 +74,7 @@ func (t *ItemsTable) clearCache() {
 
 // refreshCache clears the cache and then forces a rerender of rows
 func (t *ItemsTable) refreshCache() {
+	t.logger.Log(t.ctx, logging.LevelTrace, "refreshing cache")
 	t.clearCache()
 	t.table.UpdateContent()
 }

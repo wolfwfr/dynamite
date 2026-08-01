@@ -1,19 +1,22 @@
 package itemstable
 
 import (
+	"context"
+	"log/slog"
 	"slices"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
 	apitypes "github.com/wolfwfr/dynamite/pkg/adapters/dynamodb/types"
+	"github.com/wolfwfr/dynamite/pkg/logging"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/components/table"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/theme"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/items/internal/itemstable/viewoptions"
 	u "github.com/wolfwfr/dynamite/pkg/util"
 )
 
-func NewItemsTable() *ItemsTable {
+func NewItemsTable(ctx context.Context, l *slog.Logger) *ItemsTable {
 	m := ItemsTable{}
 
 	// m.state.ColumnVisibility.InVisible = map[string]struct{}{}
@@ -45,13 +48,18 @@ func NewItemsTable() *ItemsTable {
 		m.styles = st
 	}
 
+	m.ctx = ctx
+	m.logger = l.With(slog.String(logging.ComponentKey, "items-table"))
+
 	m.renderCache = map[string]string{}
 
 	return &m
 }
 
 func (t *ItemsTable) Init() tea.Cmd {
+	t.logger.Info("initialising...")
 	t.renderCache = map[string]string{}
+	t.logger.Info("initialised")
 	return nil
 }
 
@@ -107,6 +115,11 @@ func (t *ItemsTable) GetKeyMap() *table.KeyMap {
 // AddItems processes dynamo-db items and appends them to the table contents,
 // applying all active modulations and updating the table as required.
 func (t *ItemsTable) AddItems(items apitypes.Items, hasRangeKey bool) {
+	t.logger.Debug("adding items",
+		slog.Int("incoming_len", len(items.Raw)),
+		slog.Int("existing_len", len(t.Items.Raw)),
+		slog.Bool("with_range_key", hasRangeKey),
+	)
 	t.appendItems(items)
 	if len(items.TableKeys) <= 0 {
 		return
