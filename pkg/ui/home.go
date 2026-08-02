@@ -14,7 +14,6 @@ import (
 
 	appconfig "github.com/wolfwfr/dynamite/pkg"
 	"github.com/wolfwfr/dynamite/pkg/aws"
-	"github.com/wolfwfr/dynamite/pkg/aws/dynamodb"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/dialogs"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/theme"
@@ -235,7 +234,7 @@ func (m Model) Init() tea.Cmd {
 	}
 
 	// set and reinitialise
-	m.config.Client = dynamodb.NewClient(cfg, m.config.URL)
+	m.config.Client = aws.NewDynamoDBClient(cfg, m.config.URL)
 	cmds = append(cmds, m.tableSelection.Init())
 	cmds = append(cmds, m.itemselection.Init())
 
