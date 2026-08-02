@@ -111,7 +111,7 @@ func NewRegionsDialog(ctx context.Context, logger *slog.Logger, available, starr
 		starred:   starred,
 		selected:  current,
 
-		styles: newRegionStyles(true),
+		styles: newRegionStyles(theme.DarkTheme),
 
 		keyMap: regionsKeyMap{
 			close: close,
@@ -150,7 +150,7 @@ func NewRegionsDialog(ctx context.Context, logger *slog.Logger, available, starr
 
 	r.content = l
 	r.updateSize()
-	r.updateStyles(true) // default to dark styles.
+	r.updateStyles(theme.DarkTheme)
 
 	return r
 }

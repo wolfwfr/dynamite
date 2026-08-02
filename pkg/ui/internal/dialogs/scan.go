@@ -147,7 +147,7 @@ func NewScanDialog(ctx context.Context, logger *slog.Logger, close key.Binding) 
 		defaultDialogWidth:  55,
 	}
 
-	r.styles = newscanStyles(true)
+	r.styles = newscanStyles(theme.DarkTheme)
 
 	r.dialog.width = r.defaultDialogWidth
 	r.dialog.height = r.defaultDialogHeight
@@ -172,7 +172,7 @@ func NewScanDialog(ctx context.Context, logger *slog.Logger, close key.Binding) 
 
 	r.content = l
 	r.updateSize()
-	r.updateStyles(true) // default to dark styles.
+	r.updateStyles(theme.DarkTheme)
 
 	return r
 }

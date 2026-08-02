@@ -140,7 +140,7 @@ func NewColumnSortingDialog(ctx context.Context, logger *slog.Logger, close key.
 		defaultDialogWidth:  66,
 	}
 
-	c.styles = newColumnSortingStyles(true)
+	c.styles = newColumnSortingStyles(theme.DarkTheme)
 
 	c.dialog.width = c.defaultDialogWidth
 	c.dialog.height = c.defaultDialogHeight
@@ -168,7 +168,7 @@ func NewColumnSortingDialog(ctx context.Context, logger *slog.Logger, close key.
 		c.content = l
 	}
 
-	c.updateStyles(true) // default to dark styles.
+	c.updateStyles(theme.DarkTheme)
 	c.updateSize()
 
 	return c

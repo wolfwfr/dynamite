@@ -7,6 +7,10 @@ import (
 // TODO: enable configurability through config file
 // TODO: prepare basic dark & light theme
 
+var (
+	DarkTheme bool = false
+)
+
 // primary palette
 var (
 	TerminalDefaultColour = lipgloss.Color("") // empty

@@ -106,7 +106,7 @@ func NewColumnVisibilityDialog(ctx context.Context, logger *slog.Logger, close k
 		defaultDialogWidth:  66,
 	}
 
-	c.styles = newColumnStyles(true)
+	c.styles = newColumnStyles(theme.DarkTheme)
 
 	c.dialog.width = c.defaultDialogWidth
 	c.dialog.height = c.defaultDialogHeight
@@ -134,7 +134,7 @@ func NewColumnVisibilityDialog(ctx context.Context, logger *slog.Logger, close k
 
 	}
 
-	c.updateStyles(true) // default to dark styles.
+	c.updateStyles(theme.DarkTheme)
 	c.updateSize()
 
 	return c

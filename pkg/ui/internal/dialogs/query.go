@@ -233,7 +233,7 @@ func NewQueryDialog(ctx context.Context, logger *slog.Logger, close key.Binding)
 		help: help.New(),
 	}
 
-	d.styles = newQueryStyles(true)
+	d.styles = newQueryStyles(theme.DarkTheme)
 
 	d.dialog.width = d.defaultDialogWidth
 	d.dialog.height = d.defaultDialogHeight
@@ -288,7 +288,7 @@ func NewQueryDialog(ctx context.Context, logger *slog.Logger, close key.Binding)
 	}
 
 	d.updateSize()
-	d.updateStyles(true) // default to dark styles.
+	d.updateStyles(theme.DarkTheme)
 
 	return d
 }

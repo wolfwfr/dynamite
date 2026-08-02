@@ -240,7 +240,7 @@ func NewFilterDialog(ctx context.Context, logger *slog.Logger, close key.Binding
 
 	d.focus = -1
 
-	d.styles = newFilterStyles(true)
+	d.styles = newFilterStyles(theme.DarkTheme)
 
 	d.dialog.width = d.defaultDialogWidth
 	d.dialog.height = d.defaultDialogHeight
@@ -253,7 +253,7 @@ func NewFilterDialog(ctx context.Context, logger *slog.Logger, close key.Binding
 	d.InitContent()
 
 	d.updateSize()
-	d.updateStyles(true) // default to dark styles.
+	d.updateStyles(theme.DarkTheme)
 
 	return d
 }

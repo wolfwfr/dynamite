@@ -110,7 +110,7 @@ func NewWidthDialog(ctx context.Context, logger *slog.Logger, close key.Binding)
 		defaultDialogWidth:  66,
 	}
 
-	c.styles = newWidthStyles(true)
+	c.styles = newWidthStyles(theme.DarkTheme)
 
 	c.dialog.width = c.defaultDialogWidth
 	c.dialog.height = c.defaultDialogHeight
@@ -138,7 +138,7 @@ func NewWidthDialog(ctx context.Context, logger *slog.Logger, close key.Binding)
 
 	}
 
-	c.updateStyles(true) // default to dark styles.
+	c.updateStyles(theme.DarkTheme)
 	c.updateSize()
 
 	return c

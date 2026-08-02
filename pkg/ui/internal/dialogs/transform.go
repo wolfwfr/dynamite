@@ -101,7 +101,7 @@ func NewTransformDialog(ctx context.Context, logger *slog.Logger, close key.Bind
 		defaultDialogWidth:  66,
 	}
 
-	c.styles = newTransformStyles(true)
+	c.styles = newTransformStyles(theme.DarkTheme)
 
 	c.dialog.width = c.defaultDialogWidth
 	c.dialog.height = c.defaultDialogHeight
@@ -129,7 +129,7 @@ func NewTransformDialog(ctx context.Context, logger *slog.Logger, close key.Bind
 
 	}
 
-	c.updateStyles(true) // default to dark styles.
+	c.updateStyles(theme.DarkTheme)
 	c.updateSize()
 
 	return c
