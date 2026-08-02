@@ -208,6 +208,7 @@ func newTableSelectionPane(ctx context.Context, config *appconfig.Config, opts .
 }
 
 func (m *tableSelectionPane) updateStyles() {
+	m.logger.Debug("updating styles")
 	s := table.DefaultStyles()
 	s.Header = s.Header.
 		Foreground(theme.TableHeaderFg).

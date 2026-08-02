@@ -91,6 +91,7 @@ func newDetailsPane(ctx context.Context, config *appconfig.Config, opts ...detai
 }
 
 func (m *detailsPane) updateStyles() {
+	m.logger.Debug("updating styles")
 	m.styles = detailsStyles{
 		headerStyle:    lipgloss.NewStyle().Bold(true).Foreground(theme.ViewFocusBorderColour).PaddingBottom(1),
 		fieldNameStyle: lipgloss.NewStyle().Foreground(theme.SubtleColour1), //.Bold(true),

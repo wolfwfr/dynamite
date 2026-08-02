@@ -231,6 +231,7 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 }
 
 func (m *ItemSelectionPane) updateStyles() tea.Cmd {
+	m.logger.Debug("updating styles")
 	cmds := make([]tea.Cmd, 0)
 	cmds = append(cmds, m.softReset()) // not supporting in-place theme updates
 	// TODO: move theme package up and do not inject styles into adapter
