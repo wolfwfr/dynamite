@@ -180,14 +180,14 @@ func withItemsPaneKeys(keys keymaps.AdditionalKeys) itemsPaneOption {
 
 func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ...itemsPaneOption) *ItemSelectionPane {
 	st := apitypes.ObjectStyling{ // styling for dynamodb-adapter object parsing
-		FieldNameColor: theme.FieldNameColour,
-		NumberColor:    theme.NumberColour,
-		BoolColor:      theme.BoolColour,
-		BytesColor:     theme.BytesColour,
-		NULLColor:      theme.NULLColour,
-		StringColor:    theme.StringColour,
-		TokenColor:     theme.TokenColour,
-		ErrorColor:     theme.ErrorColour,
+		FieldNameColor: theme.FieldNameFg,
+		NumberColor:    theme.NumberFg,
+		BoolColor:      theme.BoolFg,
+		BytesColor:     theme.BytesFg,
+		NULLColor:      theme.NULLFg,
+		StringColor:    theme.StringFg,
+		TokenColor:     theme.TokenFg,
+		ErrorColor:     theme.ErrorFg,
 	}
 
 	p := &ItemSelectionPane{

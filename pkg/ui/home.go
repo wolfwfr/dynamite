@@ -47,6 +47,7 @@ const (
 )
 
 var regionBlock = lipgloss.NewStyle().
+	Foreground(theme.BoxFg).
 	Background(theme.RegionBoxBg).
 	Align(lipgloss.Left, lipgloss.Top).
 	Padding(0, 1, 0, 1).
@@ -54,6 +55,7 @@ var regionBlock = lipgloss.NewStyle().
 	Height(1)
 
 var queryModeBlock = lipgloss.NewStyle().
+	Foreground(theme.BoxFg).
 	Background(theme.QueryModeBoxScanBg).
 	Align(lipgloss.Left, lipgloss.Top).
 	Padding(0, 1, 0, 1).
@@ -61,6 +63,7 @@ var queryModeBlock = lipgloss.NewStyle().
 	Height(1)
 
 var filterModeBlock = lipgloss.NewStyle().
+	Foreground(theme.BoxFg).
 	Background(theme.FilterBoxBg).
 	Align(lipgloss.Left, lipgloss.Top).
 	Padding(0, 1, 0, 1).
@@ -69,6 +72,7 @@ var filterModeBlock = lipgloss.NewStyle().
 
 var pageSuspendBlock = lipgloss.NewStyle().
 	Strikethrough(true).
+	Foreground(theme.BoxFg).
 	Background(theme.PageSuspendBoxBg).
 	Align(lipgloss.Left, lipgloss.Top).
 	Padding(0, 1, 0, 1).
@@ -76,6 +80,7 @@ var pageSuspendBlock = lipgloss.NewStyle().
 	Height(1)
 
 var helpBlock = lipgloss.NewStyle().
+	Foreground(theme.BoxFg).
 	Background(theme.HelpBoxBg).
 	Foreground(theme.SubtleColour2).
 	Align(lipgloss.Left, lipgloss.Top).

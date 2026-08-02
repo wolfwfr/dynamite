@@ -140,8 +140,9 @@ func newTableSelectionPane(ctx context.Context, config *appconfig.Config, opts .
 		)
 		s := table.DefaultStyles()
 		s.Header = s.Header.
+			Foreground(theme.TableHeaderFg).
 			BorderStyle(lipgloss.NormalBorder()).
-			BorderForeground(theme.TableDefaultFg).
+			BorderForeground(theme.TableBorderFg).
 			BorderBottom(true).
 			Bold(false)
 		s.Selected = s.Selected.

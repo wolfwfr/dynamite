@@ -163,11 +163,11 @@ func newQueryStyles(darkBG bool) queryListStyles {
 
 	s.Item = lipgloss.NewStyle().PaddingLeft(4)
 	s.SelectedItem = lipgloss.NewStyle().PaddingLeft(2).Foreground(theme.DialogFocusColour)
-	s.Header = lipgloss.NewStyle().Foreground(theme.SubtleColour)
+	s.Header = lipgloss.NewStyle().Foreground(theme.SubtleColour1)
 
 	s.dialog = theme.DialogStyle
 	s.operatordialog = theme.DialogStyle.Border(lipgloss.RoundedBorder()).Padding(3, 3, 0, 0)
-	s.title = lipgloss.NewStyle().Padding(1, 0, 2, 0)
+	s.title = lipgloss.NewStyle().Foreground(theme.TitleFG).Padding(1, 0, 2, 0)
 	s.content = lipgloss.NewStyle().PaddingTop(1).PaddingBottom(2)
 	s.help = list.DefaultStyles(darkBG).HelpStyle.Padding(1, 2, 0, 2)
 	s.helpLine = lipgloss.NewStyle().PaddingBottom(1)
@@ -181,9 +181,9 @@ func newQueryStyles(darkBG bool) queryListStyles {
 	s.wideBoxFocused = s.wideBox.BorderForeground(theme.DialogFocusColour)
 
 	// inputs fields
-	s.hashKeyInputTitle = lipgloss.NewStyle().PaddingLeft(1).Foreground(theme.SubtleColour)
-	s.rangeKeyInputTitle = lipgloss.NewStyle().PaddingLeft(1).Foreground(theme.SubtleColour).Padding(1, 0, 0, 0)
-	s.rangeKeyOrderTitle = lipgloss.NewStyle().PaddingLeft(1).Foreground(theme.SubtleColour).Padding(1, 0, 0, 0)
+	s.hashKeyInputTitle = lipgloss.NewStyle().PaddingLeft(1).Foreground(theme.SubtleColour1)
+	s.rangeKeyInputTitle = lipgloss.NewStyle().PaddingLeft(1).Foreground(theme.SubtleColour1).Padding(1, 0, 0, 0)
+	s.rangeKeyOrderTitle = lipgloss.NewStyle().PaddingLeft(1).Foreground(theme.SubtleColour1).Padding(1, 0, 0, 0)
 
 	// query button
 	s.applyButton = lipgloss.NewStyle().Border(lipgloss.DoubleBorder()).BorderForeground(theme.DialogUnfocusColour).Padding(0, 2, 0, 2).Margin(1, 0, 1, 0)

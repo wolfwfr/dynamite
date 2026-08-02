@@ -49,7 +49,7 @@ func (t *ItemsTable) CompileTransforms() []transform {
 			}
 			u := time.Unix(int64(unix), 0)
 			tr := u.Format("2006-01-02 15:04:05 Z07:00") // TODO: support custom formats
-			st := styles.LineStyle{}.AppendStringLG(tr, lipgloss.NewStyle().Foreground(theme.TimestampColour))
+			st := styles.LineStyle{}.AppendStringLG(tr, lipgloss.NewStyle().Foreground(theme.TimestampFg))
 			row.Fields[i] = EnrichedField{
 				RawValue: tr,
 				Style:    &st,

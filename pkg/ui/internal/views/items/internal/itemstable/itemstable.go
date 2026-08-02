@@ -29,8 +29,9 @@ func NewItemsTable(ctx context.Context, l *slog.Logger) *ItemsTable {
 		)
 		s := table.DefaultStyles()
 		s.Header = s.Header.
+			Foreground(theme.TableHeaderFg).
 			BorderStyle(lipgloss.NormalBorder()).
-			BorderForeground(theme.TableDefaultFg).
+			BorderForeground(theme.TableBorderFg).
 			BorderBottom(true).
 			Bold(false)
 		s.Selected = s.Selected.

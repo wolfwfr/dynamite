@@ -7,17 +7,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/google/uuid"
-
-	"github.com/wolfwfr/dynamite/pkg/ui/internal/theme"
-)
-
-var (
-	SearchBoxStyle = lipgloss.NewStyle().
-		Align(lipgloss.Left, lipgloss.Center).
-		BorderStyle(lipgloss.RoundedBorder()).
-		BorderForeground(theme.SearchFg).
-		PaddingLeft(2).
-		Height(2)
 )
 
 type SearchCallbacks struct {

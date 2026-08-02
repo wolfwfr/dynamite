@@ -79,7 +79,7 @@ func newDetailsPane(ctx context.Context, config *appconfig.Config, opts ...detai
 
 	p.styles = detailsStyles{
 		headerStyle:    lipgloss.NewStyle().Bold(true).Foreground(theme.ViewFocusBorderColour).PaddingBottom(1),
-		fieldNameStyle: lipgloss.NewStyle().Foreground(theme.SubtleColour), //.Bold(true),
+		fieldNameStyle: lipgloss.NewStyle().Foreground(theme.SubtleColour1), //.Bold(true),
 	}
 
 	for _, o := range opts {

@@ -70,8 +70,8 @@ type mfaStyles struct {
 func newMFAStyles() mfaStyles {
 	s := mfaStyles{}
 	s.dialogStyle = theme.DialogStyle
-	s.title = lipgloss.NewStyle().Padding(1, 0, 1, 0)
-	s.desc = lipgloss.NewStyle().Padding(1, 0, 1, 0).Foreground(theme.SubtleColour)
+	s.title = lipgloss.NewStyle().Foreground(theme.TitleFG).Padding(1, 0, 1, 0)
+	s.desc = lipgloss.NewStyle().Padding(1, 0, 1, 0).Foreground(theme.SubtleColour1)
 	s.helpLine = lipgloss.NewStyle().Padding(1, 4, 0, 4)
 	s.inputBox = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(theme.DialogFocusColour)
 	return s

@@ -79,7 +79,7 @@ func newCopyStyles(darkBG bool) copyStyles {
 	s.SelectedItem = lipgloss.NewStyle().PaddingLeft(2).Foreground(theme.DialogFocusColour)
 
 	s.dialog = theme.DialogStyle
-	s.title = lipgloss.NewStyle().Padding(1, 0, 2, 0)
+	s.title = lipgloss.NewStyle().Foreground(theme.TitleFG).Padding(1, 0, 2, 0)
 	s.content = lipgloss.NewStyle().Padding(1, 0, 2, 0)
 	s.help = list.DefaultStyles(darkBG).HelpStyle.Padding(1, 2, 0, 2)
 	s.helpLine = lipgloss.NewStyle().PaddingBottom(1)

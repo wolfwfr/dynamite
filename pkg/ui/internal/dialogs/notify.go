@@ -105,7 +105,7 @@ func (m *NotificationDialog) newStyles() {
 	s.dialogStyle = theme.DialogStyle.Align(lipgloss.Left, lipgloss.Center)
 	s.messageStyle = lipgloss.NewStyle()
 	s.errorStyle = lipgloss.NewStyle()
-	s.dividerStyle = lipgloss.NewStyle().Foreground(theme.SubtleColour3)
+	s.dividerStyle = lipgloss.NewStyle().Foreground(theme.SubtleColour4)
 	s.progressStyle = lipgloss.NewStyle().PaddingTop(1)
 	m.styles = s
 }

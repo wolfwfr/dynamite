@@ -77,7 +77,7 @@ type sortingListStyles struct {
 func newColumnSortingStyles(darkBG bool) sortingListStyles {
 	var s sortingListStyles
 	s.dialog = theme.DialogStyle
-	s.title = lipgloss.NewStyle().Padding(1, 0, 2, 0)
+	s.title = lipgloss.NewStyle().Foreground(theme.TitleFG).Padding(1, 0, 2, 0)
 	s.content = lipgloss.NewStyle().Padding(1, 0, 2, 0)
 	s.item = lipgloss.NewStyle().PaddingLeft(4)
 	s.selectedItem = lipgloss.NewStyle().PaddingLeft(2).Foreground(theme.DialogFocusColour)

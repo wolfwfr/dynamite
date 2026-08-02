@@ -153,12 +153,12 @@ func newFilterStyles(darkBG bool) filterListStyles {
 
 	s.Item = lipgloss.NewStyle().PaddingLeft(4)
 	s.SelectedItem = lipgloss.NewStyle().PaddingLeft(2).Foreground(theme.DialogFocusColour)
-	s.Header = lipgloss.NewStyle().Foreground(theme.SubtleColour)
+	s.Header = lipgloss.NewStyle().Foreground(theme.SubtleColour1)
 
 	s.dialog = theme.DialogStyle
 	s.operatordialog = theme.DialogStyle.Border(lipgloss.RoundedBorder()).Padding(3, 3, 0, 0)
 	s.attrTypeDialog = theme.DialogStyle.Border(lipgloss.RoundedBorder()).Padding(3, 3, 0, 0)
-	s.title = lipgloss.NewStyle().Padding(1, 0, 2, 0)
+	s.title = lipgloss.NewStyle().Foreground(theme.TitleFG).Padding(1, 0, 2, 0)
 	s.content = lipgloss.NewStyle().PaddingTop(1).PaddingBottom(2)
 	s.contentLine = lipgloss.NewStyle().PaddingTop(1)
 	s.help = list.DefaultStyles(darkBG).HelpStyle.Padding(1, 2, 0, 2)
@@ -176,10 +176,10 @@ func newFilterStyles(darkBG bool) filterListStyles {
 	s.ignored = lipgloss.NewStyle().Foreground(theme.DialogUnfocusColour).Padding(1, 1, 0, 1)
 
 	// inputs fields
-	s.AttrNameInputTitle = lipgloss.NewStyle().Foreground(theme.SubtleColour).Padding(0, 0, 0, 1)
-	s.AttrValueInputTitle = lipgloss.NewStyle().Foreground(theme.SubtleColour).Padding(0, 0, 0, 1)
-	s.AttrTypeTitle = lipgloss.NewStyle().Foreground(theme.SubtleColour).Padding(0, 0, 0, 1)
-	s.OperatorTitle = lipgloss.NewStyle().Foreground(theme.SubtleColour).Padding(0, 0, 0, 1)
+	s.AttrNameInputTitle = lipgloss.NewStyle().Foreground(theme.SubtleColour1).Padding(0, 0, 0, 1)
+	s.AttrValueInputTitle = lipgloss.NewStyle().Foreground(theme.SubtleColour1).Padding(0, 0, 0, 1)
+	s.AttrTypeTitle = lipgloss.NewStyle().Foreground(theme.SubtleColour1).Padding(0, 0, 0, 1)
+	s.OperatorTitle = lipgloss.NewStyle().Foreground(theme.SubtleColour1).Padding(0, 0, 0, 1)
 
 	// remove button
 	s.removeButton = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(theme.DialogUnfocusColour).Padding(0, 2, 0, 2).Margin(0, 0, 1, 0)
