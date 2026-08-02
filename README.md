@@ -279,7 +279,6 @@ The above configuration will match as follows:
 
 ✌️ Other features I have in mind are:
 
-- **Theme Configuration**: use the config file to configure the colours to your liking
 - **Keymap Configuration**: use the config file to change the keymapping
 
 <br/>
