@@ -10,6 +10,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
+	"github.com/wolfwfr/dynamite/pkg/theme"
 	"github.com/wolfwfr/dynamite/pkg/util"
 )
 
@@ -67,8 +68,9 @@ type configFile struct {
 	// tables will be paged in automatically on boot. To prevent excessive
 	// calls, we specify a limit on how many pages (size of 100) can be
 	// retrieved. This parameter specifies the number of tables, not pages.
-	Tables TableViewSettings `yaml:"tables"`
-	Items  ItemViewSettings  `yaml:"items"`
+	Tables         TableViewSettings    `yaml:"tables"`
+	Items          ItemViewSettings     `yaml:"items"`
+	ThemeOverrides theme.ThemeOverrides `yaml:"colors"`
 }
 
 type TableViewSettings struct {
@@ -96,6 +98,7 @@ type Config struct {
 	TablesHighlightRegexp []string
 	ItemsPrimaryWidth     int
 	ItemsPageSize         int
+	ThemeOverrides        theme.ThemeOverrides
 }
 
 func defaultConfig() Config {
@@ -172,6 +175,7 @@ func mergeWithDefault(cfg configFile) Config {
 	res.TablesPageSize = util.Ternary(cfg.Tables.PageSize, res.TablesPageSize, cfg.Tables.PageSize > 0)
 
 	res.TablesHighlightRegexp = cfg.Tables.HighLightRegexp
+	res.ThemeOverrides = cfg.ThemeOverrides
 
 	return res
 }

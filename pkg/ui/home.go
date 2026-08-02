@@ -401,11 +401,13 @@ func (m Model) routeToActiveOnly(msg tea.Msg) (Model, tea.Cmd) {
 
 func (m Model) updateTheme(msg tea.BackgroundColorMsg) (Model, tea.Cmd) {
 	theme.UpdateTheme(msg.IsDark(), m.config.ThemeOverrides)
+
 	regionBlock = regionBlock.Foreground(theme.BoxFg).Background(theme.RegionBoxBg)
 	queryModeBlock = queryModeBlock.Foreground(theme.BoxFg).Background(theme.QueryModeBoxScanBg)
 	filterModeBlock = filterModeBlock.Foreground(theme.BoxFg).Background(theme.FilterBoxBg)
 	pageSuspendBlock = pageSuspendBlock.Foreground(theme.BoxFg).Background(theme.RegionBoxBg)
 	helpBlock = helpBlock.Foreground(theme.BoxFg).Background(theme.HelpBoxBg)
+
 	return m, nil
 }
 

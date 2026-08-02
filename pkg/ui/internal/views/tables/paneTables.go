@@ -690,7 +690,7 @@ func (m *tableSelectionPane) View() string {
 	content := u.Ternary(m.content.View(), m.noContentMessage(), len(m.content.Rows()) > 0)
 	rendering := []string{content, m.search.View()}
 	if m.spinner.active {
-		rendering = slices.Insert(rendering, 1, fmt.Sprintf("%s %s", m.spinner.model.View(), m.spinner.text))
+		rendering = slices.Insert(rendering, 1, fmt.Sprintf("%s %s", m.spinner.model.View(), m.spinner.textStyle.Render(m.spinner.text)))
 	}
 	return lipgloss.JoinVertical(lipgloss.Left, rendering...)
 }

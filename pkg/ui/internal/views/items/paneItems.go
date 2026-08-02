@@ -1424,7 +1424,7 @@ func (m *ItemSelectionPane) View() string {
 	content = ternary(content, m.noContentMessage(), !emptyContent(content))
 	rendering := []string{info, content, m.search.View()}
 	if m.spinner.active {
-		rendering = slices.Insert(rendering, 2, fmt.Sprintf("%s %s", m.spinner.model.View(), m.spinner.text))
+		rendering = slices.Insert(rendering, 2, fmt.Sprintf("%s %s", m.spinner.model.View(), m.spinner.textStyle.Render(m.spinner.text)))
 	}
 	return lipgloss.JoinVertical(lipgloss.Left, rendering...)
 }

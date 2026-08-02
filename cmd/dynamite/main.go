@@ -302,6 +302,7 @@ func runApplication(ctx context.Context, cmd *cli.Command) error {
 				RangeDescending:  resolveQueryRangeOrder(cmd),
 			},
 		},
+		ThemeOverrides: cfgf.ThemeOverrides,
 	}
 
 	logger.Info("New DYNAMITE session")

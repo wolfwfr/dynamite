@@ -4,14 +4,10 @@ import (
 	"image/color"
 
 	"charm.land/lipgloss/v2"
-	"github.com/wolfwfr/dynamite/pkg/common"
 )
 
-// TODO: enable configurability through config file
-// TODO: prepare basic dark & light theme
-
 func init() {
-	UpdateTheme(DarkTheme, common.ThemeOverrides{})
+	UpdateTheme(DarkTheme, ThemeOverrides{})
 }
 
 var (
@@ -21,7 +17,7 @@ var (
 
 // UpdateTheme updates colours in response to a `tea.BackgroundColorMsg`. It
 // will not touch any colours that have been overridden by the user.
-func UpdateTheme(isDark bool, overrides common.ThemeOverrides) {
+func UpdateTheme(isDark bool, overrides ThemeOverrides) {
 	DarkTheme = isDark
 
 	// func(light_theme_colour, dark_theme_colour)
@@ -38,6 +34,13 @@ func UpdateTheme(isDark bool, overrides common.ThemeOverrides) {
 	AccentBlue = choose(c("#17B2FF"), c("#2381CF"))
 	AccentFadedBlue = choose(c("#95A0BA"), c("#415278"))
 	AccentDarkBlue = choose(c("#8A9FBA"), c("#244673"))
+
+	// NOTE: applying early here because primary palette can be referenced later on
+	overrides.apply()
+
+	// WARN: non-primary-palette colours can ONLY reference primary-palette
+	// colours, or define unique ones. This is required to ensure overrides are
+	// applied correctly.
 
 	// dialog
 	DialogFocusColour = AccentOrange
@@ -97,6 +100,9 @@ func UpdateTheme(isDark bool, overrides common.ThemeOverrides) {
 	TableHighlightDefault5 = choose(c("#145C49"), c("#668C82"))
 	TableHighlightDefault6 = choose(c("#804504"), c("#D97604"))
 	TableHighlightDefault7 = choose(c("#7C6755"), c("#A18975"))
+
+	// apply again to ensure all overrides are applied
+	overrides.apply()
 
 	BorderStyle = BorderStyle.
 		Align(lipgloss.Left, lipgloss.Top).

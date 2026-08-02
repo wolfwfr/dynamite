@@ -4,8 +4,7 @@ import (
 	"log/slog"
 
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
-
-	"github.com/wolfwfr/dynamite/pkg/common"
+	"github.com/wolfwfr/dynamite/pkg/theme"
 )
 
 type Config struct {
@@ -30,7 +29,7 @@ type Config struct {
 	Initialisation Initialisation
 
 	// theme overrides
-	ThemeOverrides common.ThemeOverrides
+	ThemeOverrides theme.ThemeOverrides
 }
 
 type Initialisation struct {
