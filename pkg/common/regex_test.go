@@ -1,4 +1,4 @@
-package dialogs
+package common
 
 import (
 	"testing"
@@ -8,11 +8,11 @@ import (
 
 func TestSingleCharMatch(t *testing.T) {
 	t.Run("matches against single character", func(t *testing.T) {
-		res := singleChar.Match([]byte("q"))
+		res := SingleChar.Match([]byte("q"))
 		assert.True(t, res)
 	})
 	t.Run("does not match against multiple character", func(t *testing.T) {
-		res := singleChar.Match([]byte("esc"))
+		res := SingleChar.Match([]byte("esc"))
 		assert.False(t, res)
 	})
 }

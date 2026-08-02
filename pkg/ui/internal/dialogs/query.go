@@ -13,6 +13,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
+	"github.com/wolfwfr/dynamite/pkg/common"
 	"github.com/wolfwfr/dynamite/pkg/logging"
 	headed "github.com/wolfwfr/dynamite/pkg/ui/internal/components/headed_list"
 	regular "github.com/wolfwfr/dynamite/pkg/ui/internal/components/regular_list"
@@ -451,7 +452,7 @@ func (m *Queryialog) Update(msg tea.Msg) tea.Cmd {
 // accidentally when typing a key mapped to 'close' into a text-box.
 func (m *Queryialog) safeToClose(msg tea.KeyPressMsg) bool {
 	bts := []byte(msg.String())
-	if (m.focus == queryHashKeyInput || m.focus == queryRangeKeyInput1 || m.focus == queryRangeKeyInput2) && alphanum.Match(bts) && singleChar.Match(bts) {
+	if (m.focus == queryHashKeyInput || m.focus == queryRangeKeyInput1 || m.focus == queryRangeKeyInput2) && common.Alphanum.Match(bts) && common.SingleChar.Match(bts) {
 		m.logger.Debug("preventing close", slog.String("keypress", msg.String()))
 		return false
 	}

@@ -247,9 +247,7 @@ func (m *ItemSelectionPane) KeyMapExecutionSafe(k tea.KeyPressMsg) bool {
 		search = opts.GetSearchResultsOptions()
 	)
 	if search.Enabled && m.search.IsFocused() {
-		if k.String() != "ctrl+c" { // FIX: hotfix
-			return false
-		}
+		return !common.IsTextInputKey(k)
 	}
 	return true
 }

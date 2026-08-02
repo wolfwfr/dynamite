@@ -1,8 +1,6 @@
 package dialogs
 
 import (
-	"regexp"
-
 	"charm.land/lipgloss/v2"
 )
 
@@ -20,19 +18,4 @@ func getBorderWidth(s lipgloss.Style) int {
 
 func getBorderHeight(s lipgloss.Style) int {
 	return s.GetBorderTopSize() + s.GetBorderBottomSize()
-}
-
-var alphanum *regexp.Regexp
-var singleChar *regexp.Regexp
-
-func init() {
-	var err error
-	alphanum, err = regexp.Compile("[a-zA-Z0-9]")
-	if err != nil {
-		panic(err)
-	}
-	singleChar, err = regexp.Compile("^.{1,1}$")
-	if err != nil {
-		panic(err)
-	}
 }
