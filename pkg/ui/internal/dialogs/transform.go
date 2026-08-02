@@ -39,7 +39,7 @@ func newTransformStyles(darkBG bool) transformListStyles {
 	var s transformListStyles
 
 	s.Item = lipgloss.NewStyle().PaddingLeft(4)
-	s.SelectedItem = lipgloss.NewStyle().PaddingLeft(2).Foreground(theme.DialogFocusColour)
+	s.SelectedItem = lipgloss.NewStyle().PaddingLeft(2).Foreground(theme.ListFocusFg)
 
 	s.dialog = theme.DialogStyle
 	s.title = lipgloss.NewStyle().Foreground(theme.TitleFG).Padding(1, 0, 2, 0)

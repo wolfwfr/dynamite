@@ -30,6 +30,9 @@ var (
 	DialogBorderColour  = AccentOrange
 	TitleFG             = TerminalDefaultColour
 
+	// list
+	ListFocusFg = AccentOrange
+
 	// pane borders
 	ViewFocusBorderColour   = AccentBlue
 	ViewUnFocusBorderColour = AccentFadedBlue

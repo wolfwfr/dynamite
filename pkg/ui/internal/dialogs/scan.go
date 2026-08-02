@@ -102,7 +102,7 @@ func newscanStyles(darkBG bool) scanListStyles {
 	var s scanListStyles
 
 	s.Item = lipgloss.NewStyle().PaddingLeft(4)
-	s.SelectedItem = lipgloss.NewStyle().PaddingLeft(2).Foreground(theme.DialogFocusColour)
+	s.SelectedItem = lipgloss.NewStyle().PaddingLeft(2).Foreground(theme.ListFocusFg)
 	s.Header = lipgloss.NewStyle().Foreground(theme.SubtleColour1)
 
 	s.dialog = theme.DialogStyle
