@@ -75,9 +75,10 @@ type ItemSelectionPane struct {
 
 	// spinner
 	spinner struct {
-		active bool
-		model  spinner.Model
-		text   string
+		active    bool
+		model     spinner.Model
+		text      string
+		textStyle lipgloss.Style
 	}
 
 	// standard timeout
@@ -211,9 +212,13 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 		sp := spinner.New()
 		sp.Spinner = spinner.Dot
 		sp.Style = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("205")).
+			Foreground(theme.SpinnerSymbolFg).
+			Background(theme.SpinnerSymbolBg).
 			PaddingLeft(1)
 		p.spinner.model = sp
+		p.spinner.textStyle = lipgloss.NewStyle().
+			Foreground(theme.SpinnerTextFg).
+			Background(theme.SpinnerTextBg)
 	}
 
 	{ // search box

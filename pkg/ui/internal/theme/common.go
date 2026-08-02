@@ -1,6 +1,8 @@
 package theme
 
 import (
+	"image/color"
+
 	"charm.land/lipgloss/v2"
 )
 
@@ -33,6 +35,12 @@ var (
 	DialogUnfocusColour = SubtleColour3
 	DialogBorderColour  = AccentOrange
 	TitleFG             = TerminalDefaultColour
+
+	// spinners
+	SpinnerTextFg               = TerminalDefaultColour
+	SpinnerTextBg   color.Color = nil // transparent
+	SpinnerSymbolFg             = lipgloss.Color("#ff5faf")
+	SpinnerSymbolBg color.Color = nil // transparent
 
 	// list
 	ListFocusFg = AccentOrange

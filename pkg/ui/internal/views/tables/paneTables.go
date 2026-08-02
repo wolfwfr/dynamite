@@ -51,9 +51,10 @@ type tableSelectionPane struct {
 
 	// spinner
 	spinner struct {
-		active bool
-		model  spinner.Model
-		text   string
+		active    bool
+		model     spinner.Model
+		text      string
+		textStyle lipgloss.Style
 	}
 	// cancel last call context (debounce)
 	cancelDetails func()
@@ -164,10 +165,14 @@ func newTableSelectionPane(ctx context.Context, config *appconfig.Config, opts .
 		sp := spinner.New()
 		sp.Spinner = spinner.Dot
 		sp.Style = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("205")).
+			Foreground(theme.SpinnerSymbolFg).
+			Background(theme.SpinnerSymbolBg).
 			PaddingLeft(1)
 		p.spinner.model = sp
 		p.spinner.text = "obtaining next page..."
+		p.spinner.textStyle = lipgloss.NewStyle().
+			Foreground(theme.SpinnerTextFg).
+			Background(theme.SpinnerTextBg)
 	}
 
 	{ // search box
