@@ -2,6 +2,7 @@ package dynamodb
 
 import (
 	"fmt"
+	"log/slog"
 	"slices"
 	"strings"
 
@@ -19,7 +20,7 @@ import (
 // - attribute_type()
 // see: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.OperatorsAndFunctions.html
 
-func buildFilterExpression(params []apitypes.FilterExpressionParameters) (expr *string, exprNames map[string]string, exprVals map[string]types.AttributeValue) {
+func (a *Adapter) buildFilterExpression(params []apitypes.FilterExpressionParameters) (expr *string, exprNames map[string]string, exprVals map[string]types.AttributeValue) {
 	if len(params) == 0 {
 		return nil, nil, nil
 	}
@@ -77,7 +78,7 @@ func buildFilterExpression(params []apitypes.FilterExpressionParameters) (expr *
 		case p.Operator == apitypes.BeginsWith_F:
 			exprr.WriteString(fmt.Sprintf("%s(%s,%s)", filterBeginsWith, pathAlias, attrValueAlias))
 		default:
-			// TODO: debug logging or error
+			a.logger.Warn("failed to parse operator", slog.String("operator", string(p.Operator)))
 			continue
 		}
 	}

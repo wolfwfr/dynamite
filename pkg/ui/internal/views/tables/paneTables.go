@@ -127,7 +127,7 @@ func newTableSelectionPane(ctx context.Context, config *appconfig.Config, opts .
 		cancelTables:   func() {}, // noop on init
 		debounceDur:    50 * time.Millisecond,
 		config:         config,
-		dynamodbClient: dynamodb.NewAdapter(),
+		dynamodbClient: dynamodb.NewAdapter(config.Logger),
 		stdTO:          30 * time.Second,
 		KeyMap:         DefaultTablePaneKeyMap(),
 	}

@@ -194,7 +194,7 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 		ctx:            ctx,
 		logger:         config.Logger.With(slog.String(logging.ViewKey, Log_ItemsView), slog.String(logging.PaneKey, "items")),
 		config:         config,
-		dynamodbClient: dynamodb.NewAdapter(dynamodb.WithObjectStyling(st)),
+		dynamodbClient: dynamodb.NewAdapter(config.Logger, dynamodb.WithObjectStyling(st)),
 		stdTO:          30 * time.Second,
 		KeyMap:         DefaultItemPaneKeyMap(),
 		sessions:       make(map[string]SessionData),

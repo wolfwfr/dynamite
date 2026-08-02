@@ -5,6 +5,7 @@ package dynamodb
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
@@ -12,22 +13,25 @@ import (
 	"github.com/wolfwfr/dynamite/lib/styles"
 	"github.com/wolfwfr/dynamite/pkg/adapters/dynamodb/parsing"
 	apitypes "github.com/wolfwfr/dynamite/pkg/adapters/dynamodb/types"
+	"github.com/wolfwfr/dynamite/pkg/logging"
 	u "github.com/wolfwfr/dynamite/pkg/util"
 )
 
 // Adapter encapsulates the dynamo-db adapter functions. Although stateless, it
 // can be mocked or decorated.
 type Adapter struct {
+	logger  *slog.Logger
 	styling apitypes.ObjectStyling
 }
 
 // NewAdapter returns a new instance of Adapter.
-func NewAdapter(opts ...Option) *Adapter {
+func NewAdapter(logger *slog.Logger, opts ...Option) *Adapter {
 	options := &options{}
 	for _, o := range opts {
 		o(options)
 	}
 	return &Adapter{
+		logger:  logger.With(slog.String(logging.ComponentKey, "dynamodb-adapter")),
 		styling: options.objectStyling,
 	}
 }
@@ -89,7 +93,7 @@ func (a *Adapter) ScanTable(client *dynamodb.Client, ctx context.Context, table 
 		index = params.IndexName
 	}
 
-	fex, fnm, fvl := buildFilterExpression(params.FilterParameters)
+	fex, fnm, fvl := a.buildFilterExpression(params.FilterParameters)
 
 	p := dynamodb.ScanInput{
 		TableName:                 &table,
@@ -140,7 +144,7 @@ func (a *Adapter) QueryTable(client *dynamodb.Client, ctx context.Context, table
 		index = params.IndexName
 	}
 
-	fex, fnm, fvl := buildFilterExpression(params.FilterParameters)
+	fex, fnm, fvl := a.buildFilterExpression(params.FilterParameters)
 
 	var rem1 map[string]string
 	names, rem1 = u.MergeMapsSafe(names, fnm)

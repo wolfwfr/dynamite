@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 
 	apitypes "github.com/wolfwfr/dynamite/pkg/adapters/dynamodb/types"
+	tu "github.com/wolfwfr/dynamite/test/testutils"
 )
 
 func TestBuildFilterExpression(t *testing.T) {
@@ -123,7 +124,8 @@ func TestBuildFilterExpression(t *testing.T) {
 
 		for _, tc := range testcases {
 			t.Run(tc.desc, func(t *testing.T) {
-				expression, expressionNames, expressionValues := buildFilterExpression(tc.params)
+				a := Adapter{logger: tu.DiscardLogger()}
+				expression, expressionNames, expressionValues := a.buildFilterExpression(tc.params)
 				if tc.expNilExpression {
 					assert.Nil(t, expression)
 				} else {
@@ -200,7 +202,8 @@ func TestBuildFilterExpression_NumericalOperators(t *testing.T) {
 					},
 				}
 
-				expression, expressionNames, expressionValues := buildFilterExpression(params)
+				a := Adapter{logger: tu.DiscardLogger()}
+				expression, expressionNames, expressionValues := a.buildFilterExpression(params)
 
 				// verify expression
 				expExpression := fmt.Sprintf("#V1 %s :N1", tc.parsed)
@@ -236,7 +239,8 @@ func TestBuildFilterExpression_NumericalOperators(t *testing.T) {
 			},
 		}
 
-		expression, expressionNames, expressionValues := buildFilterExpression(params)
+		a := Adapter{logger: tu.DiscardLogger()}
+		expression, expressionNames, expressionValues := a.buildFilterExpression(params)
 
 		// verify expression
 		expExpression := "#V1 BETWEEN :N1 AND :N2"
@@ -362,7 +366,8 @@ func TestBuildFilterExpression_Functions(t *testing.T) {
 
 		for _, tc := range testcases {
 			t.Run(tc.desc, func(t *testing.T) {
-				expression, expressionNames, expressionValues := buildFilterExpression(tc.params)
+				a := Adapter{logger: tu.DiscardLogger()}
+				expression, expressionNames, expressionValues := a.buildFilterExpression(tc.params)
 
 				// verify expression
 				require.NotNil(t, expression)
