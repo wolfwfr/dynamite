@@ -725,25 +725,28 @@ func (m *Queryialog) applyParameters() tea.Cmd {
 }
 
 func (m *Queryialog) queryParametersUpdate() tea.Cmd {
-	// update the init state when committing changes
-	m.state.init.selectedIndex = m.content.indexSelection.SelectedItem().(headed.Item).Name
-	m.state.init.hashKeyValue = m.content.hashKeyInput.Value()
+	idx := m.content.indexSelection.SelectedItem().(headed.Item).Name
 	rangeKeyV := m.content.rangeKeyInput1.Value()
 	rangeKeyV2 := m.content.rangeKeyInput2.Value()
-	m.state.init.rangeKeyValue = u.Ternary(&rangeKeyV, nil, rangeKeyV != "")
-	m.state.init.rangeKeyValue2 = u.Ternary(&rangeKeyV2, nil, rangeKeyV2 != "")
-	m.state.init.rangeKeyOperator = messages.QueryOperator(m.content.operatorSelection.SelectedItem().(regular.ListItem).Value)
-	m.state.init.orderDescending = m.content.rangeOrderSelection.SelectedItem().(regular.ListItem).Value == string(rangeDescending)
+
+	// NOTE: resolve variables outside async tea.Cmd func
+	tableARN := m.state.table.TableARN
+	indexName := u.Ternary(idx, "", idx != tableIndexName)
+	hkval := m.content.hashKeyInput.Value()
+	rkval1 := u.Ternary(&rangeKeyV, nil, rangeKeyV != "")
+	rkval2 := u.Ternary(&rangeKeyV2, nil, rangeKeyV2 != "")
+	rkop := messages.QueryOperator(m.content.operatorSelection.SelectedItem().(regular.ListItem).Value)
+	rkorder := m.content.rangeOrderSelection.SelectedItem().(regular.ListItem).Value == string(rangeDescending)
 
 	return func() tea.Msg {
 		return messages.QueryParametersChanged{
-			TableARN:             m.state.table.TableARN,
-			IndexName:            u.Ternary(m.state.init.selectedIndex, "", m.state.init.selectedIndex != tableIndexName),
-			HashKeyValue:         m.state.init.hashKeyValue,
-			RangeKeyValue1:       m.state.init.rangeKeyValue,
-			RangeKeyValue2:       m.state.init.rangeKeyValue2,
-			RangeKeyOperator:     m.state.init.rangeKeyOperator,
-			RangeOrderDescending: m.state.init.orderDescending,
+			TableARN:             tableARN,
+			IndexName:            indexName,
+			HashKeyValue:         hkval,
+			RangeKeyValue1:       rkval1,
+			RangeKeyValue2:       rkval2,
+			RangeKeyOperator:     rkop,
+			RangeOrderDescending: rkorder,
 		}
 	}
 }

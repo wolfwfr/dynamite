@@ -816,6 +816,8 @@ func (m *FilterDialog) applyParameters() tea.Cmd {
 }
 
 func (m *FilterDialog) filterParametersUpdate() tea.Cmd {
+	// NOTE: resolve variables outside async tea.Cmd func
+	tableARN := m.state.table.TableARN
 	state := make([]messages.FilterState, len(m.content))
 	for i := range m.content {
 		state[i].AttrPath = m.content[i].attrNameInput.Value()
@@ -829,7 +831,7 @@ func (m *FilterDialog) filterParametersUpdate() tea.Cmd {
 
 	return func() tea.Msg {
 		return messages.FilterParametersChanged{
-			TableARN: m.state.table.TableARN,
+			TableARN: tableARN,
 			State:    state,
 		}
 	}
