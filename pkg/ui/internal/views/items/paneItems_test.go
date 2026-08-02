@@ -82,7 +82,6 @@ type genOpts struct {
 // 0). When providing an option with 'begin', the function will return 'n -
 // begin' number of items, with ID enumeration starting at 'begin'.
 func genJSONItems(n int, opts ...genOpts) apitypes.Items {
-	res := apitypes.Items{}
 
 	var (
 		b     = 0
@@ -95,31 +94,28 @@ func genJSONItems(n int, opts ...genOpts) apitypes.Items {
 	}
 
 	ln := n - b
-	res.JSON = make([]string, ln)
-	res.JSONStyled = make([]styles.ObjectStyle, ln)
-	res.YAML = make([]string, ln)
-	res.YAMLStyled = make([]styles.ObjectStyle, ln)
-	res.Raw = make([]map[string]dynamodbtypes.AttributeValue, ln)
-	res.TableKeys = make([][]apitypes.KeyValue, ln)
+	res := make(apitypes.Items, ln)
 
 	for i := range ln {
+		item := apitypes.Item{}
 		id := fmt.Sprintf(idFmt, b+i)
 
-		res.JSON[i] = `{
+		item.JSON = `{
   "id": "` + id + `",
   "configured": true
 }`
-		res.JSONStyled[i] = styles.ObjectStyle{}
+		item.JSONStyled = styles.ObjectStyle{}
 
-		res.Raw[i] = map[string]dynamodbtypes.AttributeValue{
+		item.Raw = map[string]dynamodbtypes.AttributeValue{
 			"id":         &dynamodbtypes.AttributeValueMemberS{Value: id},
 			"configured": &dynamodbtypes.AttributeValueMemberBOOL{Value: true},
 		}
 
-		res.TableKeys[i] = []apitypes.KeyValue{
+		item.TableKeys = []apitypes.KeyValue{
 			{Key: "id", Value: fmt.Sprintf("\"%s\"", id)},
 			{Key: "configured", Value: "true"},
 		}
+		res[i] = item
 	}
 
 	return res
@@ -145,18 +141,18 @@ func TestItemSelectionPreviews(t *testing.T) {
 			cmd := simpleLoadItems(sut, tableARN, items)             // load items
 			targets := tu.ExtractMessages[messages.PreviewItem](cmd) // obtain target messages
 			require.Len(t, targets, 1)                               // assert only one preview-item message
-			assert.EqualValues(t, items.JSON[0], targets[0].RawItem) // assert correct item being previewed
+			assert.EqualValues(t, items[0].JSON, targets[0].RawItem) // assert correct item being previewed
 		})
 		t.Run("preview correct item after loading new page that is sorted to table top", func(t *testing.T) {
 			sut := newSUT()                                                  // init
 			page1 := genJSONItems(3, genOpts{begin: 0})                      // page 1
 			page2 := genJSONItems(6, genOpts{begin: 3})                      // page 2
 			simpleLoadItems(sut, tableARN, page1)                            // prepare first page
-			simpleSortItems(sut, tableARN, page1.TableKeys[0][0].Key, false) // enable sorting
+			simpleSortItems(sut, tableARN, page1[0].TableKeys[0].Key, false) // enable sorting
 			cmd := simpleLoadItems(sut, tableARN, page2)                     // load next page
 			targets := tu.ExtractMessages[messages.PreviewItem](cmd)         // obtain target messages
 			require.Len(t, targets, 1)                                       // assert only one preview-item message
-			assert.EqualValues(t, page2.JSON[2], targets[0].RawItem)         // assert correct item being previewed
+			assert.EqualValues(t, page2[2].JSON, targets[0].RawItem)         // assert correct item being previewed
 		})
 		t.Run("preview correct item after search", func(t *testing.T) {
 			skipIf(t, !searchKeyValid, "skipping due to outdated search key")     // skip if testing-keymap needs updating
@@ -168,7 +164,7 @@ func TestItemSelectionPreviews(t *testing.T) {
 			require.True(t, ok)                                                   // ensure search was successful
 			targets := tu.ExtractMessages[messages.PreviewItem](cmd)              // obtain target messages
 			require.NotEmpty(t, targets)                                          // assert only one preview-item message
-			assert.EqualValues(t, items.JSON[1], targets[len(targets)-1].RawItem) // assert correct item being previewed
+			assert.EqualValues(t, items[1].JSON, targets[len(targets)-1].RawItem) // assert correct item being previewed
 		})
 	})
 }
@@ -274,9 +270,9 @@ func TestItemSelectionURLResolution(t *testing.T) {
 			sut := newSUT()
 			items := genJSONItems(1, genOpts{idFmt: "id %d"})                // include space
 			sut.selectedTable.KeySchema = []dynamodbtypes.KeySchemaElement{{ // define primary keys
-				AttributeName: &items.TableKeys[0][0].Key,
+				AttributeName: &items[0].TableKeys[0].Key,
 				KeyType:       dynamodbtypes.KeyTypeHash}, {
-				AttributeName: &items.TableKeys[0][1].Key,
+				AttributeName: &items[0].TableKeys[1].Key,
 				KeyType:       dynamodbtypes.KeyTypeRange},
 			}
 			simpleLoadItems(sut, tableARN, items)                                                                                                         // load items
@@ -684,22 +680,6 @@ func simpleChangeQParams(sut *ItemSelectionPane, tableARN, index string) tea.Cmd
 		TableARN:  tableARN,
 		IndexName: index,
 	})
-}
-
-// convenience function to merge multiple items together. Slices will be appended.
-func mergeItems(items ...apitypes.Items) apitypes.Items {
-	res := apitypes.Items{}
-
-	for _, itm := range items {
-		res.JSON = append(res.JSON, itm.JSON...)
-		res.JSONStyled = append(res.JSONStyled, itm.JSONStyled...)
-		res.YAML = append(res.YAML, itm.YAML...)
-		res.YAMLStyled = append(res.YAMLStyled, itm.YAMLStyled...)
-		res.Raw = append(res.Raw, itm.Raw...)
-		res.TableKeys = append(res.TableKeys, itm.TableKeys...)
-	}
-
-	return res
 }
 
 var (

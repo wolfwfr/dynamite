@@ -6,8 +6,6 @@ import (
 	"image/color"
 	"log/slog"
 
-	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
-
 	"github.com/wolfwfr/dynamite/lib/styles"
 	apitypes "github.com/wolfwfr/dynamite/pkg/adapters/dynamodb/types"
 	"github.com/wolfwfr/dynamite/pkg/common"
@@ -24,7 +22,6 @@ type TableStyles struct {
 
 // ItemsTable is a custom table implementation that is specialised for dynamo-db
 // items, including styling, and view modelations (e.g. sorting, and search)
-// TODO: consider renaming to 'Model'
 type ItemsTable struct {
 	// top-level context
 	ctx context.Context
@@ -54,16 +51,6 @@ type ItemsTable struct {
 type ColumnAttributes struct {
 	Title string
 	Type  common.DynamoDBAttributeType
-}
-
-// TODO: refactor dynamodb.Items and add single Item
-type Item struct {
-	JSON       string
-	JSONStyled styles.ObjectStyle
-	YAML       string
-	YAMLStyled styles.ObjectStyle
-	Raw        map[string]dynamodbtypes.AttributeValue
-	TableKeys  []apitypes.KeyValue
 }
 
 // EnrichedField defines the field-type that populates a table-row.

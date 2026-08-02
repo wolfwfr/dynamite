@@ -28,7 +28,7 @@ type itemsTable interface {
 	GetVisualRows() []table.Row
 	GetKeyMap() *table.KeyMap
 	GetSelectedRow() *table.Row
-	GetSelectedItem() (*itemstable.Item, int)
+	GetSelectedItem() (*apitypes.Item, int)
 	GetAllowedOptions() viewoptions.Check
 	GetViewOptionsState() viewoptions.ViewOptions
 

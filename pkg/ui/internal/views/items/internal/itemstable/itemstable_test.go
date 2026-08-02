@@ -28,8 +28,6 @@ type genOpts struct {
 // 0). When providing an option with 'begin', the function will return 'n -
 // begin' number of items, with ID enumeration starting at 'begin'.
 func genJSONItems(n int, opts ...genOpts) apitypes.Items {
-	res := apitypes.Items{}
-
 	var (
 		b     = 0
 		idFmt = "id-%d"
@@ -43,34 +41,31 @@ func genJSONItems(n int, opts ...genOpts) apitypes.Items {
 	}
 
 	ln := n - b
-	res.JSON = make([]string, ln)
-	res.JSONStyled = make([]styles.ObjectStyle, ln)
-	res.YAML = make([]string, ln)
-	res.YAMLStyled = make([]styles.ObjectStyle, ln)
-	res.Raw = make([]map[string]dynamodbtypes.AttributeValue, ln)
-	res.TableKeys = make([][]apitypes.KeyValue, ln)
+	res := make(apitypes.Items, ln)
 
 	for i := range ln {
+		item := apitypes.Item{}
 		id := fmt.Sprintf(idFmt, b+i)
 
-		res.JSON[i] = `{
+		item.JSON = `{
   "id": "` + id + `",
   "configured": true
 }`
-		res.JSONStyled[i] = styles.ObjectStyle{}
+		item.JSONStyled = styles.ObjectStyle{}
 
-		res.YAML[i] = res.JSON[i]             // mock populate
-		res.YAMLStyled[i] = res.JSONStyled[i] // mock populate
+		item.YAML = item.JSON             // mock populate
+		item.YAMLStyled = item.JSONStyled // mock populate
 
-		res.Raw[i] = map[string]dynamodbtypes.AttributeValue{
+		item.Raw = map[string]dynamodbtypes.AttributeValue{
 			"id":         &dynamodbtypes.AttributeValueMemberS{Value: id},
 			"configured": &dynamodbtypes.AttributeValueMemberBOOL{Value: true},
 		}
 
-		res.TableKeys[i] = []apitypes.KeyValue{
+		item.TableKeys = []apitypes.KeyValue{
 			{Key: "id", Value: fmt.Sprintf("\"%s\"", id)},
 			{Key: "configured", Value: "true"},
 		}
+		res[i] = item
 	}
 
 	return res
@@ -346,17 +341,17 @@ func TestRowItemIndexIntegrity(t *testing.T) {
 			assertRowIndexing(t, rows, []int{0, 1, 2, 3, 4, 5}) // assert
 		})
 		t.Run("remain consequtive on append, when sorting", func(t *testing.T) {
-			sut := newSUT()                                                                  // init
-			firstPage := genJSONItems(3)                                                     // define first page
-			secondPage := genJSONItems(6, genOpts{begin: 3})                                 // define second page
-			sut.AddItems(firstPage, false)                                                   // add first page to table
-			columnAttrs := compileUniqueKeys(firstPage.TableKeys, firstPage.Raw, nil, false) // obtain unique keys from generated items
-			columnTitles := extractColTitles(columnAttrs)                                    // extract column titles
-			b := sut.SetColumnSorting(columnTitles, "id", false)                             // set column sorting
-			require.True(t, b)                                                               // ensure sorting was applied
-			sut.AddItems(secondPage, false)                                                  // add second page to table
-			rows := sut.table.Rows()                                                         // obtain current rows
-			assertRowIndexing(t, rows, []int{5, 4, 3, 2, 1, 0})                              // assert
+			sut := newSUT()                                         // init
+			firstPage := genJSONItems(3)                            // define first page
+			secondPage := genJSONItems(6, genOpts{begin: 3})        // define second page
+			sut.AddItems(firstPage, false)                          // add first page to table
+			columnAttrs := compileUniqueKeys(firstPage, nil, false) // obtain unique keys from generated items
+			columnTitles := extractColTitles(columnAttrs)           // extract column titles
+			b := sut.SetColumnSorting(columnTitles, "id", false)    // set column sorting
+			require.True(t, b)                                      // ensure sorting was applied
+			sut.AddItems(secondPage, false)                         // add second page to table
+			rows := sut.table.Rows()                                // obtain current rows
+			assertRowIndexing(t, rows, []int{5, 4, 3, 2, 1, 0})     // assert
 		})
 	})
 }

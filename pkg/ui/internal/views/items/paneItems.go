@@ -630,7 +630,7 @@ func (m *ItemSelectionPane) ProcessPage(msg messages.PageReady) tea.Cmd {
 	m.logger.Debug("received a new page",
 		slog.String("table_arn", msg.TableARN),
 		slog.Uint64("page_id", uint64(msg.PageID)),
-		slog.Int("page_size", len(u.IfNotNil(msg.Response, messages.Page{}).Items.JSON)),
+		slog.Int("page_size", len(u.IfNotNil(msg.Response, messages.Page{}).Items)),
 	)
 	if _, ok := m.pageIgnore[msg.PageID]; ok {
 		m.logger.Debug("page scheduled for ignore",

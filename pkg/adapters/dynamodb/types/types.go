@@ -92,14 +92,15 @@ type ( // DESCRIBE TABLE
 	}
 )
 
-type Items struct {
-	JSON       []string
-	JSONStyled []styles.ObjectStyle
-	YAML       []string
-	YAMLStyled []styles.ObjectStyle
-	Raw        []map[string]types.AttributeValue // TODO: review usefullness
-	// TODO: rename to RootKeys
-	TableKeys [][]KeyValue // TODO: review: should this be part of items?
+type Items []Item
+
+type Item struct {
+	JSON       string
+	JSONStyled styles.ObjectStyle
+	YAML       string
+	YAMLStyled styles.ObjectStyle
+	Raw        map[string]types.AttributeValue
+	TableKeys  []KeyValue
 }
 
 type ( // FILTER

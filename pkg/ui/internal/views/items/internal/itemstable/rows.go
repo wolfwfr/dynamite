@@ -7,9 +7,10 @@ import (
 
 type transform func(rowIndex int, cols []ColumnAttributes, row table.Row) table.Row
 
-func parseRows(cols []ColumnAttributes, tableKeys [][]apitypes.KeyValue, transforms []transform) []table.Row {
-	rows := make([]table.Row, len(tableKeys))
-	for i, k := range tableKeys {
+func parseRows(cols []ColumnAttributes, items apitypes.Items, transforms []transform) []table.Row {
+	rows := make([]table.Row, len(items))
+	for i, item := range items {
+		k := item.TableKeys
 		raw := make([]string, len(cols))
 		styled := make([]string, len(cols))
 		fields := make([]table.Field, len(cols))

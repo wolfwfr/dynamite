@@ -10,7 +10,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 
-	"github.com/wolfwfr/dynamite/lib/styles"
 	"github.com/wolfwfr/dynamite/pkg/adapters/dynamodb/parsing"
 	apitypes "github.com/wolfwfr/dynamite/pkg/adapters/dynamodb/types"
 	"github.com/wolfwfr/dynamite/pkg/logging"
@@ -197,24 +196,20 @@ func (a *Adapter) QueryTable(client *dynamodb.Client, ctx context.Context, table
 }
 
 func (a *Adapter) parseItems(raw []map[string]types.AttributeValue, hkey, rkey *string) apitypes.Items {
-	items := apitypes.Items{
-		JSON:       make([]string, 0, len(raw)),
-		JSONStyled: make([]styles.ObjectStyle, 0, len(raw)),
-		YAML:       make([]string, 0, len(raw)),
-		YAMLStyled: make([]styles.ObjectStyle, 0, len(raw)),
-		Raw:        raw,
-		TableKeys:  make([][]apitypes.KeyValue, 0, len(raw)),
-	}
-
+	var items []apitypes.Item
 	// TODO: reconsider parsing to both JSON & YAML all the time
 	for _, item := range raw {
-		yaml, yamlStyled := parsing.NewYAMLParser(a.styling).ParseItemToYAML(item, *hkey, rkey)
-		json, jsonStyled, keys := parsing.NewJSONParser(a.styling).ParseToJSONWithKeys(item, *hkey, rkey)
-		items.JSON = append(items.JSON, json)
-		items.JSONStyled = append(items.JSONStyled, jsonStyled)
-		items.YAML = append(items.YAML, yaml)
-		items.YAMLStyled = append(items.YAMLStyled, yamlStyled)
-		items.TableKeys = append(items.TableKeys, keys)
+		yaml, yamlStyling := parsing.NewYAMLParser(a.styling).ParseItemToYAML(item, *hkey, rkey)
+		json, jsonStyling, keys := parsing.NewJSONParser(a.styling).ParseToJSONWithKeys(item, *hkey, rkey)
+
+		items = append(items, apitypes.Item{
+			JSON:       json,
+			JSONStyled: jsonStyling,
+			YAML:       yaml,
+			YAMLStyled: yamlStyling,
+			Raw:        item,
+			TableKeys:  keys,
+		})
 	}
 	return items
 }

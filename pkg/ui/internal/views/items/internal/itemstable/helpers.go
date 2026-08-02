@@ -4,8 +4,6 @@ import (
 	"slices"
 	"sort"
 
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
-
 	apitypes "github.com/wolfwfr/dynamite/pkg/adapters/dynamodb/types"
 	"github.com/wolfwfr/dynamite/pkg/common"
 	u "github.com/wolfwfr/dynamite/pkg/util"
@@ -23,7 +21,7 @@ func mergeSlices[S ~[]E, E any](s1, s2 S) S {
 // This ensures that when individual table rows have keys missing, the final
 // result still contains these keys when they are present in other rows in the
 // specified table.
-func compileUniqueKeys(table [][]apitypes.KeyValue, rawItems []map[string]types.AttributeValue, existing []ColumnAttributes, hasRangeKey bool) []ColumnAttributes {
+func compileUniqueKeys(items apitypes.Items, existing []ColumnAttributes, hasRangeKey bool) []ColumnAttributes {
 	res := make([]ColumnAttributes, 0)
 	seen := map[string]struct{}{}
 	if len(existing) > 0 {
@@ -32,10 +30,10 @@ func compileUniqueKeys(table [][]apitypes.KeyValue, rawItems []map[string]types.
 	for _, e := range existing {
 		seen[e.Title] = struct{}{}
 	}
-	for i, row := range table {
-		for _, col := range row {
+	for _, item := range items {
+		for _, col := range item.TableKeys {
 			key := col.Key
-			typ := common.ParseDynamoAttributeType(rawItems[i][key])
+			typ := common.ParseDynamoAttributeType(item.Raw[key])
 			if _, ok := seen[key]; !ok {
 				res = append(res, ColumnAttributes{key, typ})
 				seen[key] = struct{}{}

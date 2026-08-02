@@ -55,7 +55,7 @@ func (t *ItemsTable) SetColumnSorting(cols []string, sortingOn string, ascending
 	// NOTE: parsing rows anew assures a consistent input to update-table &
 	// sort-rows, preventing sort-rows from regurgitating its own output on when
 	// changing sorting without resets; leads to more consistent outputs.
-	t.updateTable(assembleColumns(t.viewOptions, t.ColumnAttributes), parseRows(t.ColumnAttributes, t.Items.TableKeys, t.CompileTransforms()), nil)
+	t.updateTable(assembleColumns(t.viewOptions, t.ColumnAttributes), parseRows(t.ColumnAttributes, t.Items, t.CompileTransforms()), nil)
 	return true
 }
 
@@ -140,7 +140,7 @@ func (t *ItemsTable) SetColumnTransform(cols []string, transformed []bool) bool 
 		return false
 	}
 
-	t.updateTable(assembleColumns(t.viewOptions, t.ColumnAttributes), parseRows(t.ColumnAttributes, t.Items.TableKeys, t.CompileTransforms()), nil)
+	t.updateTable(assembleColumns(t.viewOptions, t.ColumnAttributes), parseRows(t.ColumnAttributes, t.Items, t.CompileTransforms()), nil)
 	t.RebuildSearchResults()
 
 	return true

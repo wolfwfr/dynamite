@@ -114,15 +114,19 @@ func TestCompileUniqueKeys(t *testing.T) {
 		for _, tc := range testcases {
 			t.Run(tc.desc, func(t *testing.T) {
 				// mock raw types
-				attrTypes := make([]map[string]types.AttributeValue, len(tc.input_keys))
-				for i, c := range tc.input_keys {
-					attrTypes[i] = make(map[string]types.AttributeValue)
+				items := make(apitypes.Items, len(tc.input_keys))
+				for _, c := range tc.input_keys {
+					attrTypes := make(map[string]types.AttributeValue)
 					for _, r := range c {
-						attrTypes[i][r.Key] = &types.AttributeValueMemberS{}
+						attrTypes[r.Key] = &types.AttributeValueMemberS{}
 					}
+					items = append(items, apitypes.Item{
+						Raw:       attrTypes,
+						TableKeys: c,
+					})
 				}
 				// test
-				res := compileUniqueKeys(tc.input_keys, attrTypes, nil, tc.input_hasRange)
+				res := compileUniqueKeys(items, nil, tc.input_hasRange)
 
 				// extract
 				titles := make([]string, len(res))

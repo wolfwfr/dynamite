@@ -2,9 +2,6 @@ package common
 
 import "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 
-// TODO: move more types that are shared between dynamo-connector &
-// dynamo-adapter to common types
-
 // /more information at github.com/aws/aws-sdk-go-v2/service/dynamodb@v1.57.2/types/types.go
 type DynamoDBAttributeType int
 

@@ -116,17 +116,17 @@ func (t *ItemsTable) GetKeyMap() *table.KeyMap {
 // applying all active modulations and updating the table as required.
 func (t *ItemsTable) AddItems(items apitypes.Items, hasRangeKey bool) {
 	t.logger.Debug("adding items",
-		slog.Int("incoming_len", len(items.Raw)),
-		slog.Int("existing_len", len(t.Items.Raw)),
+		slog.Int("incoming_len", len(items)),
+		slog.Int("existing_len", len(t.Items)),
 		slog.Bool("with_range_key", hasRangeKey),
 	)
 	t.appendItems(items)
-	if len(items.TableKeys) <= 0 {
+	if len(items) <= 0 {
 		return
 	}
 
 	// set columns
-	columnTitles := compileUniqueKeys(items.TableKeys, items.Raw, t.ColumnAttributes, hasRangeKey)
+	columnTitles := compileUniqueKeys(items, t.ColumnAttributes, hasRangeKey)
 	defer func() { t.ColumnAttributes = columnTitles }()
 
 	var (
@@ -142,25 +142,18 @@ func (t *ItemsTable) AddItems(items apitypes.Items, hasRangeKey bool) {
 	switch {
 	case columnUpdate: // update columns & ALL rows
 		cols = assembleColumns(t.viewOptions, columnTitles)
-		rows = parseRows(columnTitles, t.Items.TableKeys, t.CompileTransforms())
+		rows = parseRows(columnTitles, t.Items, t.CompileTransforms())
 	case appendOnly: // update with new rows (append)
-		rows = parseRows(columnTitles, t.Items.TableKeys, t.CompileTransforms())
+		rows = parseRows(columnTitles, t.Items, t.CompileTransforms())
 	default: // update ALL rows but no columns
-		rows = parseRows(columnTitles, t.Items.TableKeys, t.CompileTransforms())
+		rows = parseRows(columnTitles, t.Items, t.CompileTransforms())
 	}
 
 	t.updateTable(cols, rows, virt)
 }
 
 func (t *ItemsTable) appendItems(newItems apitypes.Items) {
-	t.Items = apitypes.Items{
-		JSON:       mergeSlices(t.Items.JSON, newItems.JSON),
-		JSONStyled: mergeSlices(t.Items.JSONStyled, newItems.JSONStyled),
-		YAML:       mergeSlices(t.Items.YAML, newItems.YAML),
-		YAMLStyled: mergeSlices(t.Items.YAMLStyled, newItems.YAMLStyled),
-		Raw:        mergeSlices(t.Items.Raw, newItems.Raw),
-		TableKeys:  mergeSlices(t.Items.TableKeys, newItems.TableKeys),
-	}
+	t.Items = mergeSlices(t.Items, newItems)
 }
 
 func (t *ItemsTable) View() string {
@@ -171,26 +164,19 @@ func (t *ItemsTable) GetSelectedRow() *table.Row {
 	return t.table.SelectedRow()
 }
 
-func (t *ItemsTable) GetSelectedItem() (*Item, int) {
+func (t *ItemsTable) GetSelectedItem() (*apitypes.Item, int) {
 	var (
 		items = t.Items
 		row   = t.table.SelectedRow()
 	)
 
-	if len(items.Raw) == 0 || row == nil {
+	if len(items) == 0 || row == nil {
 		return nil, -1
 	}
 
 	idx := row.Metadata[ItemIndexMetaKey].(int)
 
-	return &Item{
-		JSON:       items.JSON[idx],
-		JSONStyled: items.JSONStyled[idx],
-		YAML:       items.YAML[idx],
-		YAMLStyled: items.YAMLStyled[idx],
-		Raw:        items.Raw[idx],
-		TableKeys:  items.TableKeys[idx],
-	}, idx
+	return &items[idx], idx
 }
 
 // updateTable processes the common response format from modulated-content
