@@ -43,6 +43,12 @@ type tableSelectionPane struct {
 	// top-level context
 	ctx context.Context
 
+	// initialised; must NOT be reset!
+	initialised bool
+
+	// whether table-view was skipped altogether
+	skipped bool
+
 	// logger
 	logger *slog.Logger
 
@@ -268,9 +274,19 @@ func (m *tableSelectionPane) Init() tea.Cmd {
 	// cancel any lingering calls
 	m.cancelTables()
 	m.cancelDetails()
-	cmd := m.pageNext(true)
+
+	var cmd tea.Cmd
+	// only page-next when initialising FOR THE FIRST TIME
+	if !m.initialised && m.config.Initialisation.Table != "" {
+		m.skipped = true
+		m.logger.Info("table already specified; skipping listing tables", slog.String("table", m.config.Initialisation.Table))
+	} else {
+		cmd = m.pageNext(true)
+	}
 
 	m.logger.Info("initilasation complete")
+
+	m.initialised = true
 
 	return cmd
 }
@@ -385,7 +401,9 @@ func (m *tableSelectionPane) Update(msg tea.Msg) tea.Cmd {
 		if msg.NewView != messages.Table_selection {
 			return nil
 		}
-		return m.MaybePreviewItem(true)
+		cmd := tea.Batch(m.pageNext(!m.initialised || m.skipped), m.MaybePreviewItem(true))
+		m.skipped = false // no longer skipped
+		return cmd
 	case messages.TablePageReady:
 		return m.processPage(msg, len(m.tables) == 0)
 	case spinner.TickMsg:
