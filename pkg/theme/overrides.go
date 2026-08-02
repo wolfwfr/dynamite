@@ -2,6 +2,8 @@ package theme
 
 import (
 	"image/color"
+
+	"charm.land/lipgloss/v2"
 )
 
 // adding yaml flags for convenience, don't want to define everything again in
@@ -29,22 +31,22 @@ type ThemeOverrides struct {
 
 	// spinners
 	SpinnerTextFg   string `yaml:"spinner_text_fg"`
-	SpinnerTextBg   string `yaml:"spinner_textbg"`
-	SpinnerSymbolFg string `yaml:"spinner_symbolfg"`
-	SpinnerSymbolBg string `yaml:"spinner_symbolbg"`
+	SpinnerTextBg   string `yaml:"spinner_text_bg"`
+	SpinnerSymbolFg string `yaml:"spinner_symbol_fg"`
+	SpinnerSymbolBg string `yaml:"spinner_symbol_bg"`
 
 	// list
-	ListFocusFg string `yaml:"list_focusfg"`
+	ListFocusFg string `yaml:"list_focus_fg"`
 
 	// pane borders
 	ViewFocusBorderColour   string `yaml:"view_focus_border_color"`
 	ViewUnFocusBorderColour string `yaml:"view_un_focus_border_color"`
 
 	// table
-	TableSelectedBg string `yaml:"table_selectedbg"`
-	TableSelectedFg string `yaml:"table_selectedfg"`
-	TableBorderFg   string `yaml:"table_borderfg"`
-	TableHeaderFg   string `yaml:"table_headerfg"`
+	TableSelectedBg string `yaml:"table_selected_bg"`
+	TableSelectedFg string `yaml:"table_selected_fg"`
+	TableBorderFg   string `yaml:"table_border_fg"`
+	TableHeaderFg   string `yaml:"table_header_fg"`
 
 	// search
 	SearchHighlight string `yaml:"search_highlight"`
@@ -61,15 +63,15 @@ type ThemeOverrides struct {
 	TimestampFg string `yaml:"timestamp_fg"`
 
 	// gutter boxes
-	RegionBoxBg         string `yaml:"region_boxbg"`
-	FilterBoxBg         string `yaml:"filter_boxbg"`
+	RegionBoxBg         string `yaml:"region_box_bg"`
+	FilterBoxBg         string `yaml:"filter_box_bg"`
 	PageSuspendBoxBg    string `yaml:"page_suspend_box_bg"`
 	QueryModeBoxQeuryBg string `yaml:"query_mode_box_qeury_bg"`
 	QueryModeBoxScanBg  string `yaml:"query_mode_box_scan_bg"`
 	QueryModeBoxAdminBg string `yaml:"query_mode_box_admin_bg"`
-	HelpBoxBg           string `yaml:"help_boxbg"`
+	HelpBoxBg           string `yaml:"help_box_bg"`
 	BoxFg               string `yaml:"box_fg"`
-	HelpBoxFg           string `yaml:"help_boxfg"`
+	HelpBoxFg           string `yaml:"help_box_fg"`
 
 	// table matching
 	TableHighlightDefault1 string `yaml:"table_highlight_default1"`
@@ -87,7 +89,7 @@ func (o ThemeOverrides) apply() {
 		case "":
 			return current
 		case "transparent", "nil":
-			return nil
+			return lipgloss.NoColor{}
 		default:
 			return c(override)
 		}
