@@ -232,8 +232,6 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 
 func (m *ItemSelectionPane) updateStyles() tea.Cmd {
 	m.logger.Debug("updating styles")
-	cmds := make([]tea.Cmd, 0)
-	cmds = append(cmds, m.softReset()) // not supporting in-place theme updates
 	// TODO: move theme package up and do not inject styles into adapter
 	m.dynamodbClient = newDynamodbClient(m.config.Logger) // ensure is using correct styles
 
@@ -244,7 +242,8 @@ func (m *ItemSelectionPane) updateStyles() tea.Cmd {
 	m.spinner.textStyle = lipgloss.NewStyle().
 		Foreground(theme.SpinnerTextFg).
 		Background(theme.SpinnerTextBg)
-	return tea.Batch(cmds...)
+
+	return nil
 }
 
 func newDynamodbClient(logger *slog.Logger) *dynamodb.Adapter {
