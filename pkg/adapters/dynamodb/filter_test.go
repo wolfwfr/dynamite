@@ -9,7 +9,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 
-	apitypes "github.com/wolfwfr/dynamite/pkg/aws/dynamodb/types"
+	apitypes "github.com/wolfwfr/dynamite/pkg/adapters/dynamodb/types"
 )
 
 func TestBuildFilterExpression(t *testing.T) {
