@@ -15,10 +15,10 @@ import (
 
 	"github.com/wolfwfr/dynamite/pkg/common"
 	"github.com/wolfwfr/dynamite/pkg/logging"
+	"github.com/wolfwfr/dynamite/pkg/theme"
 	headed "github.com/wolfwfr/dynamite/pkg/ui/internal/components/headed_list"
 	regular "github.com/wolfwfr/dynamite/pkg/ui/internal/components/regular_list"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
-	"github.com/wolfwfr/dynamite/pkg/ui/internal/theme"
 	u "github.com/wolfwfr/dynamite/pkg/util"
 )
 

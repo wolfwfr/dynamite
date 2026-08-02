@@ -13,8 +13,8 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/wolfwfr/dynamite/pkg/logging"
+	"github.com/wolfwfr/dynamite/pkg/theme"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
-	"github.com/wolfwfr/dynamite/pkg/ui/internal/theme"
 	u "github.com/wolfwfr/dynamite/pkg/util"
 )
 

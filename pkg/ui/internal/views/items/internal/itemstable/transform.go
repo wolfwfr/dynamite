@@ -10,8 +10,8 @@ import (
 
 	"github.com/wolfwfr/dynamite/lib/styles"
 	"github.com/wolfwfr/dynamite/pkg/common"
+	"github.com/wolfwfr/dynamite/pkg/theme"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/components/table"
-	"github.com/wolfwfr/dynamite/pkg/ui/internal/theme"
 )
 
 func (t *ItemsTable) CompileTransforms() []transform {
