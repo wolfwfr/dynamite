@@ -82,7 +82,6 @@ var pageSuspendBlock = lipgloss.NewStyle().
 var helpBlock = lipgloss.NewStyle().
 	Foreground(theme.BoxFg).
 	Background(theme.HelpBoxBg).
-	Foreground(theme.SubtleColour2).
 	Align(lipgloss.Left, lipgloss.Top).
 	Padding(0, 1, 0, 1).
 	Margin(0, 1, 0, 0).
@@ -220,6 +219,7 @@ func NewModel(ctx context.Context, cfg appconfig.Config, opts ...Option) Model {
 func (m Model) Init() tea.Cmd {
 	m.logger.Info("initialising...")
 	var cmds []tea.Cmd
+	cmds = append(cmds, tea.RequestBackgroundColor)
 
 	// notify user of any initialisation errors
 	if err := m.options.InitialError; err != nil {
@@ -272,6 +272,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
+	case tea.BackgroundColorMsg:
+		m, cmd = m.updateTheme(msg)
 	case appconfig.CredentialsRequest:
 		m, cmd = m.OpenMFADialog()
 	case messages.CloseMFADialog:
@@ -394,6 +396,16 @@ func (m Model) routeToActiveOnly(msg tea.Msg) (Model, tea.Cmd) {
 		m.logger.Error("could not identify active view", slog.Int("view_id", int(m.activeView)))
 	}
 
+	return m, nil
+}
+
+func (m Model) updateTheme(msg tea.BackgroundColorMsg) (Model, tea.Cmd) {
+	theme.UpdateTheme(msg.IsDark(), m.config.ThemeOverrides)
+	regionBlock = regionBlock.Foreground(theme.BoxFg).Background(theme.RegionBoxBg)
+	queryModeBlock = queryModeBlock.Foreground(theme.BoxFg).Background(theme.QueryModeBoxScanBg)
+	filterModeBlock = filterModeBlock.Foreground(theme.BoxFg).Background(theme.FilterBoxBg)
+	pageSuspendBlock = pageSuspendBlock.Foreground(theme.BoxFg).Background(theme.RegionBoxBg)
+	helpBlock = helpBlock.Foreground(theme.BoxFg).Background(theme.HelpBoxBg)
 	return m, nil
 }
 

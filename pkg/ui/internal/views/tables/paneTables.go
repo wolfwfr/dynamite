@@ -35,6 +35,8 @@ import (
 type TableStyles struct {
 	SelectedBackground    color.Color
 	SearchMatchBackground color.Color
+	MatchedNames          []lipgloss.Style
+	DefaultStyle          lipgloss.Style
 }
 
 type tableSelectionPane struct {
@@ -139,40 +141,14 @@ func newTableSelectionPane(ctx context.Context, config *appconfig.Config, opts .
 			table.WithFocused(true),
 			table.WithFieldDelegate(p.TableRowFieldDelegate),
 		)
-		s := table.DefaultStyles()
-		s.Header = s.Header.
-			Foreground(theme.TableHeaderFg).
-			BorderStyle(lipgloss.NormalBorder()).
-			BorderForeground(theme.TableBorderFg).
-			BorderBottom(true).
-			Bold(false)
-		s.Selected = s.Selected.
-			Foreground(theme.TableSelectedFg).
-			Background(theme.TableSelectedBg).
-			Bold(false)
-		t.SetStyles(s)
-
-		st := TableStyles{
-			SelectedBackground:    theme.TableSelectedBg,
-			SearchMatchBackground: theme.SearchHighlight,
-		}
-
 		p.content = t
-		p.styles.Table = st
 	}
 
 	{ // spinner
 		sp := spinner.New()
 		sp.Spinner = spinner.Dot
-		sp.Style = lipgloss.NewStyle().
-			Foreground(theme.SpinnerSymbolFg).
-			Background(theme.SpinnerSymbolBg).
-			PaddingLeft(1)
 		p.spinner.model = sp
 		p.spinner.text = "obtaining next page..."
-		p.spinner.textStyle = lipgloss.NewStyle().
-			Foreground(theme.SpinnerTextFg).
-			Background(theme.SpinnerTextBg)
 	}
 
 	{ // search box
@@ -226,7 +202,50 @@ func newTableSelectionPane(ctx context.Context, config *appconfig.Config, opts .
 		panic("overlapping keymaps!")
 	}
 
+	p.updateStyles()
+
 	return p
+}
+
+func (m *tableSelectionPane) updateStyles() {
+	s := table.DefaultStyles()
+	s.Header = s.Header.
+		Foreground(theme.TableHeaderFg).
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(theme.TableBorderFg).
+		BorderBottom(true).
+		Bold(false)
+	s.Selected = s.Selected.
+		Foreground(theme.TableSelectedFg).
+		Background(theme.TableSelectedBg).
+		Bold(false)
+	m.content.SetStyles(s)
+
+	st := TableStyles{
+		SelectedBackground:    theme.TableSelectedBg,
+		SearchMatchBackground: theme.SearchHighlight,
+		MatchedNames: []lipgloss.Style{
+			lipgloss.NewStyle().Foreground(theme.TableHighlightDefault1),
+			lipgloss.NewStyle().Foreground(theme.TableHighlightDefault2),
+			lipgloss.NewStyle().Foreground(theme.TableHighlightDefault3),
+			lipgloss.NewStyle().Foreground(theme.TableHighlightDefault4),
+			lipgloss.NewStyle().Foreground(theme.TableHighlightDefault5),
+			lipgloss.NewStyle().Foreground(theme.TableHighlightDefault6),
+			lipgloss.NewStyle().Foreground(theme.TableHighlightDefault7),
+		},
+		DefaultStyle: lipgloss.NewStyle().Foreground(theme.TableHighlightDefault1),
+	}
+
+	m.styles.Table = st
+
+	m.spinner.model.Style = lipgloss.NewStyle().
+		Foreground(theme.SpinnerSymbolFg).
+		Background(theme.SpinnerSymbolBg).
+		PaddingLeft(1)
+
+	m.spinner.textStyle = lipgloss.NewStyle().
+		Foreground(theme.SpinnerTextFg).
+		Background(theme.SpinnerTextBg)
 }
 
 func (m *tableSelectionPane) cleanSlate() {
@@ -379,6 +398,9 @@ func (m *tableSelectionPane) Update(msg tea.Msg) tea.Cmd {
 
 	if search.IsSearchBoxMessage(msg) || m.search.IsFocused() {
 		cmds = append(cmds, m.search.Update(msg))
+	} else if _, ok := msg.(tea.BackgroundColorMsg); ok {
+		m.updateStyles()
+		return nil
 	} else {
 		cmds = append(cmds, m.handleNavigation(msg))
 	}
@@ -434,7 +456,7 @@ func (m *tableSelectionPane) TableRowFieldDelegate(row table.Row, col table.Colu
 
 	enforceWidth := lipgloss.NewStyle().Width(fullWidth).MaxWidth(fullWidth).Inline(true).Render
 
-	segments, styling := compileMatchedStyles(field.value)
+	segments, styling := compileMatchedStyles(field.value, m.styles.Table.MatchedNames, m.styles.Table.DefaultStyle)
 	var style styles.LineStyle
 	for i := range segments {
 		style = style.AppendStringLG(segments[i], styling[i])

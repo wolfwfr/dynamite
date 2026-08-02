@@ -27,26 +27,7 @@ func NewItemsTable(ctx context.Context, l *slog.Logger) *ItemsTable {
 			table.WithFocused(true),
 			table.WithFieldDelegate(m.TableRowFieldDelegate),
 		)
-		s := table.DefaultStyles()
-		s.Header = s.Header.
-			Foreground(theme.TableHeaderFg).
-			BorderStyle(lipgloss.NormalBorder()).
-			BorderForeground(theme.TableBorderFg).
-			BorderBottom(true).
-			Bold(false)
-		s.Selected = s.Selected.
-			Foreground(theme.TableSelectedFg).
-			Background(theme.TableSelectedBg).
-			Bold(false)
-		t.SetStyles(s)
-
-		st := TableStyles{
-			SelectedBackground:    theme.TableSelectedBg,
-			SearchMatchBackground: theme.SearchHighlight,
-		}
-
 		m.table = t
-		m.styles = st
 	}
 
 	m.ctx = ctx
@@ -54,7 +35,31 @@ func NewItemsTable(ctx context.Context, l *slog.Logger) *ItemsTable {
 
 	m.renderCache = map[string]string{}
 
+	m.updateStyles()
+
 	return &m
+}
+
+func (t *ItemsTable) updateStyles() {
+	s := table.DefaultStyles()
+	s.Header = s.Header.
+		Foreground(theme.TableHeaderFg).
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(theme.TableBorderFg).
+		BorderBottom(true).
+		Bold(false)
+	s.Selected = s.Selected.
+		Foreground(theme.TableSelectedFg).
+		Background(theme.TableSelectedBg).
+		Bold(false)
+	t.table.SetStyles(s)
+
+	st := TableStyles{
+		SelectedBackground:    theme.TableSelectedBg,
+		SearchMatchBackground: theme.SearchHighlight,
+	}
+
+	t.styles = st
 }
 
 func (t *ItemsTable) Init() tea.Cmd {
@@ -65,6 +70,10 @@ func (t *ItemsTable) Init() tea.Cmd {
 }
 
 func (t *ItemsTable) Update(msg tea.Msg) tea.Cmd {
+	if _, ok := msg.(tea.BackgroundColorMsg); ok {
+		t.updateStyles()
+		return nil
+	}
 	return t.table.Update(msg)
 }
 

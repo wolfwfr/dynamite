@@ -77,11 +77,6 @@ func newDetailsPane(ctx context.Context, config *appconfig.Config, opts ...detai
 		KeyMap:  DefaultDetailsKeyMap(),
 	}
 
-	p.styles = detailsStyles{
-		headerStyle:    lipgloss.NewStyle().Bold(true).Foreground(theme.ViewFocusBorderColour).PaddingBottom(1),
-		fieldNameStyle: lipgloss.NewStyle().Foreground(theme.SubtleColour1), //.Bold(true),
-	}
-
 	for _, o := range opts {
 		o(p)
 	}
@@ -89,7 +84,17 @@ func newDetailsPane(ctx context.Context, config *appconfig.Config, opts ...detai
 	if !keymaps.UniqueKeyMaps(p.KeyMap.ShortHelp(), p.AddKeyMap.Bindings()) {
 		panic("overlapping keymaps!")
 	}
+
+	p.updateStyles()
+
 	return p
+}
+
+func (m *detailsPane) updateStyles() {
+	m.styles = detailsStyles{
+		headerStyle:    lipgloss.NewStyle().Bold(true).Foreground(theme.ViewFocusBorderColour).PaddingBottom(1),
+		fieldNameStyle: lipgloss.NewStyle().Foreground(theme.SubtleColour1), //.Bold(true),
+	}
 }
 
 func (m *detailsPane) cleanSlate() {
@@ -117,6 +122,9 @@ func (m *detailsPane) Update(msg tea.Msg) (cmd tea.Cmd) {
 	case messages.TableDetails:
 		m.content.SetYOffset(0)
 		m.content.SetContent(renderDetails(msg.Details, m.styles))
+		return nil
+	case tea.BackgroundColorMsg:
+		m.updateStyles()
 		return nil
 	}
 

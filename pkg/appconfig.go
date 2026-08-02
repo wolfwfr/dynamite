@@ -4,6 +4,8 @@ import (
 	"log/slog"
 
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+
+	"github.com/wolfwfr/dynamite/pkg/common"
 )
 
 type Config struct {
@@ -26,6 +28,9 @@ type Config struct {
 
 	// initialisation (CLI flags)
 	Initialisation Initialisation
+
+	// theme overrides
+	ThemeOverrides common.ThemeOverrides
 }
 
 type Initialisation struct {

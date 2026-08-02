@@ -4,104 +4,196 @@ import (
 	"image/color"
 
 	"charm.land/lipgloss/v2"
+	"github.com/wolfwfr/dynamite/pkg/common"
 )
 
 // TODO: enable configurability through config file
 // TODO: prepare basic dark & light theme
 
+func init() {
+	UpdateTheme(DarkTheme, common.ThemeOverrides{})
+}
+
 var (
-	DarkTheme bool = false
+	DarkTheme bool = true // default
+	c              = lipgloss.Color
 )
 
-// primary palette
-var (
-	TerminalDefaultColour = lipgloss.Color("") // empty
+// UpdateTheme updates colours in response to a `tea.BackgroundColorMsg`. It
+// will not touch any colours that have been overridden by the user.
+func UpdateTheme(isDark bool, overrides common.ThemeOverrides) {
+	DarkTheme = isDark
 
-	SubtleColour1 = lipgloss.Color("#B0B0B0")
-	SubtleColour2 = lipgloss.Color("#878787")
-	SubtleColour3 = lipgloss.Color("#636363")
-	SubtleColour4 = lipgloss.Color("#5E5E5E")
-	SubtleColour5 = lipgloss.Color("#585858")
+	// func(light_theme_colour, dark_theme_colour)
+	choose := lipgloss.LightDark(DarkTheme)
 
-	AccentOrange    = lipgloss.Color("#F58427")
-	AccentBlue      = lipgloss.Color("#2381CF")
-	AccentFadedBlue = lipgloss.Color("#415278")
-	AccentDarkBlue  = lipgloss.Color("#244673")
-)
+	// primary palette
+	SubtleColour1 = choose(c("#585858"), c("#B0B0B0"))
+	SubtleColour2 = choose(c("#5E5E5E"), c("#878787"))
+	SubtleColour3 = choose(c("#636363"), c("#636363"))
+	SubtleColour4 = choose(c("#878787"), c("#5E5E5E"))
+	SubtleColour5 = choose(c("#B0B0B0"), c("#585858"))
 
-var (
+	AccentOrange = choose(c("#B8611A"), c("#F58427"))
+	AccentBlue = choose(c("#17B2FF"), c("#2381CF"))
+	AccentFadedBlue = choose(c("#95A0BA"), c("#415278"))
+	AccentDarkBlue = choose(c("#8A9FBA"), c("#244673"))
+
 	// dialog
-	DialogFocusColour   = AccentOrange
+	DialogFocusColour = AccentOrange
 	DialogUnfocusColour = SubtleColour3
-	DialogBorderColour  = AccentOrange
-	TitleFG             = TerminalDefaultColour
+	DialogBorderColour = AccentOrange
+	TitleFG = TerminalDefaultColour
 
 	// spinners
-	SpinnerTextFg               = TerminalDefaultColour
-	SpinnerTextBg   color.Color = nil // transparent
-	SpinnerSymbolFg             = lipgloss.Color("#ff5faf")
-	SpinnerSymbolBg color.Color = nil // transparent
+	SpinnerTextFg = TerminalDefaultColour
+	SpinnerTextBg = nil // transparent
+	SpinnerSymbolFg = choose(c("#ff5faf"), c("#ff5faf"))
+	SpinnerSymbolBg = nil // transparent
 
 	// list
 	ListFocusFg = AccentOrange
 
 	// pane borders
-	ViewFocusBorderColour   = AccentBlue
+	ViewFocusBorderColour = AccentBlue
 	ViewUnFocusBorderColour = AccentFadedBlue
 
 	// table
 	TableSelectedBg = AccentDarkBlue
-	TableSelectedFg = lipgloss.Color("#E6E6E6") // not in active use
-	TableBorderFg   = SubtleColour5
-	TableHeaderFg   = TerminalDefaultColour
+	TableSelectedFg = choose(c("#E6E6E6"), c("#E6E6E6")) // not in active use
+	TableBorderFg = SubtleColour5
+	TableHeaderFg = TerminalDefaultColour
 
 	// search
-	SearchHighlight = lipgloss.Color("#317566")
+	SearchHighlight = choose(c("#317566"), c("#317566"))
 
 	// object parsing colours
 	FieldNameFg = SubtleColour1
-	NumberFg    = AccentOrange
-	BoolFg      = lipgloss.Color("#D9AF2E")
-	BytesFg     = AccentOrange
-	NULLFg      = lipgloss.Color("#A18975")
-	StringFg    = lipgloss.Color("#a7bc85")
-	TokenFg     = SubtleColour4
-	ErrorFg     = lipgloss.Color("#B51010")
+	NumberFg = AccentOrange
+	BoolFg = choose(c("#D9AF2E"), c("#D9AF2E"))
+	BytesFg = AccentOrange
+	NULLFg = choose(c("#A18975"), c("#A18975"))
+	StringFg = choose(c("#196B1C"), c("#a7bc85"))
+	TokenFg = SubtleColour4
+	ErrorFg = choose(c("#B51010"), c("#B51010"))
 	TimestampFg = NumberFg
 
 	// gutter boxes
-	RegionBoxBg         = lipgloss.Color("#80380E")
-	FilterBoxBg         = lipgloss.Color("#681FA1")
-	PageSuspendBoxBg    = SubtleColour4
-	QueryModeBoxQeuryBg = lipgloss.Color("#046645")
-	QueryModeBoxScanBg  = lipgloss.Color("#0E3080")
-	QueryModeBoxAdminBg = lipgloss.Color("#0E5680")
-	HelpBoxBg           = lipgloss.Color("#042B19")
-	BoxFg               = TerminalDefaultColour
+	RegionBoxBg = choose(c("#80380E"), c("#80380E"))
+	FilterBoxBg = choose(c("#681FA1"), c("#681FA1"))
+	PageSuspendBoxBg = SubtleColour4
+	QueryModeBoxQeuryBg = choose(c("#046645"), c("#046645"))
+	QueryModeBoxScanBg = choose(c("#0E3080"), c("#0E3080"))
+	QueryModeBoxAdminBg = choose(c("#0E5680"), c("#0E5680"))
+	HelpBoxBg = choose(c("#042B19"), c("#042B19"))
+	BoxFg = choose(c("#B0B0B0"), TerminalDefaultColour)
+	HelpBoxFg = choose(SubtleColour2, SubtleColour2)
 
 	// table matching
 	TableHighlightDefault1 = SubtleColour1
-	TableHighlightDefault2 = lipgloss.Color("#a7bc85")
-	TableHighlightDefault3 = lipgloss.Color("#489C7F")
-	TableHighlightDefault4 = lipgloss.Color("#B59226")
-	TableHighlightDefault5 = lipgloss.Color("#668C82")
-	TableHighlightDefault6 = lipgloss.Color("#D97604")
-	TableHighlightDefault7 = lipgloss.Color("#A18975")
+	TableHighlightDefault2 = choose(c("#4F6E1E"), c("#a7bc85"))
+	TableHighlightDefault3 = choose(c("#19664B"), c("#489C7F"))
+	TableHighlightDefault4 = choose(c("#70570A"), c("#B59226"))
+	TableHighlightDefault5 = choose(c("#145C49"), c("#668C82"))
+	TableHighlightDefault6 = choose(c("#804504"), c("#D97604"))
+	TableHighlightDefault7 = choose(c("#7C6755"), c("#A18975"))
+
+	BorderStyle = BorderStyle.
+		Align(lipgloss.Left, lipgloss.Top).
+		BorderStyle(lipgloss.RoundedBorder()).
+		BorderForeground(ViewUnFocusBorderColour)
+
+	FocusedBorderStyle = FocusedBorderStyle.
+		Align(lipgloss.Left, lipgloss.Top).
+		BorderStyle(lipgloss.RoundedBorder()).
+		BorderForeground(ViewFocusBorderColour)
+
+	DialogStyle = DialogStyle.
+		Align(lipgloss.Center, lipgloss.Center).
+		BorderStyle(lipgloss.RoundedBorder()).
+		BorderForeground(DialogBorderColour)
+}
+
+// primary palette
+var (
+	TerminalDefaultColour = c("") // empty
+
+	SubtleColour1 color.Color
+	SubtleColour2 color.Color
+	SubtleColour3 color.Color
+	SubtleColour4 color.Color
+	SubtleColour5 color.Color
+
+	AccentOrange    color.Color
+	AccentBlue      color.Color
+	AccentFadedBlue color.Color
+	AccentDarkBlue  color.Color
 )
 
 var (
-	BorderStyle = lipgloss.NewStyle().
-			Align(lipgloss.Left, lipgloss.Top).
-			BorderStyle(lipgloss.RoundedBorder()).
-			BorderForeground(ViewUnFocusBorderColour)
+	// dialog
+	DialogFocusColour   color.Color
+	DialogUnfocusColour color.Color
+	DialogBorderColour  color.Color
+	TitleFG             color.Color
 
-	FocusedBorderStyle = lipgloss.NewStyle().
-				Align(lipgloss.Left, lipgloss.Top).
-				BorderStyle(lipgloss.RoundedBorder()).
-				BorderForeground(ViewFocusBorderColour)
+	// spinners
+	SpinnerTextFg   color.Color
+	SpinnerTextBg   color.Color
+	SpinnerSymbolFg color.Color
+	SpinnerSymbolBg color.Color
 
-	DialogStyle = lipgloss.NewStyle().
-			Align(lipgloss.Center, lipgloss.Center).
-			BorderStyle(lipgloss.RoundedBorder()).
-			BorderForeground(DialogBorderColour)
+	// list
+	ListFocusFg color.Color
+
+	// pane borders
+	ViewFocusBorderColour   color.Color
+	ViewUnFocusBorderColour color.Color
+
+	// table
+	TableSelectedBg color.Color
+	TableSelectedFg color.Color
+	TableBorderFg   color.Color
+	TableHeaderFg   color.Color
+
+	// search
+	SearchHighlight color.Color
+
+	// object parsing colours
+	FieldNameFg color.Color
+	NumberFg    color.Color
+	BoolFg      color.Color
+	BytesFg     color.Color
+	NULLFg      color.Color
+	StringFg    color.Color
+	TokenFg     color.Color
+	ErrorFg     color.Color
+	TimestampFg color.Color
+
+	// gutter boxes
+	RegionBoxBg         color.Color
+	FilterBoxBg         color.Color
+	PageSuspendBoxBg    color.Color
+	QueryModeBoxQeuryBg color.Color
+	QueryModeBoxScanBg  color.Color
+	QueryModeBoxAdminBg color.Color
+	HelpBoxBg           color.Color
+	BoxFg               color.Color
+	HelpBoxFg           color.Color
+
+	// table matching
+	TableHighlightDefault1 color.Color
+	TableHighlightDefault2 color.Color
+	TableHighlightDefault3 color.Color
+	TableHighlightDefault4 color.Color
+	TableHighlightDefault5 color.Color
+	TableHighlightDefault6 color.Color
+	TableHighlightDefault7 color.Color
+)
+
+// styles
+var (
+	BorderStyle        lipgloss.Style
+	FocusedBorderStyle lipgloss.Style
+	DialogStyle        lipgloss.Style
 )

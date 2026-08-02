@@ -180,22 +180,11 @@ func withItemsPaneKeys(keys keymaps.AdditionalKeys) itemsPaneOption {
 }
 
 func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ...itemsPaneOption) *ItemSelectionPane {
-	st := apitypes.ObjectStyling{ // styling for dynamodb-adapter object parsing
-		FieldNameColor: theme.FieldNameFg,
-		NumberColor:    theme.NumberFg,
-		BoolColor:      theme.BoolFg,
-		BytesColor:     theme.BytesFg,
-		NULLColor:      theme.NULLFg,
-		StringColor:    theme.StringFg,
-		TokenColor:     theme.TokenFg,
-		ErrorColor:     theme.ErrorFg,
-	}
-
 	p := &ItemSelectionPane{
 		ctx:            ctx,
 		logger:         config.Logger.With(slog.String(logging.ViewKey, Log_ItemsView), slog.String(logging.PaneKey, "items")),
 		config:         config,
-		dynamodbClient: dynamodb.NewAdapter(config.Logger, dynamodb.WithObjectStyling(st)),
+		dynamodbClient: newDynamodbClient(config.Logger),
 		stdTO:          30 * time.Second,
 		KeyMap:         DefaultItemPaneKeyMap(),
 		sessions:       make(map[string]SessionData),
@@ -211,14 +200,7 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 	{ // spinner
 		sp := spinner.New()
 		sp.Spinner = spinner.Dot
-		sp.Style = lipgloss.NewStyle().
-			Foreground(theme.SpinnerSymbolFg).
-			Background(theme.SpinnerSymbolBg).
-			PaddingLeft(1)
 		p.spinner.model = sp
-		p.spinner.textStyle = lipgloss.NewStyle().
-			Foreground(theme.SpinnerTextFg).
-			Background(theme.SpinnerTextBg)
 	}
 
 	{ // search box
@@ -243,7 +225,40 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 		panic("overlapping keymaps!")
 	}
 
+	p.updateStyles()
+
 	return p
+}
+
+func (m *ItemSelectionPane) updateStyles() tea.Cmd {
+	cmds := make([]tea.Cmd, 0)
+	cmds = append(cmds, m.softReset()) // not supporting in-place theme updates
+	// TODO: move theme package up and do not inject styles into adapter
+	m.dynamodbClient = newDynamodbClient(m.config.Logger) // ensure is using correct styles
+
+	m.spinner.model.Style = lipgloss.NewStyle().
+		Foreground(theme.SpinnerSymbolFg).
+		Background(theme.SpinnerSymbolBg).
+		PaddingLeft(1)
+	m.spinner.textStyle = lipgloss.NewStyle().
+		Foreground(theme.SpinnerTextFg).
+		Background(theme.SpinnerTextBg)
+	return tea.Batch(cmds...)
+}
+
+func newDynamodbClient(logger *slog.Logger) *dynamodb.Adapter {
+	st := apitypes.ObjectStyling{ // styling for dynamodb-adapter object parsing
+		FieldNameColor: theme.FieldNameFg,
+		NumberColor:    theme.NumberFg,
+		BoolColor:      theme.BoolFg,
+		BytesColor:     theme.BytesFg,
+		NULLColor:      theme.NULLFg,
+		StringColor:    theme.StringFg,
+		TokenColor:     theme.TokenFg,
+		ErrorColor:     theme.ErrorFg,
+	}
+
+	return dynamodb.NewAdapter(logger, dynamodb.WithObjectStyling(st))
 }
 
 func (m *ItemSelectionPane) KeyMapExecutionSafe(k tea.KeyPressMsg) bool {
@@ -351,6 +366,7 @@ func (m *ItemSelectionPane) softReset() tea.Cmd {
 
 func (m *ItemSelectionPane) Update(msg tea.Msg) (cmd tea.Cmd) {
 	cmds := []tea.Cmd{}
+	// TODO: extend; missing a few matches
 	_, isSelect := msg.(messages.SelectTable)
 	_, isToggleFmt := msg.(messages.ToggleJSONYAML)
 	_, isTick := msg.(spinner.TickMsg)
@@ -358,8 +374,9 @@ func (m *ItemSelectionPane) Update(msg tea.Msg) (cmd tea.Cmd) {
 	_, isColSort := msg.(messages.ColumnSortingUpdate)
 	_, isColSortRes := msg.(messages.ColumnSortingReset)
 	_, isPreview := msg.(messages.PreviewItem)
+	_, isBgMsg := msg.(tea.BackgroundColorMsg)
 
-	excludeSearch := isSelect || isToggleFmt || isTick || isColVis || isColSort || isColSortRes || isPreview
+	excludeSearch := isSelect || isToggleFmt || isTick || isColVis || isColSort || isColSortRes || isPreview || isBgMsg
 
 	if search.IsSearchBoxMessage(msg) || (!excludeSearch && m.search.IsFocused()) {
 		cmds = append(cmds, m.search.Update(msg))
@@ -454,6 +471,8 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 		var cmd tea.Cmd
 		m.spinner.model, cmd = m.spinner.model.Update(msg)
 		return cmd
+	case tea.BackgroundColorMsg:
+		return m.updateTheme(msg)
 	}
 	cmds = append(cmds, m.table.Update(msg))
 
@@ -461,6 +480,13 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 		return m.PageNext(false)
 	}
 
+	return tea.Batch(cmds...)
+}
+
+func (m *ItemSelectionPane) updateTheme(msg tea.BackgroundColorMsg) tea.Cmd {
+	cmds := make([]tea.Cmd, 0)
+	cmds = append(cmds, m.updateStyles())
+	cmds = append(cmds, m.table.Update(msg))
 	return tea.Batch(cmds...)
 }
 

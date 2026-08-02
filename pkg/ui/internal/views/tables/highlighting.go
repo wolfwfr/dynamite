@@ -5,8 +5,6 @@ import (
 	"regexp"
 
 	"charm.land/lipgloss/v2"
-
-	"github.com/wolfwfr/dynamite/pkg/ui/internal/theme"
 )
 
 var regexMatchs []*regexp.Regexp
@@ -26,20 +24,7 @@ func (m *tableSelectionPane) initialiseRegex(exprs []string) {
 	}
 }
 
-// TODO: configurability
-var highlights []lipgloss.Style = []lipgloss.Style{
-	lipgloss.NewStyle().Foreground(theme.TableHighlightDefault1),
-	lipgloss.NewStyle().Foreground(theme.TableHighlightDefault2),
-	lipgloss.NewStyle().Foreground(theme.TableHighlightDefault3),
-	lipgloss.NewStyle().Foreground(theme.TableHighlightDefault4),
-	lipgloss.NewStyle().Foreground(theme.TableHighlightDefault5),
-	lipgloss.NewStyle().Foreground(theme.TableHighlightDefault6),
-	lipgloss.NewStyle().Foreground(theme.TableHighlightDefault7),
-}
-
-var defaultStyle = lipgloss.NewStyle().Foreground(theme.TableHighlightDefault1)
-
-func compileMatchedStyles(name string) ([]string, []lipgloss.Style) {
+func compileMatchedStyles(name string, highlights []lipgloss.Style, defaultStyle lipgloss.Style) ([]string, []lipgloss.Style) {
 	if name == "" || len(regexMatchs) == 0 {
 		return []string{name}, []lipgloss.Style{defaultStyle}
 	}

@@ -62,17 +62,12 @@ type TableSelection struct {
 	zoomtarget paneID
 }
 
-var (
-	unfocusedBorderStyle = theme.BorderStyle
-	focusedBorderStyle   = theme.FocusedBorderStyle
-)
-
 func (m *TableSelection) renderBorder(paneID paneID, content string) string {
 	st := m.panes[paneID].style
 	if m.focused == paneID {
-		return focusedBorderStyle.Inherit(st).Render(content)
+		return theme.FocusedBorderStyle.Inherit(st).Render(content)
 	}
-	return unfocusedBorderStyle.Inherit(st).Render(content)
+	return theme.BorderStyle.Inherit(st).Render(content)
 }
 
 type Option func(t *TableSelection)
