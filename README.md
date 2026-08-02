@@ -205,7 +205,34 @@ items:
   primary_width_percent: 50
   # page-size override, paginates items from dynamodb table with given pagesize, by default page-size depends on window-size
   page_size: 0
+
+colors:
+  # All theme colours can be overridden here
 ```
+
+<br/>
+
+### Overriding Theme Colours
+
+To observe the yaml tags to use for overriding theme colours, have a look at the
+`pkg/theme/overrides.go`
+[file](https://github.com/wolfwfr/dynamite/blob/main/pkg/theme/overrides.go).
+
+> [!TIP]
+>
+> apply the values 'nil' or 'transparent' to remove the colour. This renders
+> foreground colours in the terminal's default colour and background colours are
+> not rendered at all.
+
+**Example**
+
+```yaml
+# <config_path>/dynamite-tui/config.yaml
+colors:
+  terminal_default_color: "#FF0808"
+  spinner_symbol_fg: nil
+```
+
 
 <br/>
 
