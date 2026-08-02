@@ -14,7 +14,7 @@ import (
 	headed "github.com/wolfwfr/dynamite/pkg/ui/internal/components/headed_list"
 	regular "github.com/wolfwfr/dynamite/pkg/ui/internal/components/regular_list"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
-	commonstyles "github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
+	"github.com/wolfwfr/dynamite/pkg/ui/internal/theme"
 	u "github.com/wolfwfr/dynamite/pkg/util"
 )
 
@@ -154,32 +154,32 @@ func newQueryStyles(darkBG bool) queryListStyles {
 	var s queryListStyles
 
 	s.Item = lipgloss.NewStyle().PaddingLeft(4)
-	s.SelectedItem = lipgloss.NewStyle().PaddingLeft(2).Foreground(commonstyles.DialogFocusColour)
-	s.Header = lipgloss.NewStyle().Foreground(commonstyles.SubtleColour)
+	s.SelectedItem = lipgloss.NewStyle().PaddingLeft(2).Foreground(theme.DialogFocusColour)
+	s.Header = lipgloss.NewStyle().Foreground(theme.SubtleColour)
 
-	s.dialog = commonstyles.DialogStyle
-	s.operatordialog = commonstyles.DialogStyle.Border(lipgloss.RoundedBorder()).Padding(3, 3, 0, 0)
+	s.dialog = theme.DialogStyle
+	s.operatordialog = theme.DialogStyle.Border(lipgloss.RoundedBorder()).Padding(3, 3, 0, 0)
 	s.title = lipgloss.NewStyle().Padding(1, 0, 2, 0)
 	s.content = lipgloss.NewStyle().PaddingTop(1).PaddingBottom(2)
 	s.help = list.DefaultStyles(darkBG).HelpStyle.Padding(1, 2, 0, 2)
 	s.helpLine = lipgloss.NewStyle().PaddingBottom(1)
 
 	// narrow boxes
-	s.narrowBox = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(commonstyles.DialogUnfocusColour).Padding(0, 1, 0, 1)
-	s.narrowBoxFocused = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(commonstyles.DialogFocusColour).Padding(0, 1, 0, 1)
+	s.narrowBox = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(theme.DialogUnfocusColour).Padding(0, 1, 0, 1)
+	s.narrowBoxFocused = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(theme.DialogFocusColour).Padding(0, 1, 0, 1)
 
 	// wide boxes
-	s.wideBox = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(commonstyles.DialogUnfocusColour)
-	s.wideBoxFocused = s.wideBox.BorderForeground(commonstyles.DialogFocusColour)
+	s.wideBox = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(theme.DialogUnfocusColour)
+	s.wideBoxFocused = s.wideBox.BorderForeground(theme.DialogFocusColour)
 
 	// inputs fields
-	s.hashKeyInputTitle = lipgloss.NewStyle().PaddingLeft(1).Foreground(commonstyles.SubtleColour)
-	s.rangeKeyInputTitle = lipgloss.NewStyle().PaddingLeft(1).Foreground(commonstyles.SubtleColour).Padding(1, 0, 0, 0)
-	s.rangeKeyOrderTitle = lipgloss.NewStyle().PaddingLeft(1).Foreground(commonstyles.SubtleColour).Padding(1, 0, 0, 0)
+	s.hashKeyInputTitle = lipgloss.NewStyle().PaddingLeft(1).Foreground(theme.SubtleColour)
+	s.rangeKeyInputTitle = lipgloss.NewStyle().PaddingLeft(1).Foreground(theme.SubtleColour).Padding(1, 0, 0, 0)
+	s.rangeKeyOrderTitle = lipgloss.NewStyle().PaddingLeft(1).Foreground(theme.SubtleColour).Padding(1, 0, 0, 0)
 
 	// query button
-	s.applyButton = lipgloss.NewStyle().Border(lipgloss.DoubleBorder()).BorderForeground(commonstyles.DialogUnfocusColour).Padding(0, 2, 0, 2).Margin(1, 0, 1, 0)
-	s.applyButtonFocused = lipgloss.NewStyle().Border(lipgloss.DoubleBorder()).BorderForeground(commonstyles.DialogFocusColour).Padding(0, 2, 0, 2).Margin(1, 0, 1, 0)
+	s.applyButton = lipgloss.NewStyle().Border(lipgloss.DoubleBorder()).BorderForeground(theme.DialogUnfocusColour).Padding(0, 2, 0, 2).Margin(1, 0, 1, 0)
+	s.applyButtonFocused = lipgloss.NewStyle().Border(lipgloss.DoubleBorder()).BorderForeground(theme.DialogFocusColour).Padding(0, 2, 0, 2).Margin(1, 0, 1, 0)
 
 	s.tableFullHeader = "Table Index"
 	s.gsiFullHeader = "Global Secondary Indices"

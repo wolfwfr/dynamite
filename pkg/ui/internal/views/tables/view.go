@@ -10,7 +10,7 @@ import (
 
 	appconfig "github.com/wolfwfr/dynamite/pkg"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
-	"github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
+	"github.com/wolfwfr/dynamite/pkg/ui/internal/theme"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/util/keymaps"
 	u "github.com/wolfwfr/dynamite/pkg/util"
 )
@@ -58,8 +58,8 @@ type TableSelection struct {
 }
 
 var (
-	unfocusedBorderStyle = styles.BorderStyle
-	focusedBorderStyle   = styles.FocusedBorderStyle
+	unfocusedBorderStyle = theme.BorderStyle
+	focusedBorderStyle   = theme.FocusedBorderStyle
 )
 
 func (m *TableSelection) renderBorder(paneID paneID, content string) string {

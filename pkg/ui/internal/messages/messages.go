@@ -5,7 +5,7 @@ import (
 
 	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 
-	apitypes "github.com/wolfwfr/dynamite/pkg/ui/internal/adapters/dynamodb/types"
+	apitypes "github.com/wolfwfr/dynamite/pkg/adapters/dynamodb/types"
 )
 
 type View int

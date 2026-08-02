@@ -5,7 +5,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 
-	apitypes "github.com/wolfwfr/dynamite/pkg/ui/internal/adapters/dynamodb/types"
+	apitypes "github.com/wolfwfr/dynamite/pkg/adapters/dynamodb/types"
 )
 
 //go:generate mockgen -source=$GOFILE -destination=./mocks/gen.go -package=mocks

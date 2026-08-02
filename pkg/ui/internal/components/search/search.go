@@ -8,14 +8,14 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/google/uuid"
 
-	commonstyles "github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
+	"github.com/wolfwfr/dynamite/pkg/ui/internal/theme"
 )
 
 var (
 	SearchBoxStyle = lipgloss.NewStyle().
 		Align(lipgloss.Left, lipgloss.Center).
 		BorderStyle(lipgloss.RoundedBorder()).
-		BorderForeground(commonstyles.SearchFg).
+		BorderForeground(theme.SearchFg).
 		PaddingLeft(2).
 		Height(2)
 )

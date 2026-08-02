@@ -8,9 +8,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 
-	"github.com/wolfwfr/dynamite/pkg/ui/internal/adapters/dynamodb/parsing"
-	apitypes "github.com/wolfwfr/dynamite/pkg/ui/internal/adapters/dynamodb/types"
-	"github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
+	"github.com/wolfwfr/dynamite/lib/styles"
+	"github.com/wolfwfr/dynamite/pkg/adapters/dynamodb/parsing"
+	apitypes "github.com/wolfwfr/dynamite/pkg/adapters/dynamodb/types"
 
 	connector "github.com/wolfwfr/dynamite/pkg/aws/dynamodb"
 	cncrtypes "github.com/wolfwfr/dynamite/pkg/aws/dynamodb/types"
@@ -18,11 +18,19 @@ import (
 
 // Adapter encapsulates the dynamo-db adapter functions. Although stateless, it
 // can be mocked or decorated.
-type Adapter struct{}
+type Adapter struct {
+	styling apitypes.ObjectStyling
+}
 
 // NewAdapter returns a new instance of Adapter.
-func NewAdapter() *Adapter {
-	return &Adapter{}
+func NewAdapter(opts ...Option) *Adapter {
+	options := &options{}
+	for _, o := range opts {
+		o(options)
+	}
+	return &Adapter{
+		styling: options.objectStyling,
+	}
 }
 
 // simple one on one translation
@@ -84,30 +92,11 @@ func (a *Adapter) ScanTable(client *dynamodb.Client, ctx context.Context, table 
 	}
 
 	res := &apitypes.ScanResponse{
-		Items: apitypes.Items{
-			JSON:       make([]string, 0, len(out.Items)),
-			JSONStyled: make([]styles.ObjectStyle, 0, len(out.Items)),
-			YAML:       make([]string, 0, len(out.Items)),
-			YAMLStyled: make([]styles.ObjectStyle, 0, len(out.Items)),
-			Raw:        out.Items,
-			TableKeys:  make([][]apitypes.KeyValue, 0, len(out.Items)),
-		},
 		LastEvaluatedKey: out.LastEvaluatedKey,
 	}
 
 	hkey, rkey := parsePrimaryKeys(params.KeySchema)
-
-	// TODO: reconsider parsing to both JSON & YAML all the time
-	for _, item := range out.Items {
-		yaml, yamlStyled := parsing.NewYAMLParser().ParseItemToYAML(item, *hkey, rkey)
-		json, jsonStyled, keys := parsing.NewJSONParser().ParseToJSONWithKeys(item, *hkey, rkey)
-
-		res.Items.JSON = append(res.Items.JSON, json)
-		res.Items.JSONStyled = append(res.Items.JSONStyled, jsonStyled)
-		res.Items.YAML = append(res.Items.YAML, yaml)
-		res.Items.YAMLStyled = append(res.Items.YAMLStyled, yamlStyled)
-		res.Items.TableKeys = append(res.Items.TableKeys, keys)
-	}
+	res.Items = a.parseItems(out.Items, hkey, rkey)
 
 	return res, err
 }
@@ -134,29 +123,12 @@ func (a *Adapter) QueryTable(client *dynamodb.Client, ctx context.Context, table
 	}
 
 	res := &apitypes.QueryResponse{
-		Items: apitypes.Items{
-			JSON:       make([]string, 0, len(out.Items)),
-			JSONStyled: make([]styles.ObjectStyle, 0, len(out.Items)),
-			YAML:       make([]string, 0, len(out.Items)),
-			YAMLStyled: make([]styles.ObjectStyle, 0, len(out.Items)),
-			Raw:        out.Items,
-			TableKeys:  make([][]apitypes.KeyValue, 0, len(out.Items)),
-		},
 		LastEvaluatedKey: out.LastEvaluatedKey,
 	}
 
 	hkey, rkey := parsePrimaryKeys(params.KeySchema)
+	res.Items = a.parseItems(out.Items, hkey, rkey)
 
-	// TODO: reconsider parsing to both JSON & YAML all the time
-	for _, item := range out.Items {
-		yaml, yamlStyled := parsing.NewYAMLParser().ParseItemToYAML(item, *hkey, rkey)
-		json, jsonStyled, keys := parsing.NewJSONParser().ParseToJSONWithKeys(item, *hkey, rkey)
-		res.Items.JSON = append(res.Items.JSON, json)
-		res.Items.JSONStyled = append(res.Items.JSONStyled, jsonStyled)
-		res.Items.YAML = append(res.Items.YAML, yaml)
-		res.Items.YAMLStyled = append(res.Items.YAMLStyled, yamlStyled)
-		res.Items.TableKeys = append(res.Items.TableKeys, keys)
-	}
 	return res, nil
 }
 
@@ -174,4 +146,27 @@ func parsePrimaryKeys(schema []types.KeySchemaElement) (*string, *string) {
 	}
 
 	return hash, rang
+}
+
+func (a *Adapter) parseItems(raw []map[string]types.AttributeValue, hkey, rkey *string) apitypes.Items {
+	items := apitypes.Items{
+		JSON:       make([]string, 0, len(raw)),
+		JSONStyled: make([]styles.ObjectStyle, 0, len(raw)),
+		YAML:       make([]string, 0, len(raw)),
+		YAMLStyled: make([]styles.ObjectStyle, 0, len(raw)),
+		Raw:        raw,
+		TableKeys:  make([][]apitypes.KeyValue, 0, len(raw)),
+	}
+
+	// TODO: reconsider parsing to both JSON & YAML all the time
+	for _, item := range raw {
+		yaml, yamlStyled := parsing.NewYAMLParser(a.styling).ParseItemToYAML(item, *hkey, rkey)
+		json, jsonStyled, keys := parsing.NewJSONParser(a.styling).ParseToJSONWithKeys(item, *hkey, rkey)
+		items.JSON = append(items.JSON, json)
+		items.JSONStyled = append(items.JSONStyled, jsonStyled)
+		items.YAML = append(items.YAML, yaml)
+		items.YAMLStyled = append(items.YAMLStyled, yamlStyled)
+		items.TableKeys = append(items.TableKeys, keys)
+	}
+	return items
 }

@@ -14,9 +14,9 @@ import (
 	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 
 	appconfig "github.com/wolfwfr/dynamite/pkg"
-	apitypes "github.com/wolfwfr/dynamite/pkg/ui/internal/adapters/dynamodb/types"
+	apitypes "github.com/wolfwfr/dynamite/pkg/adapters/dynamodb/types"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
-	"github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
+	"github.com/wolfwfr/dynamite/pkg/ui/internal/theme"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/util/keymaps"
 	u "github.com/wolfwfr/dynamite/pkg/util"
 )
@@ -72,8 +72,8 @@ func newDetailsPane(ctx context.Context, config *appconfig.Config, opts ...detai
 	}
 
 	p.styles = detailsStyles{
-		headerStyle:    lipgloss.NewStyle().Bold(true).Foreground(styles.ViewFocusBorderColour).PaddingBottom(1),
-		fieldNameStyle: lipgloss.NewStyle().Foreground(styles.SubtleColour), //.Bold(true),
+		headerStyle:    lipgloss.NewStyle().Bold(true).Foreground(theme.ViewFocusBorderColour).PaddingBottom(1),
+		fieldNameStyle: lipgloss.NewStyle().Foreground(theme.SubtleColour), //.Bold(true),
 	}
 
 	for _, o := range opts {

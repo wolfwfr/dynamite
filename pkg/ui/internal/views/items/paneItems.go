@@ -20,14 +20,15 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	appconfig "github.com/wolfwfr/dynamite/pkg"
+	"github.com/wolfwfr/dynamite/pkg/adapters/dynamodb"
+	"github.com/wolfwfr/dynamite/pkg/adapters/dynamodb/types"
+	apitypes "github.com/wolfwfr/dynamite/pkg/adapters/dynamodb/types"
 	"github.com/wolfwfr/dynamite/pkg/common"
-	"github.com/wolfwfr/dynamite/pkg/ui/internal/adapters/dynamodb"
-	"github.com/wolfwfr/dynamite/pkg/ui/internal/adapters/dynamodb/types"
-	apitypes "github.com/wolfwfr/dynamite/pkg/ui/internal/adapters/dynamodb/types"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/components/search"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/components/table"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
-	commonstyles "github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
+
+	"github.com/wolfwfr/dynamite/pkg/ui/internal/theme"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/items/internal/itemstable"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/util/keymaps"
 	u "github.com/wolfwfr/dynamite/pkg/util"
@@ -36,7 +37,7 @@ import (
 var tableInfoBox = lipgloss.NewStyle().
 	Height(2).
 	Padding(0, 1, 1, 1).
-	Foreground(commonstyles.SubtleColour2)
+	Foreground(theme.SubtleColour2)
 
 type previewFormat int
 
@@ -174,10 +175,21 @@ func withItemsPaneKeys(keys keymaps.AdditionalKeys) itemsPaneOption {
 }
 
 func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ...itemsPaneOption) *ItemSelectionPane {
+	st := apitypes.ObjectStyling{ // styling for dynamodb-adapter object parsing
+		FieldNameColor: theme.FieldNameColour,
+		NumberColor:    theme.NumberColour,
+		BoolColor:      theme.BoolColour,
+		BytesColor:     theme.BytesColour,
+		NULLColor:      theme.NULLColour,
+		StringColor:    theme.StringColour,
+		TokenColor:     theme.TokenColour,
+		ErrorColor:     theme.ErrorColour,
+	}
+
 	p := &ItemSelectionPane{
 		ctx:            ctx,
 		config:         config,
-		dynamodbClient: dynamodb.NewAdapter(),
+		dynamodbClient: dynamodb.NewAdapter(dynamodb.WithObjectStyling(st)),
 		stdTO:          30 * time.Second,
 		KeyMap:         DefaultItemPaneKeyMap(),
 		sessions:       make(map[string]SessionData),

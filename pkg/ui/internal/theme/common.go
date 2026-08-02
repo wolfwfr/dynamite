@@ -1,4 +1,4 @@
-package styles
+package theme
 
 import (
 	"charm.land/lipgloss/v2"
@@ -49,7 +49,6 @@ var (
 	TableHighlightDefault5 = lipgloss.Color("#668C82")
 	TableHighlightDefault6 = lipgloss.Color("#D97604")
 	TableHighlightDefault7 = lipgloss.Color("#A18975")
-
 
 	SearchFg = lipgloss.Color("#4F4F4F")
 

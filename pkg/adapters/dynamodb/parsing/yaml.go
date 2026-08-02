@@ -6,7 +6,8 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
-	"github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
+	"github.com/wolfwfr/dynamite/lib/styles"
+	apitypes "github.com/wolfwfr/dynamite/pkg/adapters/dynamodb/types"
 	"github.com/wolfwfr/dynamite/pkg/util"
 )
 
@@ -29,16 +30,16 @@ type yamlParserStyles struct {
 	ErrorStyle     lipgloss.Style
 }
 
-func NewYAMLParser() YAMLParser {
+func NewYAMLParser(s apitypes.ObjectStyling) YAMLParser {
 	p := YAMLParser{}
-	p.Styles.FieldNameStyle = lipgloss.NewStyle().Foreground(styles.FieldNameColour)
-	p.Styles.NumberStyle = lipgloss.NewStyle().Foreground(styles.NumberColour)
-	p.Styles.BoolStyle = lipgloss.NewStyle().Foreground(styles.BoolColour)
-	p.Styles.BytesStyle = lipgloss.NewStyle().Foreground(styles.BytesColour)
-	p.Styles.NULLStyle = lipgloss.NewStyle().Foreground(styles.NULLColour)
-	p.Styles.StringStyle = lipgloss.NewStyle().Foreground(styles.StringColour)
-	p.Styles.TokenStyle = lipgloss.NewStyle().Foreground(styles.TokenColour)
-	p.Styles.ErrorStyle = lipgloss.NewStyle().Foreground(styles.ErrorColour)
+	p.Styles.FieldNameStyle = lipgloss.NewStyle().Foreground(s.FieldNameColor)
+	p.Styles.NumberStyle = lipgloss.NewStyle().Foreground(s.NumberColor)
+	p.Styles.BoolStyle = lipgloss.NewStyle().Foreground(s.BoolColor)
+	p.Styles.BytesStyle = lipgloss.NewStyle().Foreground(s.BytesColor)
+	p.Styles.NULLStyle = lipgloss.NewStyle().Foreground(s.NULLColor)
+	p.Styles.StringStyle = lipgloss.NewStyle().Foreground(s.StringColor)
+	p.Styles.TokenStyle = lipgloss.NewStyle().Foreground(s.TokenColor)
+	p.Styles.ErrorStyle = lipgloss.NewStyle().Foreground(s.ErrorColor)
 	return p
 }
 

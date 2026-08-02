@@ -11,7 +11,7 @@ import (
 	gm "go.uber.org/mock/gomock"
 
 	appconfig "github.com/wolfwfr/dynamite/pkg"
-	apitypes "github.com/wolfwfr/dynamite/pkg/ui/internal/adapters/dynamodb/types"
+	apitypes "github.com/wolfwfr/dynamite/pkg/adapters/dynamodb/types"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/tables/mocks"
 	tu "github.com/wolfwfr/dynamite/test/testutils"

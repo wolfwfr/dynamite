@@ -1,7 +1,7 @@
 package itemstable
 
 import (
-	"github.com/wolfwfr/dynamite/pkg/ui/internal/adapters/dynamodb/types"
+	"github.com/wolfwfr/dynamite/pkg/adapters/dynamodb/types"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/components/table"
 )
 

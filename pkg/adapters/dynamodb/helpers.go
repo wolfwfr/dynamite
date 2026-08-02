@@ -1,8 +1,8 @@
 package dynamodb
 
 import (
+	"github.com/wolfwfr/dynamite/pkg/adapters/dynamodb/types"
 	cncrtypes "github.com/wolfwfr/dynamite/pkg/aws/dynamodb/types"
-	"github.com/wolfwfr/dynamite/pkg/ui/internal/adapters/dynamodb/types"
 )
 
 func convertFilterParameters(p []types.FilterExpressionParameters) []cncrtypes.FilterExpressionParameters {

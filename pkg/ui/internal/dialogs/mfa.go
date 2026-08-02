@@ -11,7 +11,7 @@ import (
 
 	appconfig "github.com/wolfwfr/dynamite/pkg"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
-	commonstyles "github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
+	"github.com/wolfwfr/dynamite/pkg/ui/internal/theme"
 )
 
 // the MFA dialog requests an MFA token for AWS credits
@@ -62,11 +62,11 @@ type mfaStyles struct {
 
 func newMFAStyles() mfaStyles {
 	s := mfaStyles{}
-	s.dialogStyle = commonstyles.DialogStyle
+	s.dialogStyle = theme.DialogStyle
 	s.title = lipgloss.NewStyle().Padding(1, 0, 1, 0)
-	s.desc = lipgloss.NewStyle().Padding(1, 0, 1, 0).Foreground(commonstyles.SubtleColour)
+	s.desc = lipgloss.NewStyle().Padding(1, 0, 1, 0).Foreground(theme.SubtleColour)
 	s.helpLine = lipgloss.NewStyle().Padding(1, 4, 0, 4)
-	s.inputBox = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(commonstyles.DialogFocusColour)
+	s.inputBox = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(theme.DialogFocusColour)
 	return s
 }
 

@@ -17,7 +17,7 @@ import (
 	"github.com/wolfwfr/dynamite/pkg/aws/dynamodb"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/dialogs"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
-	commonstyles "github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
+	"github.com/wolfwfr/dynamite/pkg/ui/internal/theme"
 	itemsview "github.com/wolfwfr/dynamite/pkg/ui/internal/views/items"
 	tablesview "github.com/wolfwfr/dynamite/pkg/ui/internal/views/tables"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/util/keymaps"
@@ -47,21 +47,21 @@ const (
 )
 
 var regionBlock = lipgloss.NewStyle().
-	Background(commonstyles.RegionBoxBg).
+	Background(theme.RegionBoxBg).
 	Align(lipgloss.Left, lipgloss.Top).
 	Padding(0, 1, 0, 1).
 	Margin(0, 1, 0, 0).
 	Height(1)
 
 var queryModeBlock = lipgloss.NewStyle().
-	Background(commonstyles.QueryModeBoxScanBg).
+	Background(theme.QueryModeBoxScanBg).
 	Align(lipgloss.Left, lipgloss.Top).
 	Padding(0, 1, 0, 1).
 	Margin(0, 1, 0, 0).
 	Height(1)
 
 var filterModeBlock = lipgloss.NewStyle().
-	Background(commonstyles.FilterBoxBg).
+	Background(theme.FilterBoxBg).
 	Align(lipgloss.Left, lipgloss.Top).
 	Padding(0, 1, 0, 1).
 	Margin(0, 1, 0, 0).
@@ -69,15 +69,15 @@ var filterModeBlock = lipgloss.NewStyle().
 
 var pageSuspendBlock = lipgloss.NewStyle().
 	Strikethrough(true).
-	Background(commonstyles.PageSuspendBoxBg).
+	Background(theme.PageSuspendBoxBg).
 	Align(lipgloss.Left, lipgloss.Top).
 	Padding(0, 1, 0, 1).
 	Margin(0, 1, 0, 0).
 	Height(1)
 
 var helpBlock = lipgloss.NewStyle().
-	Background(commonstyles.HelpBoxBg).
-	Foreground(commonstyles.SubtleColour2).
+	Background(theme.HelpBoxBg).
+	Foreground(theme.SubtleColour2).
 	Align(lipgloss.Left, lipgloss.Top).
 	Padding(0, 1, 0, 1).
 	Margin(0, 1, 0, 0).
@@ -389,9 +389,9 @@ func (m Model) SwitchQueryMode(msg messages.SwitchQueryMode) (Model, tea.Cmd) {
 	m.QueryMode = msg.NewMode
 	switch m.QueryMode {
 	case messages.ScanMode:
-		queryModeBlock = queryModeBlock.Background(commonstyles.QueryModeBoxScanBg)
+		queryModeBlock = queryModeBlock.Background(theme.QueryModeBoxScanBg)
 	case messages.QueryMode:
-		queryModeBlock = queryModeBlock.Background(commonstyles.QueryModeBoxQeuryBg)
+		queryModeBlock = queryModeBlock.Background(theme.QueryModeBoxQeuryBg)
 	}
 	return m, nil
 }

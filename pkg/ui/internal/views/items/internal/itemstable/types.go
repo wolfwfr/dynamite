@@ -6,10 +6,10 @@ import (
 
 	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 
+	"github.com/wolfwfr/dynamite/lib/styles"
+	apitypes "github.com/wolfwfr/dynamite/pkg/adapters/dynamodb/types"
 	"github.com/wolfwfr/dynamite/pkg/common"
-	apitypes "github.com/wolfwfr/dynamite/pkg/ui/internal/adapters/dynamodb/types"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/components/table"
-	commonstyles "github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
 	view "github.com/wolfwfr/dynamite/pkg/ui/internal/views/items/internal/itemstable/viewoptions"
 )
 
@@ -51,9 +51,9 @@ type ColumnAttributes struct {
 // TODO: refactor dynamodb.Items and add single Item
 type Item struct {
 	JSON       string
-	JSONStyled commonstyles.ObjectStyle
+	JSONStyled styles.ObjectStyle
 	YAML       string
-	YAMLStyled commonstyles.ObjectStyle
+	YAMLStyled styles.ObjectStyle
 	Raw        map[string]dynamodbtypes.AttributeValue
 	TableKeys  []apitypes.KeyValue
 }
@@ -61,7 +61,7 @@ type Item struct {
 // EnrichedField defines the field-type that populates a table-row.
 type EnrichedField struct {
 	RawValue string
-	Style    *commonstyles.LineStyle
+	Style    *styles.LineStyle
 }
 
 // Value implements the matching table.Field interface function

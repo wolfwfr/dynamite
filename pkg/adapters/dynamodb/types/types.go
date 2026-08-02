@@ -1,12 +1,24 @@
 package types
 
 import (
+	"image/color"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 
-	"github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
+	"github.com/wolfwfr/dynamite/lib/styles"
 )
+
+type ObjectStyling struct {
+	FieldNameColor color.Color
+	NumberColor    color.Color
+	BoolColor      color.Color
+	BytesColor     color.Color
+	NULLColor      color.Color
+	StringColor    color.Color
+	TokenColor     color.Color
+	ErrorColor     color.Color
+}
 
 // TODO: revise all the duplication between connector & adapter packages
 type FilterOperator string

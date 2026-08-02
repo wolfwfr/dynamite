@@ -7,7 +7,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
-	"github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
+	"github.com/wolfwfr/dynamite/pkg/ui/internal/theme"
 )
 
 type helpStyles struct {
@@ -19,7 +19,7 @@ type helpStyles struct {
 
 func newHelpStyles() helpStyles {
 	s := helpStyles{}
-	s.dialog = styles.DialogStyle
+	s.dialog = theme.DialogStyle
 	s.title = lipgloss.NewStyle().Padding(1, 0, 2, 0)
 	s.fullHelp = lipgloss.NewStyle().Padding(1, 8, 1, 8)
 	s.helpLine = lipgloss.NewStyle().PaddingBottom(1)

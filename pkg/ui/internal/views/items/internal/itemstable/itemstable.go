@@ -6,9 +6,9 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
-	apitypes "github.com/wolfwfr/dynamite/pkg/ui/internal/adapters/dynamodb/types"
+	apitypes "github.com/wolfwfr/dynamite/pkg/adapters/dynamodb/types"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/components/table"
-	commonstyles "github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
+	"github.com/wolfwfr/dynamite/pkg/ui/internal/theme"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/items/internal/itemstable/viewoptions"
 	u "github.com/wolfwfr/dynamite/pkg/util"
 )
@@ -27,18 +27,18 @@ func NewItemsTable() *ItemsTable {
 		s := table.DefaultStyles()
 		s.Header = s.Header.
 			BorderStyle(lipgloss.NormalBorder()).
-			BorderForeground(commonstyles.TableDefaultFg).
+			BorderForeground(theme.TableDefaultFg).
 			BorderBottom(true).
 			Bold(false)
 		s.Selected = s.Selected.
-			Foreground(commonstyles.TableSelectedFg).
-			Background(commonstyles.TableSelectedBg).
+			Foreground(theme.TableSelectedFg).
+			Background(theme.TableSelectedBg).
 			Bold(false)
 		t.SetStyles(s)
 
 		st := TableStyles{
-			SelectedBackground:    commonstyles.TableSelectedBg,
-			SearchMatchBackground: commonstyles.SearchHighlight,
+			SelectedBackground:    theme.TableSelectedBg,
+			SearchMatchBackground: theme.SearchHighlight,
 		}
 
 		m.table = t

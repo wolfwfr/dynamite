@@ -7,9 +7,10 @@ import (
 
 	"charm.land/lipgloss/v2"
 
+	"github.com/wolfwfr/dynamite/lib/styles"
 	"github.com/wolfwfr/dynamite/pkg/common"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/components/table"
-	"github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
+	"github.com/wolfwfr/dynamite/pkg/ui/internal/theme"
 )
 
 func (i *ItemsTable) CompileTransforms() []transform {
@@ -39,11 +40,11 @@ func (i *ItemsTable) CompileTransforms() []transform {
 			iter := 1
 			for int64(unix) > threshold && iter < maxIterations {
 				iter++
-				unix = unix/1000
+				unix = unix / 1000
 			}
-			u := time.Unix(int64(unix), 0) 
+			u := time.Unix(int64(unix), 0)
 			tr := u.Format("2006-01-02 15:04:05 Z07:00") // TODO: support custom formats
-			st := styles.LineStyle{}.AppendStringLG(tr, lipgloss.NewStyle().Foreground(styles.TimestampColour))
+			st := styles.LineStyle{}.AppendStringLG(tr, lipgloss.NewStyle().Foreground(theme.TimestampColour))
 			row.Fields[i] = EnrichedField{
 				RawValue: tr,
 				Style:    &st,

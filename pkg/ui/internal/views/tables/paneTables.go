@@ -18,13 +18,14 @@ import (
 
 	"github.com/atotto/clipboard"
 
+	"github.com/wolfwfr/dynamite/lib/styles"
 	appconfig "github.com/wolfwfr/dynamite/pkg"
-	"github.com/wolfwfr/dynamite/pkg/ui/internal/adapters/dynamodb"
-	apitypes "github.com/wolfwfr/dynamite/pkg/ui/internal/adapters/dynamodb/types"
+	"github.com/wolfwfr/dynamite/pkg/adapters/dynamodb"
+	apitypes "github.com/wolfwfr/dynamite/pkg/adapters/dynamodb/types"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/components/search"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/components/table"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
-	commonstyles "github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
+	"github.com/wolfwfr/dynamite/pkg/ui/internal/theme"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/util/keymaps"
 	u "github.com/wolfwfr/dynamite/pkg/util"
 )
@@ -134,18 +135,18 @@ func newTableSelectionPane(ctx context.Context, config *appconfig.Config, opts .
 		s := table.DefaultStyles()
 		s.Header = s.Header.
 			BorderStyle(lipgloss.NormalBorder()).
-			BorderForeground(commonstyles.TableDefaultFg).
+			BorderForeground(theme.TableDefaultFg).
 			BorderBottom(true).
 			Bold(false)
 		s.Selected = s.Selected.
-			Foreground(commonstyles.TableSelectedFg).
-			Background(commonstyles.TableSelectedBg).
+			Foreground(theme.TableSelectedFg).
+			Background(theme.TableSelectedBg).
 			Bold(false)
 		t.SetStyles(s)
 
 		st := TableStyles{
-			SelectedBackground:    commonstyles.TableSelectedBg,
-			SearchMatchBackground: commonstyles.SearchHighlight,
+			SelectedBackground:    theme.TableSelectedBg,
+			SearchMatchBackground: theme.SearchHighlight,
 		}
 
 		p.content = t
@@ -398,10 +399,10 @@ func (m *tableSelectionPane) TableRowFieldDelegate(row table.Row, col table.Colu
 
 	enforceWidth := lipgloss.NewStyle().Width(fullWidth).MaxWidth(fullWidth).Inline(true).Render
 
-	segments, styles := compileMatchedStyles(field.value)
-	var style commonstyles.LineStyle
+	segments, styling := compileMatchedStyles(field.value)
+	var style styles.LineStyle
 	for i := range segments {
-		style = style.AppendStringLG(segments[i], styles[i])
+		style = style.AppendStringLG(segments[i], styling[i])
 	}
 
 	// add padding

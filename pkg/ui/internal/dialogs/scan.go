@@ -10,7 +10,7 @@ import (
 
 	headed "github.com/wolfwfr/dynamite/pkg/ui/internal/components/headed_list"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
-	commonstyles "github.com/wolfwfr/dynamite/pkg/ui/internal/styles"
+	"github.com/wolfwfr/dynamite/pkg/ui/internal/theme"
 	u "github.com/wolfwfr/dynamite/pkg/util"
 )
 
@@ -95,15 +95,15 @@ func newscanStyles(darkBG bool) scanListStyles {
 	var s scanListStyles
 
 	s.Item = lipgloss.NewStyle().PaddingLeft(4)
-	s.SelectedItem = lipgloss.NewStyle().PaddingLeft(2).Foreground(commonstyles.DialogFocusColour)
-	s.Header = lipgloss.NewStyle().Foreground(commonstyles.SubtleColour)
+	s.SelectedItem = lipgloss.NewStyle().PaddingLeft(2).Foreground(theme.DialogFocusColour)
+	s.Header = lipgloss.NewStyle().Foreground(theme.SubtleColour)
 
-	s.dialog = commonstyles.DialogStyle
+	s.dialog = theme.DialogStyle
 	s.title = lipgloss.NewStyle().Padding(1, 0, 2, 0)
 	s.content = lipgloss.NewStyle().PaddingTop(1).PaddingBottom(2)
 	s.help = list.DefaultStyles(darkBG).HelpStyle.Padding(1, 2, 0, 2)
 	s.helpLine = lipgloss.NewStyle().PaddingBottom(1)
-	s.keyInfo = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(commonstyles.DialogUnfocusColour).Padding(1, 2, 1, 2)
+	s.keyInfo = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(theme.DialogUnfocusColour).Padding(1, 2, 1, 2)
 
 	s.tableFullHeader = "Table Index"
 	s.gsiFullHeader = "Global Secondary Indices"
