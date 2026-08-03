@@ -280,6 +280,8 @@ The above configuration will match as follows:
 ✌️ Other features I have in mind are:
 
 - **Keymap Configuration**: use the config file to change the keymapping
+- **Themes**: additional themes
+- **Merged Feature Dialog**: Merging the various dialogs to streamline the experience for users that prefer fewer keybindings.
 
 <br/>
 
@@ -287,6 +289,7 @@ The above configuration will match as follows:
 
 - **ADMIN Mode**: Although I'm considering it, I'm currently flagging write operations as a non-goal
 - **Full API Compatibility**: Full integration with all of the aws-sdk-go-v2 dynamo-db related functions
+- **Mouse Support**: Support for navigating the TUI using the mouse cursor
 
 <br/>
 
