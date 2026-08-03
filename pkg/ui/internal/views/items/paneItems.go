@@ -343,7 +343,7 @@ func (m *ItemSelectionPane) applyCustomInitialization() tea.Cmd {
 	}
 
 	// select table, 'restoring' session and conduct paging
-	cmds = append(cmds, m.selectTable(customInit.Table))
+	cmds = append(cmds, func() tea.Msg { return messages.SelectTable{customInit.Table} })
 	return tea.Batch(cmds...)
 }
 
