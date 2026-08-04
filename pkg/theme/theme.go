@@ -83,12 +83,12 @@ func UpdateTheme(isDark bool, overrides ThemeOverrides) {
 	TableDetailsFieldValueFg = choose(PlainText, c("#a7bc85"))
 
 	// search
-	SearchHighlight = choose(c("#317566"), c("#317566"))
+	SearchHighlight = choose(c("#66D9BF"), c("#317566"))
 
 	// object parsing colours
 	FieldNameFg = SubtleColour1
 	NumberFg = AccentOrange
-	BoolFg = choose(c("#D9AF2E"), c("#D9AF2E"))
+	BoolFg = choose(c("#0E5680"), c("#D9AF2E"))
 	BytesFg = AccentOrange
 	NULLFg = choose(c("#A18975"), c("#A18975"))
 	StringFg = choose(c("#196B1C"), c("#a7bc85"))
@@ -104,7 +104,7 @@ func UpdateTheme(isDark bool, overrides ThemeOverrides) {
 	QueryModeBoxScanBg = choose(c("#0E3080"), c("#0E3080"))
 	QueryModeBoxAdminBg = choose(c("#0E5680"), c("#0E5680"))
 	HelpBoxBg = choose(c("#042B19"), c("#042B19"))
-	BoxFg = choose(c("#B0B0B0"), PlainText)
+	BoxFg = choose(c("#dcd7ba"), PlainText)
 	HelpBoxFg = choose(SubtleColour2, SubtleColour2)
 
 	// table matching
