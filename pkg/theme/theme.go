@@ -40,6 +40,8 @@ func UpdateTheme(isDark bool, overrides ThemeOverrides) {
 	AccentFadedBlue = choose(c("#95A0BA"), c("#415278"))
 	AccentDarkBlue = choose(c("#8A9FBA"), c("#244673"))
 
+	PlainText = choose(c("#181616"), c("#dcd7ba"))
+
 	// applying early here because primary palette can be referenced later on
 	overrides.apply()
 
@@ -51,10 +53,10 @@ func UpdateTheme(isDark bool, overrides ThemeOverrides) {
 	DialogFocusColour = AccentOrange
 	DialogUnfocusColour = SubtleColour3
 	DialogBorderColour = AccentOrange
-	TitleFG = TerminalDefaultColour
+	TitleFG = PlainText
 
 	// spinners
-	SpinnerTextFg = TerminalDefaultColour
+	SpinnerTextFg = PlainText
 	SpinnerTextBg = nil // transparent
 	SpinnerSymbolFg = choose(c("#ff5faf"), c("#ff5faf"))
 	SpinnerSymbolBg = nil // transparent
@@ -70,7 +72,7 @@ func UpdateTheme(isDark bool, overrides ThemeOverrides) {
 	TableSelectedBg = AccentDarkBlue
 	TableSelectedFg = choose(c("#E6E6E6"), c("#E6E6E6")) // not in active use
 	TableBorderFg = SubtleColour5
-	TableHeaderFg = TerminalDefaultColour
+	TableHeaderFg = PlainText
 
 	// table details
 	TableDetailsHeaderBg = nil // transparent
@@ -78,7 +80,7 @@ func UpdateTheme(isDark bool, overrides ThemeOverrides) {
 	TableDetailsFieldNameBg = nil // transparent
 	TableDetailsFieldNameFg = SubtleColour1
 	TableDetailsFieldValueBg = nil // transparent
-	TableDetailsFieldValueFg = choose(TerminalDefaultColour, c("#a7bc85"))
+	TableDetailsFieldValueFg = choose(PlainText, c("#a7bc85"))
 
 	// search
 	SearchHighlight = choose(c("#317566"), c("#317566"))
@@ -102,7 +104,7 @@ func UpdateTheme(isDark bool, overrides ThemeOverrides) {
 	QueryModeBoxScanBg = choose(c("#0E3080"), c("#0E3080"))
 	QueryModeBoxAdminBg = choose(c("#0E5680"), c("#0E5680"))
 	HelpBoxBg = choose(c("#042B19"), c("#042B19"))
-	BoxFg = choose(c("#B0B0B0"), TerminalDefaultColour)
+	BoxFg = choose(c("#B0B0B0"), PlainText)
 	HelpBoxFg = choose(SubtleColour2, SubtleColour2)
 
 	// table matching
@@ -148,6 +150,8 @@ var (
 	AccentBlue      color.Color
 	AccentFadedBlue color.Color
 	AccentDarkBlue  color.Color
+
+	PlainText color.Color
 )
 
 var (

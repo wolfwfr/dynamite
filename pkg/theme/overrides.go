@@ -23,6 +23,8 @@ type ThemeOverrides struct {
 	AccentFadedBlue string `yaml:"accent_faded_blue"`
 	AccentDarkBlue  string `yaml:"accent_dark_blue"`
 
+	PlainText string `yaml:"plain_text"`
+
 	// dialog
 	DialogFocusColour   string `yaml:"dialog_focus_color"`
 	DialogUnfocusColour string `yaml:"dialog_unfocus_color"`
@@ -116,6 +118,8 @@ func (o ThemeOverrides) apply() {
 	AccentBlue = maybeOverride(o.AccentBlue, AccentBlue)
 	AccentFadedBlue = maybeOverride(o.AccentFadedBlue, AccentFadedBlue)
 	AccentDarkBlue = maybeOverride(o.AccentDarkBlue, AccentDarkBlue)
+
+	PlainText = maybeOverride(o.PlainText, PlainText)
 
 	DialogFocusColour = maybeOverride(o.DialogFocusColour, DialogFocusColour)
 	DialogUnfocusColour = maybeOverride(o.DialogUnfocusColour, DialogUnfocusColour)
