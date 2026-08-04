@@ -287,6 +287,7 @@ func runApplication(ctx context.Context, cmd *cli.Command) error {
 		Items: appconfig.Items{
 			PrimaryWidth: cfgf.ItemsPrimaryWidth,
 			PageSize:     cfgf.ItemsPageSize,
+			Format:       appconfig.ParseItemPreviewFormat(cfgf.ItemsDefaultFormat),
 		},
 		MFACredentialCB: f,
 		MFACredentialC:  credsC,

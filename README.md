@@ -205,6 +205,8 @@ items:
   primary_width_percent: 50
   # page-size override, paginates items from dynamodb table with given pagesize, by default page-size depends on window-size
   page_size: 0
+  # item preview formatting, either 'json' or 'yaml', case-insensitive
+  format: json
 
 colors:
   # All theme colours can be overridden here

@@ -190,6 +190,15 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 		pageIgnore:     make(map[uint8]struct{}),
 	}
 
+	{ // format
+		f := config.Items.Format
+		if f == appconfig.JSONFormat {
+			p.previewFormat = messages.JSONformat
+		} else if f == appconfig.YAMLFormat {
+			p.previewFormat = messages.YAMLformat
+		}
+	}
+
 	{ // spinner
 		sp := spinner.New()
 		sp.Spinner = spinner.Dot

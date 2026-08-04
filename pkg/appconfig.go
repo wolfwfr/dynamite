@@ -2,8 +2,10 @@ package appconfig
 
 import (
 	"log/slog"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+
 	"github.com/wolfwfr/dynamite/pkg/theme"
 )
 
@@ -64,6 +66,7 @@ type Tables struct {
 type Items struct {
 	PrimaryWidth int
 	PageSize     int
+	Format       ItemPreviewFormat
 }
 
 type CredentialsRequest struct{}
@@ -71,4 +74,20 @@ type CredentialsRequest struct{}
 type CredentialsResponse struct {
 	Token string
 	Error error
+}
+
+type ItemPreviewFormat string
+
+const JSONFormat ItemPreviewFormat = "json"
+const YAMLFormat ItemPreviewFormat = "yaml"
+
+func ParseItemPreviewFormat(f string) ItemPreviewFormat {
+	s := strings.ToLower(f)
+	if s == string(JSONFormat) {
+		return JSONFormat
+	}
+	if s == string(YAMLFormat) {
+		return YAMLFormat
+	}
+	return ""
 }

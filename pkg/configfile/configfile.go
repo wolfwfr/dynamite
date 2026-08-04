@@ -81,8 +81,9 @@ type TableViewSettings struct {
 }
 
 type ItemViewSettings struct {
-	PrimaryWidth int `yaml:"primary_width_percent"`
-	PageSize     int `yaml:"page_size"`
+	PrimaryWidth  int    `yaml:"primary_width_percent"`
+	PageSize      int    `yaml:"page_size"`
+	DefaultFormat string `yaml:"format"`
 }
 
 type Config struct {
@@ -98,6 +99,7 @@ type Config struct {
 	TablesHighlightRegexp []string
 	ItemsPrimaryWidth     int
 	ItemsPageSize         int
+	ItemsDefaultFormat    string
 	ThemeOverrides        theme.ThemeOverrides
 }
 
@@ -176,6 +178,8 @@ func mergeWithDefault(cfg configFile) Config {
 
 	res.TablesHighlightRegexp = cfg.Tables.HighLightRegexp
 	res.ThemeOverrides = cfg.ThemeOverrides
+
+	res.ItemsDefaultFormat = cfg.Items.DefaultFormat
 
 	return res
 }
