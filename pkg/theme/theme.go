@@ -76,7 +76,7 @@ func UpdateTheme(isDark bool, overrides ThemeOverrides) {
 
 	// table details
 	TableDetailsHeaderBg = nil // transparent
-	TableDetailsHeaderFg = SubtleColour1
+	TableDetailsHeaderFg = AccentBlue
 	TableDetailsFieldNameBg = nil // transparent
 	TableDetailsFieldNameFg = SubtleColour1
 	TableDetailsFieldValueBg = nil // transparent
