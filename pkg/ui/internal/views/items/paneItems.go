@@ -35,11 +35,6 @@ import (
 	u "github.com/wolfwfr/dynamite/pkg/util"
 )
 
-var tableInfoBox = lipgloss.NewStyle().
-	Height(2).
-	Padding(0, 1, 1, 1).
-	Foreground(theme.SubtleColour2)
-
 type SessionData struct {
 	queryMode    messages.ItemsQueryMode
 	filterParams struct {
@@ -59,6 +54,10 @@ type SessionData struct {
 	}
 }
 
+type itemSelectionPaneStyles struct {
+	tableInfoBox lipgloss.Style
+}
+
 type ItemSelectionPane struct {
 	// top-level context
 	ctx context.Context
@@ -73,6 +72,8 @@ type ItemSelectionPane struct {
 		text      string
 		textStyle lipgloss.Style
 	}
+
+	styles itemSelectionPaneStyles
 
 	// standard timeout
 	stdTO time.Duration
@@ -237,10 +238,16 @@ func (m *ItemSelectionPane) updateStyles() tea.Cmd {
 	// TODO: move theme package up and do not inject styles into adapter
 	m.dynamodbClient = newDynamodbClient(m.config.Logger) // ensure is using correct styles
 
+	m.styles.tableInfoBox = lipgloss.NewStyle().
+		Height(2).
+		Foreground(theme.SubtleColour2).
+		Inline(true) // note: inline disables padding/marginst/borders
+
 	m.spinner.model.Style = lipgloss.NewStyle().
 		Foreground(theme.SpinnerSymbolFg).
 		Background(theme.SpinnerSymbolBg).
 		PaddingLeft(1)
+
 	m.spinner.textStyle = lipgloss.NewStyle().
 		Foreground(theme.SpinnerTextFg).
 		Background(theme.SpinnerTextBg)
@@ -1451,9 +1458,12 @@ func (m *ItemSelectionPane) noContentMessage() string {
 }
 
 func (m *ItemSelectionPane) renderTableInfo() string {
-	width := m.window.width
-	leftHalf := width / 2
-	rightHalf := width - leftHalf
+	var (
+		leftpad   = 1
+		width     = m.window.width
+		rightHalf = width / 2
+	)
+
 	// table name
 	name := u.IfNotNil(m.selectedTable.TableName, "")
 
@@ -1465,14 +1475,20 @@ func (m *ItemSelectionPane) renderTableInfo() string {
 	right := fmt.Sprintf("Count: %d/%d", rowcount, max(count, rowcount))
 	right = ansi.Truncate(right, rightHalf, "…")
 
-	minGap := 15
+	var (
+		minGap     = 8
+		leftWidth  = width - len(right)
+		leftlen    = leftWidth - leftpad
+		rightWidth = width - leftWidth
+	)
 	left := fmt.Sprintf("Table: %s%s", name, u.Ternary(" / Index: "+indexName, "", indexName != ""))
-	left = ansi.Truncate(left, width-len(right)-minGap, "…")
+	left = ansi.Truncate(left, leftlen-minGap, "…")
 
-	leftAligned := lipgloss.NewStyle().Width(width - len(right)).Align(lipgloss.Left)
-	rightAligned := lipgloss.NewStyle().Width(len(right)).Align(lipgloss.Right)
+	// note: width should include padding to prevent wrapping
+	leftAligned := lipgloss.NewStyle().Width(leftWidth).Align(lipgloss.Left).Padding(0, 0, 0, leftpad)
+	rightAligned := lipgloss.NewStyle().Width(rightWidth).Align(lipgloss.Right) // no extra padding, right-side padding already applied to entire window
 
-	return tableInfoBox.Inline(true).Render(lipgloss.JoinHorizontal(lipgloss.Top,
+	return m.styles.tableInfoBox.Render(lipgloss.JoinHorizontal(lipgloss.Top,
 		leftAligned.Render(left),
 		rightAligned.Render(right),
 	))
