@@ -129,7 +129,7 @@ func TestItemSelectionPreviews(t *testing.T) {
 	// factory initialising a new system-under-test
 	newSUT := func() *ItemSelectionPane {
 		sut := newItemSelectionPane(context.Background(), &appconfig.Config{Logger: tu.DiscardLogger()})
-		sut.previewFormat = JSONformat
+		sut.previewFormat = messages.JSONformat
 		sut.selectedTable.TableArn = &tableARN
 		return sut
 	}

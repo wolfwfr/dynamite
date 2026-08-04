@@ -40,13 +40,6 @@ var tableInfoBox = lipgloss.NewStyle().
 	Padding(0, 1, 1, 1).
 	Foreground(theme.SubtleColour2)
 
-type previewFormat int
-
-const (
-	YAMLformat previewFormat = iota
-	JSONformat
-)
-
 type SessionData struct {
 	queryMode    messages.ItemsQueryMode
 	filterParams struct {
@@ -164,7 +157,7 @@ type ItemSelectionPane struct {
 	selectedTable apitypes.DescribeTableResponse
 
 	// json/yaml format for preview
-	previewFormat previewFormat
+	previewFormat messages.PreviewFormat
 
 	// specifies whether the first page has been loaded
 	initialised bool
@@ -189,7 +182,7 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 		KeyMap:         DefaultItemPaneKeyMap(),
 		sessions:       make(map[string]SessionData),
 		queryMode:      messages.ScanMode,
-		previewFormat:  JSONformat,
+		previewFormat:  messages.JSONformat,
 		scanLimit:      max(10, config.Items.PageSize),
 		queryLimit:     max(10, config.Items.PageSize),
 		pageCancel:     func() {}, // init as noop
@@ -584,8 +577,8 @@ func (m *ItemSelectionPane) PageNext(init bool) tea.Cmd {
 func (m *ItemSelectionPane) ToggleJSONYAMLFormat() tea.Cmd {
 	m.logger.Debug("toggle json/yaml formatting")
 	m.previewFormat += 1
-	if m.previewFormat > JSONformat {
-		m.previewFormat = YAMLformat
+	if m.previewFormat > messages.JSONformat {
+		m.previewFormat = messages.YAMLformat
 	}
 	return m.MaybePreviewItem(true)
 }
@@ -629,10 +622,10 @@ func (m *ItemSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
 	var styled string
 	var raw string
 	switch m.previewFormat {
-	case JSONformat:
+	case messages.JSONformat:
 		raw = item.JSON
 		styled = item.JSONStyled.Render(raw)
-	case YAMLformat:
+	case messages.YAMLformat:
 		raw = item.YAML
 		styled = item.YAMLStyled.Render(raw)
 	}
@@ -640,6 +633,7 @@ func (m *ItemSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
 		return messages.PreviewItem{
 			StyledItem: styled,
 			RawItem:    raw,
+			Format:     m.previewFormat,
 		}
 	}
 }

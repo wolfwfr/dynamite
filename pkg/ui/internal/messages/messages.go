@@ -10,6 +10,7 @@ import (
 
 type View int
 type ItemsQueryMode int
+type PreviewFormat int
 
 const (
 	Table_selection View = iota
@@ -18,6 +19,11 @@ const (
 const (
 	ScanMode ItemsQueryMode = iota
 	QueryMode
+)
+
+const (
+	YAMLformat PreviewFormat = iota
+	JSONformat
 )
 
 type FilterOperator string
@@ -96,6 +102,7 @@ type ZoomToggleTableDetailsPane struct{}
 type PreviewItem struct {
 	StyledItem string
 	RawItem    string
+	Format     PreviewFormat
 }
 
 type TableDetails struct {

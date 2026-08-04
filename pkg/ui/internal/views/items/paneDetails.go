@@ -9,6 +9,7 @@ import (
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/atotto/clipboard"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/wolfwfr/dynamite/pkg/logging"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/views/util/keymaps"
+	u "github.com/wolfwfr/dynamite/pkg/util"
 )
 
 type detailsPane struct {
@@ -160,14 +162,16 @@ func (m *detailsPane) applySize(height, width int) {
 	m.window.height = height
 	m.window.width = width
 	m.content.SetHeight(height)
-	m.content.SetWidth(width)
+	m.content.SetWidth(max(0, width-1))
 }
 
 func (m *detailsPane) View() string {
 	if m.err != nil {
 		return m.err.Error()
 	}
-	return m.content.View()
+	isJSON := m.previewing.Format == messages.JSONformat
+	leftPad := u.Ternary(0, 1, isJSON)
+	return lipgloss.NewStyle().Padding(0, 0, 0, leftPad).Render(m.content.View())
 }
 
 func notifyCopySuccess() tea.Msg {
