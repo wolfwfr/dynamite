@@ -51,8 +51,9 @@ type detailsPane struct {
 }
 
 type detailsStyles struct {
-	headerStyle    lipgloss.Style
-	fieldNameStyle lipgloss.Style
+	headerStyle     lipgloss.Style
+	fieldNameStyle  lipgloss.Style
+	fieldValueStyle lipgloss.Style
 }
 
 type detailsPaneOption func(p *detailsPane)
@@ -93,8 +94,9 @@ func newDetailsPane(ctx context.Context, config *appconfig.Config, opts ...detai
 func (m *detailsPane) updateStyles() {
 	m.logger.Debug("updating styles")
 	m.styles = detailsStyles{
-		headerStyle:    lipgloss.NewStyle().Bold(true).Foreground(theme.ViewFocusBorderColour).PaddingBottom(1),
-		fieldNameStyle: lipgloss.NewStyle().Foreground(theme.SubtleColour1), //.Bold(true),
+		headerStyle:     lipgloss.NewStyle().Bold(true).Background(theme.TableDetailsHeaderBg).Foreground(theme.TableDetailsHeaderFg).PaddingBottom(1),
+		fieldNameStyle:  lipgloss.NewStyle().Background(theme.TableDetailsFieldNameBg).Foreground(theme.TableDetailsFieldNameFg),   //.Bold(true),
+		fieldValueStyle: lipgloss.NewStyle().Background(theme.TableDetailsFieldValueBg).Foreground(theme.TableDetailsFieldValueFg), //.Bold(true),
 	}
 }
 
@@ -159,29 +161,31 @@ func renderDetails(details *apitypes.DescribeTableResponse, styles detailsStyles
 
 	header := styles.headerStyle.Render
 	field := styles.fieldNameStyle.Render
+	value := styles.fieldValueStyle.Render
+	spf := fmt.Sprintf
 
 	s := strings.Builder{}
 	fmt.Fprintf(&s, "%s\n", header("GENERAL"))
-	fmt.Fprintf(&s, "%s:   %s\n", field("Table name"), name)
-	fmt.Fprintf(&s, "%s:    %s\n", field("Table ARN"), arn)
-	fmt.Fprintf(&s, "%s:     %s\n", field("Table ID"), id)
+	fmt.Fprintf(&s, "%s:   %s\n", field("Table name"), value(name))
+	fmt.Fprintf(&s, "%s:    %s\n", field("Table ARN"), value(arn))
+	fmt.Fprintf(&s, "%s:     %s\n", field("Table ID"), value(id))
 	fmt.Fprintf(&s, "\n")
 	if details.TableClassSummary != nil {
-		fmt.Fprintf(&s, "%s:  %s\n", field("Table Class"), details.TableClassSummary.TableClass)
+		fmt.Fprintf(&s, "%s:  %s\n", field("Table Class"), value(string(details.TableClassSummary.TableClass)))
 		fmt.Fprintf(&s, "\n")
 	}
-	fmt.Fprintf(&s, "%s:   %s\n", field("Created At"), details.CreationDateTime.Format(time.RFC1123Z))
+	fmt.Fprintf(&s, "%s:   %s\n", field("Created At"), value(details.CreationDateTime.Format(time.RFC1123Z)))
 	fmt.Fprintf(&s, "\n")
 	fmt.Fprintf(&s, "%s\n", header("COUNT"))
-	fmt.Fprintf(&s, "%s:                   %d\n", field("Table Item Count"), *details.ItemCount)
-	fmt.Fprintf(&s, "%s:  %d\n", field("Global Secondary Index Item Count"), globalIdxItemCount)
-	fmt.Fprintf(&s, "%s:   %d\n", field("Local Secondary Index Item Count"), localIdxItemCount)
+	fmt.Fprintf(&s, "%s:                   %s\n", field("Table Item Count"), value(spf("%d", *details.ItemCount)))
+	fmt.Fprintf(&s, "%s:  %s\n", field("Global Secondary Index Item Count"), value(spf("%d", globalIdxItemCount)))
+	fmt.Fprintf(&s, "%s:   %s\n", field("Local Secondary Index Item Count"), value(spf("%d", localIdxItemCount)))
 	fmt.Fprintf(&s, "\n")
 	fmt.Fprintf(&s, "%s\n", header("SIZE"))
-	fmt.Fprintf(&s, "%s:                   %s\n", field("Total Size"), formatBytes(totalSize))
-	fmt.Fprintf(&s, "%s:                   %s\n", field("Table Size"), formatBytes(*details.TableSizeBytes))
-	fmt.Fprintf(&s, "%s:  %s\n", field("Global Secondary Index Size"), formatBytes(globalIdxSize))
-	fmt.Fprintf(&s, "%s:   %s\n", field("Local Secondary Index Size"), formatBytes(localIdxSize))
+	fmt.Fprintf(&s, "%s:                   %s\n", field("Total Size"), value(formatBytes(totalSize)))
+	fmt.Fprintf(&s, "%s:                   %s\n", field("Table Size"), value(formatBytes(*details.TableSizeBytes)))
+	fmt.Fprintf(&s, "%s:  %s\n", field("Global Secondary Index Size"), value(formatBytes(globalIdxSize)))
+	fmt.Fprintf(&s, "%s:   %s\n", field("Local Secondary Index Size"), value(formatBytes(localIdxSize)))
 	fmt.Fprintf(&s, "\n")
 	fmt.Fprintf(&s, "%s\n", header("TABLE KEYS"))
 	hash, rang := primaryKeysFromSchema(details.KeySchema)
@@ -190,8 +194,8 @@ func renderDetails(details *apitypes.DescribeTableResponse, styles detailsStyles
 	if len(details.GlobalSecondaryIndexes) > 0 {
 		fmt.Fprintf(&s, "%s\n", header("GLOBAL SECONDARY INDICES"))
 		for i, idx := range details.GlobalSecondaryIndexes {
-			fmt.Fprintf(&s, "%s: %s\n", field("Index Name"), *idx.IndexName)
-			fmt.Fprintf(&s, "%s:  %s\n", field("Index ARN"), *idx.IndexArn)
+			fmt.Fprintf(&s, "%s: %s\n", field("Index Name"), value(*idx.IndexName))
+			fmt.Fprintf(&s, "%s:  %s\n", field("Index ARN"), value(*idx.IndexArn))
 			fmt.Fprintf(&s, "\n")
 			hash, rang := primaryKeysFromSchema(idx.KeySchema)
 			fmt.Fprintf(&s, "%s", formatKeys(hash, rang, "  ", details.AttributeDefinitions, styles))
@@ -204,8 +208,8 @@ func renderDetails(details *apitypes.DescribeTableResponse, styles detailsStyles
 	if len(details.LocalSecondaryIndexes) > 0 {
 		fmt.Fprintf(&s, "%s\n", header("LOCAL SECONDARY INDICES"))
 		for i, idx := range details.LocalSecondaryIndexes {
-			fmt.Fprintf(&s, "%s: %s\n", field("Index Name"), *idx.IndexName)
-			fmt.Fprintf(&s, "%s:  %s\n", field("Index ARN"), *idx.IndexArn)
+			fmt.Fprintf(&s, "%s: %s\n", field("Index Name"), value(*idx.IndexName))
+			fmt.Fprintf(&s, "%s:  %s\n", field("Index ARN"), value(*idx.IndexArn))
 			fmt.Fprintf(&s, "\n")
 			hash, rang := primaryKeysFromSchema(idx.KeySchema)
 			fmt.Fprintf(&s, "%s", formatKeys(hash, rang, "  ", details.AttributeDefinitions, styles))
@@ -216,23 +220,23 @@ func renderDetails(details *apitypes.DescribeTableResponse, styles detailsStyles
 		fmt.Fprintf(&s, "\n")
 	}
 	fmt.Fprintf(&s, "%s\n", header("SECURITY"))
-	fmt.Fprintf(&s, "%s: %t\n", field("Deletion Protection Enabled"), *details.DeletionProtectionEnabled)
+	fmt.Fprintf(&s, "%s: %s\n", field("Deletion Protection Enabled"), value(spf("%t", *details.DeletionProtectionEnabled)))
 	fmt.Fprintf(&s, "\n")
 	if details.BillingModeSummary != nil {
 		fmt.Fprintf(&s, "%s\n", header("BILLING"))
-		fmt.Fprintf(&s, "%s: %s\n", field("Billing Mode"), details.BillingModeSummary.BillingMode)
+		fmt.Fprintf(&s, "%s: %s\n", field("Billing Mode"), value(string(details.BillingModeSummary.BillingMode)))
 		fmt.Fprintf(&s, "\n")
 	}
 	if details.ProvisionedThroughput != nil {
 		fmt.Fprintf(&s, "%s\n", header("THROUGHPUT PROVISIONED"))
-		fmt.Fprintf(&s, "%s:   %d\n", field("Read Capacity Units"), *details.ProvisionedThroughput.ReadCapacityUnits)
-		fmt.Fprintf(&s, "%s:  %d\n", field("Write Capacity Units"), *details.ProvisionedThroughput.WriteCapacityUnits)
+		fmt.Fprintf(&s, "%s:   %s\n", field("Read Capacity Units"), value(spf("%d", *details.ProvisionedThroughput.ReadCapacityUnits)))
+		fmt.Fprintf(&s, "%s:  %s\n", field("Write Capacity Units"), value(spf("%d", *details.ProvisionedThroughput.WriteCapacityUnits)))
 		fmt.Fprintf(&s, "\n")
 	}
 	if details.OnDemandThroughput != nil {
 		fmt.Fprintf(&s, "%s\n", header("THROUGHPUT ON DEMAND"))
-		fmt.Fprintf(&s, "%s:   %d\n", field("Max Read Capacity Units"), *details.OnDemandThroughput.MaxReadRequestUnits)
-		fmt.Fprintf(&s, "%s:  %d\n", field("Max Write Capacity Units"), *details.OnDemandThroughput.MaxWriteRequestUnits)
+		fmt.Fprintf(&s, "%s:   %s\n", field("Max Read Capacity Units"), value(spf("%d", *details.OnDemandThroughput.MaxReadRequestUnits)))
+		fmt.Fprintf(&s, "%s:  %s\n", field("Max Write Capacity Units"), value(spf("%d", *details.OnDemandThroughput.MaxWriteRequestUnits)))
 		fmt.Fprintf(&s, "\n")
 	}
 	return s.String()
@@ -240,6 +244,7 @@ func renderDetails(details *apitypes.DescribeTableResponse, styles detailsStyles
 
 func formatKeys(hash string, rang *string, indentation string, attrDef []dynamodbtypes.AttributeDefinition, styles detailsStyles) string {
 	field := styles.fieldNameStyle.Render
+	value := styles.fieldValueStyle.Render
 	var hashAttr string
 	var rangAttr *string
 	for _, d := range attrDef {
@@ -256,11 +261,11 @@ func formatKeys(hash string, rang *string, indentation string, attrDef []dynamod
 			}
 		}
 	}
-	hashfmt := fmt.Sprintf("%s%s:  %s\n", indentation, field(fmt.Sprintf("Hash Key  (%s)", hashAttr)), hash)
+	hashfmt := fmt.Sprintf("%s%s:  %s\n", indentation, field(fmt.Sprintf("Hash Key  (%s)", hashAttr)), value(hash))
 	if rang == nil {
 		return hashfmt
 	}
-	return fmt.Sprintf("%s%s%s:  %s\n", hashfmt, indentation, field(fmt.Sprintf("Range Key (%s)", *rangAttr)), *rang)
+	return fmt.Sprintf("%s%s%s:  %s\n", hashfmt, indentation, field(fmt.Sprintf("Range Key (%s)", *rangAttr)), value(*rang))
 }
 
 func formatBytes(bytes int64) string {

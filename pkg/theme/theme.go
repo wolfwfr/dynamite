@@ -72,6 +72,14 @@ func UpdateTheme(isDark bool, overrides ThemeOverrides) {
 	TableBorderFg = SubtleColour5
 	TableHeaderFg = TerminalDefaultColour
 
+	// table details
+	TableDetailsHeaderBg = nil // transparent
+	TableDetailsHeaderFg = SubtleColour1
+	TableDetailsFieldNameBg = nil // transparent
+	TableDetailsFieldNameFg = SubtleColour1
+	TableDetailsFieldValueBg = nil // transparent
+	TableDetailsFieldValueFg = choose(TerminalDefaultColour, c("#a7bc85"))
+
 	// search
 	SearchHighlight = choose(c("#317566"), c("#317566"))
 
@@ -167,6 +175,14 @@ var (
 	TableSelectedFg color.Color
 	TableBorderFg   color.Color
 	TableHeaderFg   color.Color
+
+	// table details
+	TableDetailsHeaderBg     color.Color
+	TableDetailsHeaderFg     color.Color
+	TableDetailsFieldNameBg  color.Color
+	TableDetailsFieldNameFg  color.Color
+	TableDetailsFieldValueBg color.Color
+	TableDetailsFieldValueFg color.Color
 
 	// search
 	SearchHighlight color.Color

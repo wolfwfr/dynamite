@@ -48,6 +48,14 @@ type ThemeOverrides struct {
 	TableBorderFg   string `yaml:"table_border_fg"`
 	TableHeaderFg   string `yaml:"table_header_fg"`
 
+	// table details
+	TableDetailsHeaderBg     string `yaml:"table_details_header_bg"`
+	TableDetailsHeaderFg     string `yaml:"table_details_header_fg"`
+	TableDetailsFieldNameBg  string `yaml:"table_details_field_name_bg"`
+	TableDetailsFieldNameFg  string `yaml:"table_details_field_name_fg"`
+	TableDetailsFieldValueBg string `yaml:"table_details_field_value_bg"`
+	TableDetailsFieldValueFg string `yaml:"table_details_field_value_fg"`
+
 	// search
 	SearchHighlight string `yaml:"search_highlight"`
 
@@ -128,6 +136,13 @@ func (o ThemeOverrides) apply() {
 	TableSelectedFg = maybeOverride(o.TableSelectedFg, TableSelectedFg)
 	TableBorderFg = maybeOverride(o.TableBorderFg, TableBorderFg)
 	TableHeaderFg = maybeOverride(o.TableHeaderFg, TableHeaderFg)
+
+	TableDetailsHeaderBg = maybeOverride(o.TableDetailsHeaderBg, TableDetailsHeaderBg)
+	TableDetailsHeaderFg = maybeOverride(o.TableDetailsHeaderFg, TableDetailsHeaderFg)
+	TableDetailsFieldNameBg = maybeOverride(o.TableDetailsFieldNameBg, TableDetailsFieldNameBg)
+	TableDetailsFieldNameFg = maybeOverride(o.TableDetailsFieldNameFg, TableDetailsFieldNameFg)
+	TableDetailsFieldValueBg = maybeOverride(o.TableDetailsFieldValueBg, TableDetailsFieldValueBg)
+	TableDetailsFieldValueFg = maybeOverride(o.TableDetailsFieldValueFg, TableDetailsFieldValueFg)
 
 	SearchHighlight = maybeOverride(o.SearchHighlight, SearchHighlight)
 
