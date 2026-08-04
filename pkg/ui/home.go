@@ -46,46 +46,13 @@ const (
 	mfa_dialog
 )
 
-var regionBlock = lipgloss.NewStyle().
-	Foreground(theme.BoxFg).
-	Background(theme.RegionBoxBg).
-	Align(lipgloss.Left, lipgloss.Top).
-	Padding(0, 1, 0, 1).
-	Margin(0, 1, 0, 0).
-	Height(1)
-
-var queryModeBlock = lipgloss.NewStyle().
-	Foreground(theme.BoxFg).
-	Background(theme.QueryModeBoxScanBg).
-	Align(lipgloss.Left, lipgloss.Top).
-	Padding(0, 1, 0, 1).
-	Margin(0, 1, 0, 0).
-	Height(1)
-
-var filterModeBlock = lipgloss.NewStyle().
-	Foreground(theme.BoxFg).
-	Background(theme.FilterBoxBg).
-	Align(lipgloss.Left, lipgloss.Top).
-	Padding(0, 1, 0, 1).
-	Margin(0, 1, 0, 0).
-	Height(1)
-
-var pageSuspendBlock = lipgloss.NewStyle().
-	Strikethrough(true).
-	Foreground(theme.BoxFg).
-	Background(theme.PageSuspendBoxBg).
-	Align(lipgloss.Left, lipgloss.Top).
-	Padding(0, 1, 0, 1).
-	Margin(0, 1, 0, 0).
-	Height(1)
-
-var helpBlock = lipgloss.NewStyle().
-	Foreground(theme.BoxFg).
-	Background(theme.HelpBoxBg).
-	Align(lipgloss.Left, lipgloss.Top).
-	Padding(0, 1, 0, 1).
-	Margin(0, 1, 0, 0).
-	Height(1)
+type homeStyles struct {
+	regionBlock      lipgloss.Style
+	queryModeBlock   lipgloss.Style
+	filterModeBlock  lipgloss.Style
+	pageSuspendBlock lipgloss.Style
+	helpBlock        lipgloss.Style
+}
 
 type Model struct {
 	// ActiveView determines tea.Msg forwarding
@@ -93,6 +60,9 @@ type Model struct {
 
 	// current query-mode
 	QueryMode messages.ItemsQueryMode
+
+	// styles
+	styles homeStyles
 
 	// badge flags
 	FiltersEnabled  bool
@@ -212,6 +182,8 @@ func NewModel(ctx context.Context, cfg appconfig.Config, opts ...Option) Model {
 		m.dialogs.filterParams = dialogs.NewFilterDialog(ctx, cfg.Logger, DialogCloseKeymapFrom(itemViewDialogKeys.FilterParams))
 		m.dialogs.copy = dialogs.NewCopyDialog(ctx, cfg.Logger, DialogCloseKeymapFrom(itemViewDialogKeys.Copy))
 	}
+
+	m = m.updateStyles()
 
 	return m
 }
@@ -402,24 +374,32 @@ func (m Model) routeToActiveOnly(msg tea.Msg) (Model, tea.Cmd) {
 func (m Model) updateTheme(msg tea.BackgroundColorMsg) (Model, tea.Cmd) {
 	theme.UpdateTheme(msg.IsDark(), m.config.ThemeOverrides)
 
-	regionBlock = regionBlock.Foreground(theme.BoxFg).Background(theme.RegionBoxBg)
-	queryModeBlock = queryModeBlock.Foreground(theme.BoxFg).Background(theme.QueryModeBoxScanBg)
-	filterModeBlock = filterModeBlock.Foreground(theme.BoxFg).Background(theme.FilterBoxBg)
-	pageSuspendBlock = pageSuspendBlock.Foreground(theme.BoxFg).Background(theme.RegionBoxBg)
-	helpBlock = helpBlock.Foreground(theme.BoxFg).Background(theme.HelpBoxBg)
+	return m.updateStyles(), nil
 
-	return m, nil
+}
+
+func (m Model) updateStyles() Model {
+	block := lipgloss.NewStyle().
+		Foreground(theme.BoxFg).
+		Align(lipgloss.Left, lipgloss.Top).
+		Padding(0, 1, 0, 1).
+		Margin(0, 1, 0, 0).
+		Height(1)
+
+	st := homeStyles{}
+	st.regionBlock = block.Foreground(theme.BoxFg).Background(theme.RegionBoxBg)
+	st.queryModeBlock = block.Foreground(theme.BoxFg).Background(u.Ternary(theme.QueryModeBoxQeuryBg, theme.QueryModeBoxScanBg, m.QueryMode == messages.QueryMode))
+	st.filterModeBlock = block.Foreground(theme.BoxFg).Background(theme.FilterBoxBg)
+	st.pageSuspendBlock = block.Foreground(theme.BoxFg).Background(theme.PageSuspendBoxBg).Strikethrough(true)
+	st.helpBlock = block.Foreground(theme.BoxFg).Background(theme.HelpBoxBg)
+	m.styles = st
+
+	return m
 }
 
 func (m Model) SwitchQueryMode(msg messages.SwitchQueryMode) (Model, tea.Cmd) {
 	m.QueryMode = msg.NewMode
-	switch m.QueryMode {
-	case messages.ScanMode:
-		queryModeBlock = queryModeBlock.Background(theme.QueryModeBoxScanBg)
-	case messages.QueryMode:
-		queryModeBlock = queryModeBlock.Background(theme.QueryModeBoxQeuryBg)
-	}
-	return m, nil
+	return m.updateStyles(), nil
 }
 
 func (m Model) UpdateTableFilterMode(msg messages.TableFiltersEnabled) (Model, tea.Cmd) {
@@ -624,13 +604,13 @@ func (m Model) View() tea.View {
 	}
 
 	// assemble gutter
-	region := regionBlock.Render(m.config.Region)
+	region := m.styles.regionBlock.Render(m.config.Region)
 	queryMode := u.Ternary("QUERY", "SCAN", m.QueryMode == messages.QueryMode)
 	// TODO: refactor blocks to be managed more directly by view
-	query := u.Ternary(queryModeBlock.Render(queryMode), "", m.activeView == items_view)
-	filter := u.Ternary(filterModeBlock.Render("FILTER"), "", m.FiltersEnabled && m.activeView == items_view)
-	pageSus := u.Ternary(pageSuspendBlock.Render("PAGING"), "", m.PagingSuspended && m.activeView == items_view)
-	helpBlock := helpBlock.Render(strings.Join(m.KeyMap.Help.Keys(), ","), " help")
+	query := u.Ternary(m.styles.queryModeBlock.Render(queryMode), "", m.activeView == items_view)
+	filter := u.Ternary(m.styles.filterModeBlock.Render("FILTER"), "", m.FiltersEnabled && m.activeView == items_view)
+	pageSus := u.Ternary(m.styles.pageSuspendBlock.Render("PAGING"), "", m.PagingSuspended && m.activeView == items_view)
+	helpBlock := m.styles.helpBlock.Render(strings.Join(m.KeyMap.Help.Keys(), ","), " help")
 	pregutterLeft := lipgloss.JoinHorizontal(lipgloss.Left, region, query, filter, pageSus, " ")
 	pregutterRight := lipgloss.JoinHorizontal(lipgloss.Right, " ", helpBlock)
 
