@@ -391,7 +391,7 @@ func (m Model) updateStyles() Model {
 	st.queryModeBlock = block.Foreground(theme.BoxFg).Background(u.Ternary(theme.QueryModeBoxQeuryBg, theme.QueryModeBoxScanBg, m.QueryMode == messages.QueryMode))
 	st.filterModeBlock = block.Foreground(theme.BoxFg).Background(theme.FilterBoxBg)
 	st.pageSuspendBlock = block.Foreground(theme.BoxFg).Background(theme.PageSuspendBoxBg).Strikethrough(true)
-	st.helpBlock = block.Foreground(theme.BoxFg).Background(theme.HelpBoxBg)
+	st.helpBlock = block.Foreground(theme.BoxFg).Background(theme.HelpBoxBg).Margin(0, 0, 0, 0)
 	m.styles = st
 
 	return m
