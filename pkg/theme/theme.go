@@ -15,6 +15,9 @@ var (
 	c              = lipgloss.Color
 )
 
+// NOTE: theme inspiration from https://github.com/rebelot/kanagawa.nvim (my
+// personal favourite neovim theme).
+
 // UpdateTheme updates colours in response to a `tea.BackgroundColorMsg`. It
 // will not touch any colours that have been overridden by the user.
 // TODO: tweak theme, light theme & table-name highlights in particular
@@ -37,7 +40,7 @@ func UpdateTheme(isDark bool, overrides ThemeOverrides) {
 	AccentFadedBlue = choose(c("#95A0BA"), c("#415278"))
 	AccentDarkBlue = choose(c("#8A9FBA"), c("#244673"))
 
-	// NOTE: applying early here because primary palette can be referenced later on
+	// applying early here because primary palette can be referenced later on
 	overrides.apply()
 
 	// WARN: non-primary-palette colours can ONLY reference primary-palette
@@ -95,13 +98,14 @@ func UpdateTheme(isDark bool, overrides ThemeOverrides) {
 	HelpBoxFg = choose(SubtleColour2, SubtleColour2)
 
 	// table matching
-	TableHighlightDefault1 = SubtleColour1
-	TableHighlightDefault2 = choose(c("#4F6E1E"), c("#a7bc85"))
-	TableHighlightDefault3 = choose(c("#19664B"), c("#489C7F"))
-	TableHighlightDefault4 = choose(c("#70570A"), c("#B59226"))
-	TableHighlightDefault5 = choose(c("#145C49"), c("#668C82"))
-	TableHighlightDefault6 = choose(c("#804504"), c("#D97604"))
-	TableHighlightDefault7 = choose(c("#7C6755"), c("#A18975"))
+	TableHighlightDefault0 = choose(SubtleColour1, SubtleColour1) // on no match
+	TableHighlightDefault1 = choose(c("#597b75"), c("#7aa89f"))
+	TableHighlightDefault2 = choose(c("#196B1C"), c("#a7bc85"))
+	TableHighlightDefault3 = choose(c("#cc6d00"), c("#ffa066"))
+	TableHighlightDefault4 = choose(c("#6693bf"), c("#7fb4ca"))
+	TableHighlightDefault5 = choose(c("#c84053"), c("#e46876"))
+	TableHighlightDefault6 = choose(c("#624c83"), c("#957fb8"))
+	TableHighlightDefault7 = choose(c("#77713f"), c("#e6c384"))
 
 	// apply again to ensure all overrides are applied
 	overrides.apply()
@@ -190,6 +194,7 @@ var (
 	HelpBoxFg           color.Color
 
 	// table matching
+	TableHighlightDefault0 color.Color
 	TableHighlightDefault1 color.Color
 	TableHighlightDefault2 color.Color
 	TableHighlightDefault3 color.Color

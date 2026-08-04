@@ -74,6 +74,7 @@ type ThemeOverrides struct {
 	HelpBoxFg           string `yaml:"help_box_fg"`
 
 	// table matching
+	TableHighlightDefault0 string `yaml:"table_highlight_default0"`
 	TableHighlightDefault1 string `yaml:"table_highlight_default1"`
 	TableHighlightDefault2 string `yaml:"table_highlight_default2"`
 	TableHighlightDefault3 string `yaml:"table_highlight_default3"`
@@ -150,6 +151,7 @@ func (o ThemeOverrides) apply() {
 	BoxFg = maybeOverride(o.BoxFg, BoxFg)
 	HelpBoxFg = maybeOverride(o.HelpBoxFg, HelpBoxFg)
 
+	TableHighlightDefault0 = maybeOverride(o.TableHighlightDefault0, TableHighlightDefault0)
 	TableHighlightDefault1 = maybeOverride(o.TableHighlightDefault1, TableHighlightDefault1)
 	TableHighlightDefault2 = maybeOverride(o.TableHighlightDefault2, TableHighlightDefault2)
 	TableHighlightDefault3 = maybeOverride(o.TableHighlightDefault3, TableHighlightDefault3)

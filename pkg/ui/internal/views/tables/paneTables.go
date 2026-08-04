@@ -240,7 +240,7 @@ func (m *tableSelectionPane) updateStyles() {
 			lipgloss.NewStyle().Foreground(theme.TableHighlightDefault6),
 			lipgloss.NewStyle().Foreground(theme.TableHighlightDefault7),
 		},
-		DefaultStyle: lipgloss.NewStyle().Foreground(theme.TableHighlightDefault1),
+		DefaultStyle: lipgloss.NewStyle().Foreground(theme.TableHighlightDefault0),
 	}
 
 	m.styles.Table = st
