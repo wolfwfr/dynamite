@@ -26,6 +26,9 @@ type Config struct {
 	MFACredentialC  chan<- CredentialsResponse
 
 	// initialisation (CLI flags)
+	// NOTE: initialisation content is cleared after first round of Model.Init()
+	// calls, ONLY rely on this field during the FIRST call to Init() within an
+	// application session.
 	Initialisation Initialisation
 
 	// theme overrides
