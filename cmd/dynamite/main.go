@@ -15,7 +15,7 @@ import (
 	"github.com/urfave/cli/v3"
 
 	appconfig "github.com/wolfwfr/dynamite/pkg"
-	"github.com/wolfwfr/dynamite/pkg/configfile"
+	"github.com/wolfwfr/dynamite/pkg/file"
 	"github.com/wolfwfr/dynamite/pkg/logging"
 	"github.com/wolfwfr/dynamite/pkg/ui"
 )
@@ -249,7 +249,7 @@ func runApplication(ctx context.Context, cmd *cli.Command) error {
 		defer logFile.Close()
 	}
 
-	cfgf, _, err := loadConfig(cmd.String(config_key))
+	cfgf, state, man, err := loadFiles(cmd.String(config_key))
 	if err != nil {
 		uiopts = append(uiopts, ui.WithInitialErrorNotification(err))
 	}
@@ -271,10 +271,10 @@ func runApplication(ctx context.Context, cmd *cli.Command) error {
 
 	rk1, rk2 := resolveQueryRangeKeyValues(cmd)
 
-	cfg := appconfig.Config{
+	cfg := &appconfig.Config{
 		Logger:           logger,
 		Profile:          resolveProfile(cmd, cfgf),
-		Region:           resolveRegion(cmd, cfgf),
+		Region:           resolveRegion(cmd, cfgf, state),
 		URL:              urlP,
 		AvailableRegions: cfgf.AWSRegions,
 		StarredRegions:   cfgf.StarredRegions,
@@ -305,31 +305,41 @@ func runApplication(ctx context.Context, cmd *cli.Command) error {
 		},
 		ThemeOverrides: cfgf.ThemeOverrides,
 	}
+	old := cfg.Region
 
 	logger.Info("New DYNAMITE session")
 
 	p = tea.NewProgram(ui.NewModel(ctx, cfg, uiopts...))
 	_, err = p.Run()
+
+	// TODO: revise using pointer config to transmit changes
+	if cfg.Region != old {
+		man.UpdateRegion(cfg.Region)
+	}
+
 	return err
 }
 
-func loadConfig(dirpath string) (configfile.Config, *configfile.ConfigManager, error) {
-	dirpath = filepath.Join(dirpath, "config.yaml")
-	path, err1 := filepath.Abs(dirpath)
-	if err1 != nil {
-		err1 = fmt.Errorf("failed to construct a valid config-path: %w", err1)
+func loadFiles(dirpath string) (file.Config, file.StateFile, *file.Manager, error) {
+	path, errDir := filepath.Abs(dirpath)
+	if errDir != nil {
+		errDir = fmt.Errorf("failed to construct a valid config-path: %w", errDir)
 	}
 
-	configman := configfile.NewConfigManager(path)
-	cfgf, err2 := configman.LoadConfig()
-	if err1 != nil {
-		return cfgf, configman, err1
+	man := file.NewManager(path)
+	cfgf, errCfg := man.LoadConfig()
+	statef, errState := man.LoadState()
+	if errDir != nil {
+		return cfgf, statef, man, errDir
 	}
-	if err2 != nil {
-		return cfgf, configman, fmt.Errorf("failed to load local config: %w", err2)
+	if errCfg != nil {
+		return cfgf, statef, man, fmt.Errorf("failed to load local config: %w", errCfg)
+	}
+	if errState != nil {
+		return cfgf, statef, man, fmt.Errorf("failed to load state: %w", errState)
 	}
 
-	return cfgf, configman, nil
+	return cfgf, statef, man, nil
 }
 
 func resolveQueryHashKey(cmd *cli.Command) string {
@@ -375,7 +385,7 @@ func resolveQueryRangeOrder(cmd *cli.Command) bool {
 	return cmd.Bool(range_order_key)
 }
 
-func resolveProfile(cmd *cli.Command, cfg configfile.Config) *string {
+func resolveProfile(cmd *cli.Command, cfg file.Config) *string {
 	if pr := cmd.String(aws_profile_key); pr != "" {
 		return &pr
 	}
@@ -388,9 +398,12 @@ func resolveProfile(cmd *cli.Command, cfg configfile.Config) *string {
 	return nil
 }
 
-func resolveRegion(cmd *cli.Command, cfg configfile.Config) string {
+func resolveRegion(cmd *cli.Command, cfg file.Config, state file.StateFile) string {
 	if r := cmd.String(region_key); r != "" {
 		return r
+	}
+	if state.LastUsedRegion != "" && cfg.DefaultToLastRegion {
+		return state.LastUsedRegion
 	}
 	if r := cfg.DefaultRegion; r != "" {
 		return r

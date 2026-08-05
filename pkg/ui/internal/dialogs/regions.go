@@ -135,6 +135,7 @@ func NewRegionsDialog(ctx context.Context, logger *slog.Logger, available, starr
 
 	l := list.New(sorted, headed.ItemDelegate{}, r.dialog.width, r.dialog.height)
 	l.Title = "AWS Regions"
+	l.Select(max(0, findInList(sorted, current)))
 	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(false)
 	l.SetShowHelp(false)
@@ -174,6 +175,15 @@ func compileSortedList(available, starred []string) (full []list.Item, unstarred
 	}
 
 	return items, unstarred
+}
+
+func findInList(list []list.Item, region string) int {
+	for i := range list {
+		if region == list[i].(headed.Item).Name {
+			return i
+		}
+	}
+	return -1
 }
 
 func (m *Regions) newDelegate(s *regionListStyles) headed.ItemDelegate {

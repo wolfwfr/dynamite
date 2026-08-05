@@ -128,11 +128,11 @@ func WithInitialErrorNotification(err error) Option {
 	}
 }
 
-func NewModel(ctx context.Context, cfg appconfig.Config, opts ...Option) Model {
+func NewModel(ctx context.Context, cfg *appconfig.Config, opts ...Option) Model {
 	m := Model{
 		ctx:    ctx,
 		logger: cfg.Logger.With(slog.String(logging.ComponentKey, "UI_HOME")),
-		config: &cfg,
+		config: cfg,
 
 		activeView: tables_view,
 		Help:       help.New(),
@@ -161,8 +161,8 @@ func NewModel(ctx context.Context, cfg appconfig.Config, opts ...Option) Model {
 	}
 
 	{ // views
-		m.tableSelection = tablesview.NewTableSelectionView(ctx, &cfg, tablesview.WithAdditionalKeys(keymaps.AdditionalKeys(inheritedKeys)))
-		m.itemselection = itemsview.NewItemSelectionView(ctx, &cfg, itemsview.WithAdditionalKeys(keymaps.AdditionalKeys(inheritedKeys)))
+		m.tableSelection = tablesview.NewTableSelectionView(ctx, cfg, tablesview.WithAdditionalKeys(keymaps.AdditionalKeys(inheritedKeys)))
+		m.itemselection = itemsview.NewItemSelectionView(ctx, cfg, itemsview.WithAdditionalKeys(keymaps.AdditionalKeys(inheritedKeys)))
 	}
 
 	{ // table view bound dialogs

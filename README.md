@@ -185,6 +185,9 @@ starred_regions: []
 # region that is selected by default
 default_region: us-east-1
 
+# enables defaulting to region used in the session that was most recently closed
+default_to_last_region: false
+
 # default AWS profile to look for when no relevant ENVIRONMENT variables were found
 default_profile: ""
 

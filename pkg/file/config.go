@@ -1,14 +1,9 @@
 // package config defines the app configuration file and tooling for config i/o
-package configfile
+package file
 
 import (
-	"fmt"
-	"io"
-	"os"
 	"slices"
 	"strconv"
-
-	"gopkg.in/yaml.v3"
 
 	"github.com/wolfwfr/dynamite/pkg/theme"
 	"github.com/wolfwfr/dynamite/pkg/util"
@@ -60,8 +55,7 @@ type configFile struct {
 	AWSRegions          []string `yaml:"aws_regions"`
 	StarredRegions      []string `yaml:"starred_regions"`
 	DefaultRegion       string   `yaml:"default_region"`
-	LastUsedRegion      string   `yaml:"last_used_region"`       // TODO: impl
-	DefaultToLastRegion string   `yaml:"default_to_last_region"` // TODO: impl
+	DefaultToLastRegion string   `yaml:"default_to_last_region"`
 
 	DefaultProfile string `yaml:"default_profile"`
 
@@ -90,8 +84,7 @@ type Config struct {
 	AWSRegions            []string
 	StarredRegions        []string
 	DefaultRegion         string
-	LastUsedRegion        string
-	DefaultToLastRegion   bool // TODO: impl
+	DefaultToLastRegion   bool
 	DefaultProfile        string
 	TablesPrimaryWidth    int
 	TablesPageSize        int
@@ -108,7 +101,6 @@ func defaultConfig() Config {
 		AWSRegions:          builtInRegions,
 		StarredRegions:      []string{},
 		DefaultRegion:       "us-east-1",
-		LastUsedRegion:      "",
 		DefaultToLastRegion: false,
 		DefaultProfile:      "",
 		TablesPrimaryWidth:  50,
@@ -119,51 +111,12 @@ func defaultConfig() Config {
 	}
 }
 
-type ConfigManager struct {
-	path string
-}
-
-func NewConfigManager(absPath string) *ConfigManager {
-	return &ConfigManager{
-		path: absPath,
-	}
-}
-
-// LoadConfig will always return a valid config, either the default config, or
-// the one it could find, regardless of whether errors occurred.
-func (m *ConfigManager) LoadConfig() (Config, error) {
-	dflt := defaultConfig()
-
-	f, err := os.Open(m.path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return dflt, nil
-		}
-	}
-	defer f.Close()
-
-	var cfg configFile
-	bytes, err := io.ReadAll(f)
-	if err != nil {
-		return dflt, fmt.Errorf("failed to read config file; %w", err)
-	}
-
-	// TODO: move to toml config
-	err = yaml.Unmarshal(bytes, &cfg)
-	if err != nil {
-		return dflt, fmt.Errorf("failed to unmarshal config file; %w", err)
-	}
-
-	return mergeWithDefault(cfg), nil
-}
-
 func mergeWithDefault(cfg configFile) Config {
 	res := defaultConfig()
 	res.AWSRegions = unique(append(res.AWSRegions, cfg.AWSRegions...))
 	res.StarredRegions = unique(append(res.StarredRegions, cfg.StarredRegions...))
 	res.DefaultRegion = notEmptyS(cfg.DefaultRegion, res.DefaultRegion)
-	res.LastUsedRegion = notEmptyS(cfg.LastUsedRegion, res.LastUsedRegion)
-	if defreg, err := strconv.ParseBool(cfg.DefaultToLastRegion); err != nil {
+	if defreg, err := strconv.ParseBool(cfg.DefaultToLastRegion); err == nil {
 		res.DefaultToLastRegion = defreg
 	}
 	res.DefaultProfile = notEmptyS(cfg.DefaultProfile, res.DefaultProfile)
@@ -182,11 +135,6 @@ func mergeWithDefault(cfg configFile) Config {
 	res.ItemsDefaultFormat = cfg.Items.DefaultFormat
 
 	return res
-}
-
-// used for storing default profile on first use (if used with profile)
-func (m *ConfigManager) StoreConfig(c Config) error {
-	panic("implement me!")
 }
 
 func unique[E comparable, S ~[]E](s S) S {
