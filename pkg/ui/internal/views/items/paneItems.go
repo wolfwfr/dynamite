@@ -133,7 +133,6 @@ type ItemSelectionPane struct {
 	}
 
 	// currently active query parameters
-	// TODO: name collision with reset function
 	queryParameters struct {
 		index                *string
 		hashKeyValue         string

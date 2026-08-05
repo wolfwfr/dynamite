@@ -334,7 +334,6 @@ func (m *Model) SetHeaderDelegate(f HeaderDelegate) {
 // updates the view appropriately
 func (m *Model) SetDynamicColumnWidth(b bool) {
 	m.ResetCache()
-	// HACK:
 	for i := range m.cols {
 		m.cols[i].UseDynamicWidth = b
 	}

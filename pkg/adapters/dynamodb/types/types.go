@@ -20,7 +20,6 @@ type ObjectStyling struct {
 	ErrorColor     color.Color
 }
 
-// TODO: revise all the duplication between connector & adapter packages
 type FilterOperator string
 
 const (

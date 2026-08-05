@@ -73,7 +73,7 @@ func newMFAStyles() mfaStyles {
 	s.title = lipgloss.NewStyle().Foreground(theme.TitleFG).Padding(1, 0, 1, 0)
 	s.desc = lipgloss.NewStyle().Padding(1, 0, 1, 0).Foreground(theme.SubtleColour1)
 	s.helpLine = lipgloss.NewStyle().Padding(1, 4, 0, 4)
-	// TODO: defalut to textinput.DefaultStyles(bool) for all input boxes
+	// TODO: default to textinput.DefaultStyles(bool) for all input boxes
 	s.inputBox = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(theme.DialogFocusColour)
 	return s
 }

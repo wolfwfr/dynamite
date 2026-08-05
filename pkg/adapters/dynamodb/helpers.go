@@ -18,7 +18,7 @@ func ToAttrValue(value string, attrType types.ScalarAttributeType) types.Attribu
 			Value: value,
 		}
 	case types.ScalarAttributeTypeB:
-		b, _ := strconv.ParseBool(value) // TODO: error-checking?
+		b, _ := strconv.ParseBool(value)
 		return &types.AttributeValueMemberBOOL{
 			Value: b,
 		}

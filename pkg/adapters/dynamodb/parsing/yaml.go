@@ -151,7 +151,7 @@ func (p YAMLParser) switchAttrValueYAML(v types.AttributeValue, hashkey string, 
 		return stringableAsListYAML(p.Styles, vv.Value, nestLevel, func(s string) (string, styles.ObjectStyle) { return obj(pYAMLString(s, strSt)) })
 	default:
 		fm := "<failed to parse>"
-		return obj(pYAMLERR(fm, errSt)) // TODO: error?
+		return obj(pYAMLERR(fm, errSt))
 	}
 }
 

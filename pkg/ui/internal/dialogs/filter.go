@@ -24,7 +24,6 @@ import (
 	u "github.com/wolfwfr/dynamite/pkg/util"
 )
 
-// TODO: add up & down arrow keys for navigating rows
 type filterKeyMap struct {
 	right key.Binding
 	up    key.Binding
@@ -898,7 +897,6 @@ func (m *FilterDialog) updateSize() {
 		Width(m.dialog.width)
 }
 
-// TODO: add visual indicator of field-type (S, N, B) specified by attrName
 func (m *FilterDialog) View() string {
 	help := m.renderHelp()
 

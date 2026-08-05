@@ -606,7 +606,6 @@ func (m Model) View() tea.View {
 	// assemble gutter
 	region := m.styles.regionBlock.Render(m.config.Region)
 	queryMode := u.Ternary("QUERY", "SCAN", m.QueryMode == messages.QueryMode)
-	// TODO: refactor blocks to be managed more directly by view
 	query := u.Ternary(m.styles.queryModeBlock.Render(queryMode), "", m.activeView == items_view)
 	filter := u.Ternary(m.styles.filterModeBlock.Render("FILTER"), "", m.FiltersEnabled && m.activeView == items_view)
 	pageSus := u.Ternary(m.styles.pageSuspendBlock.Render("PAGING"), "", m.PagingSuspended && m.activeView == items_view)
