@@ -37,11 +37,15 @@ _  /_/ /_  /_/ /_  / / / /_/ /_  / / / / /  / / /_ /  __/
 
 <br/>
 
-[dynamite.webm](https://github.com/user-attachments/assets/442d57de-ce0c-4ff0-9e6e-a3f07c994d9f)
-
-<img width="3452" height="1769" alt="dynamite-screenshots-composition-1" src="https://github.com/user-attachments/assets/a07c1665-f7b5-4f49-8c89-04211870fab2" />
+<img width="1600" height="800" alt="demo_v0 3_compressed" src="https://github.com/user-attachments/assets/5a6631ae-70c2-4591-9a85-201bc0c15051" />
 
 
+<br/>
+<br/>
+
+<img width="3240" height="1640" alt="dynamite_screenshots" src="https://github.com/user-attachments/assets/5d05c960-87dd-4a11-a975-bca38b95fdf8" />
+
+<br/>
 <br/>
 
 ## 🚧 WORK IN PROGRESS 🚧
