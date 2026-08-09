@@ -37,13 +37,15 @@ _  /_/ /_  /_/ /_  / / / /_/ /_  / / / / /  / / /_ /  __/
 
 <br/>
 
-<img width="1600" height="800" alt="demo_v0 3_compressed" src="https://github.com/user-attachments/assets/5a6631ae-70c2-4591-9a85-201bc0c15051" />
+<img width="1600" height="800" alt="demo_v0 4_compressed" src="https://github.com/user-attachments/assets/2ba09803-4355-4975-8e8d-f07915e26a0f" />
 
 
 <br/>
 <br/>
 
-<img width="3240" height="1640" alt="dynamite_screenshots" src="https://github.com/user-attachments/assets/5d05c960-87dd-4a11-a975-bca38b95fdf8" />
+<img width="3250" height="1650" alt="dynamite_screenshots_v0 4" src="https://github.com/user-attachments/assets/5d721b42-ea8b-4976-9613-0750c318cc3f" />
+
+
 
 <br/>
 <br/>
