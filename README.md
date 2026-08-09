@@ -1,5 +1,8 @@
 <div align="center">
-    <img width="380" height="112" alt="Dynamite" src="https://github.com/user-attachments/assets/f7d94c24-9362-4f81-97e3-62f3bba8e40b" />
+<img width="700" height="175" alt="dynamite_logo_v0 1_transparent" src="https://github.com/user-attachments/assets/208dfa02-7c35-4532-8733-e547fb9bf616" />
+
+
+
   <h1>🧨🧨🧨</h1>
 </div>
 
