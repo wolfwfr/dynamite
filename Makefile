@@ -1,4 +1,4 @@
-.PHONY: test build install clean
+.PHONY: test build install clean fmt
 
 # Version information
 VERSION ?= $(shell git describe --tags --abbrev=0 2>/dev/null || echo "unknown")
@@ -22,3 +22,7 @@ clean:
 test:
 	@go generate ./pkg/... # generate mocks; requires github.com/uber-go/mock
 	@go test ./... -count=1 -v
+
+fmt:
+	@echo "Formatting code..."
+	@gofmt -w .
