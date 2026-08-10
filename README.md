@@ -1,9 +1,14 @@
 <div align="center">
+  
+</div>
+<div align="center">
 <img width="700" height="175" alt="dynamite_logo_v0 1_transparent" src="https://github.com/user-attachments/assets/208dfa02-7c35-4532-8733-e547fb9bf616" />
 
+  <br/><br/>
 
-
-  <h1>🧨🧨🧨</h1>
+  [Installation](#-installation) &bull; [Getting Started](#-getting-started) &bull; [Features](#-features) &bull; [Configuration](#-configuration) &bull; [Troubleshooting](#-troubleshooting)
+  
+  ---
 </div>
 
 <!--
@@ -34,7 +39,7 @@ _  /_/ /_  /_/ /_  / / / /_/ /_  / / / / /  / / /_ /  __/
 <div align="center">
   <p>
     Amazon Dynamo-DB Query Engine for the Terminal. <br/>
-    A fast 2-pane TUI full of QOL features.
+    A fast 2-pane TUI full of QoL features.
   </p>
 </div>
 
