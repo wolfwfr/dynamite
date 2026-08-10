@@ -19,19 +19,13 @@ import (
 // Adapter encapsulates the dynamo-db adapter functions. Although stateless, it
 // can be mocked or decorated.
 type Adapter struct {
-	logger  *slog.Logger
-	styling apitypes.ObjectStyling
+	logger *slog.Logger
 }
 
 // NewAdapter returns a new instance of Adapter.
-func NewAdapter(logger *slog.Logger, opts ...Option) *Adapter {
-	options := &options{}
-	for _, o := range opts {
-		o(options)
-	}
+func NewAdapter(logger *slog.Logger) *Adapter {
 	return &Adapter{
-		logger:  logger.With(slog.String(logging.ComponentKey, "dynamodb-adapter")),
-		styling: options.objectStyling,
+		logger: logger.With(slog.String(logging.ComponentKey, "dynamodb-adapter")),
 	}
 }
 
@@ -198,9 +192,11 @@ func (a *Adapter) QueryTable(client *dynamodb.Client, ctx context.Context, table
 func (a *Adapter) parseItems(raw []map[string]types.AttributeValue, hkey, rkey *string) apitypes.Items {
 	var items []apitypes.Item
 	// TODO: reconsider parsing to both JSON & YAML all the time
+	yparse := parsing.NewYAMLParser()
+	jparse := parsing.NewJSONParser()
 	for _, item := range raw {
-		yaml, yamlStyling := parsing.NewYAMLParser(a.styling).ParseItemToYAML(item, *hkey, rkey)
-		json, jsonStyling, keys := parsing.NewJSONParser(a.styling).ParseToJSONWithKeys(item, *hkey, rkey)
+		yaml, yamlStyling := yparse.ParseItemToYAML(item, *hkey, rkey)
+		json, jsonStyling, keys := jparse.ParseToJSONWithKeys(item, *hkey, rkey)
 
 		items = append(items, apitypes.Item{
 			JSON:       json,

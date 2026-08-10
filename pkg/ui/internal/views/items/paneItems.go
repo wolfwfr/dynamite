@@ -177,7 +177,7 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 		ctx:            ctx,
 		logger:         config.Logger.With(slog.String(logging.ViewKey, Log_ItemsView), slog.String(logging.PaneKey, "items")),
 		config:         config,
-		dynamodbClient: newDynamodbClient(config.Logger),
+		dynamodbClient: dynamodb.NewAdapter(config.Logger),
 		stdTO:          30 * time.Second,
 		KeyMap:         DefaultItemPaneKeyMap(),
 		sessions:       make(map[string]SessionData),
@@ -234,8 +234,6 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 
 func (m *ItemSelectionPane) updateStyles() tea.Cmd {
 	m.logger.Debug("updating styles")
-	// TODO: move theme package up and do not inject styles into adapter
-	m.dynamodbClient = newDynamodbClient(m.config.Logger) // ensure is using correct styles
 
 	m.styles.tableInfoBox = lipgloss.NewStyle().
 		Height(2).
@@ -252,21 +250,6 @@ func (m *ItemSelectionPane) updateStyles() tea.Cmd {
 		Background(theme.SpinnerTextBg)
 
 	return nil
-}
-
-func newDynamodbClient(logger *slog.Logger) *dynamodb.Adapter {
-	st := apitypes.ObjectStyling{ // styling for dynamodb-adapter object parsing
-		FieldNameColor: theme.FieldNameFg,
-		NumberColor:    theme.NumberFg,
-		BoolColor:      theme.BoolFg,
-		BytesColor:     theme.BytesFg,
-		NULLColor:      theme.NULLFg,
-		StringColor:    theme.StringFg,
-		TokenColor:     theme.TokenFg,
-		ErrorColor:     theme.ErrorFg,
-	}
-
-	return dynamodb.NewAdapter(logger, dynamodb.WithObjectStyling(st))
 }
 
 func (m *ItemSelectionPane) KeyMapExecutionSafe(k tea.KeyPressMsg) bool {

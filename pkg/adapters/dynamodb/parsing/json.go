@@ -9,6 +9,7 @@ import (
 
 	"github.com/wolfwfr/dynamite/lib/styles"
 	apitypes "github.com/wolfwfr/dynamite/pkg/adapters/dynamodb/types"
+	"github.com/wolfwfr/dynamite/pkg/theme"
 	"github.com/wolfwfr/dynamite/pkg/util"
 )
 
@@ -31,16 +32,22 @@ type jsonParserStyles struct {
 	ErrorStyle     lipgloss.Style
 }
 
-func NewJSONParser(s apitypes.ObjectStyling) JSONParser {
+func newjsonParserStyles() jsonParserStyles {
+	p := jsonParserStyles{}
+	p.FieldNameStyle = lipgloss.NewStyle().Foreground(theme.FieldNameFg)
+	p.NumberStyle = lipgloss.NewStyle().Foreground(theme.NumberFg)
+	p.BoolStyle = lipgloss.NewStyle().Foreground(theme.BoolFg)
+	p.BytesStyle = lipgloss.NewStyle().Foreground(theme.BytesFg)
+	p.NULLStyle = lipgloss.NewStyle().Foreground(theme.NULLFg)
+	p.StringStyle = lipgloss.NewStyle().Foreground(theme.StringFg)
+	p.TokenStyle = lipgloss.NewStyle().Foreground(theme.TokenFg)
+	p.ErrorStyle = lipgloss.NewStyle().Foreground(theme.ErrorFg)
+	return p
+}
+
+func NewJSONParser() JSONParser {
 	p := JSONParser{}
-	p.Styles.FieldNameStyle = lipgloss.NewStyle().Foreground(s.FieldNameColor)
-	p.Styles.NumberStyle = lipgloss.NewStyle().Foreground(s.NumberColor)
-	p.Styles.BoolStyle = lipgloss.NewStyle().Foreground(s.BoolColor)
-	p.Styles.BytesStyle = lipgloss.NewStyle().Foreground(s.BytesColor)
-	p.Styles.NULLStyle = lipgloss.NewStyle().Foreground(s.NULLColor)
-	p.Styles.StringStyle = lipgloss.NewStyle().Foreground(s.StringColor)
-	p.Styles.TokenStyle = lipgloss.NewStyle().Foreground(s.TokenColor)
-	p.Styles.ErrorStyle = lipgloss.NewStyle().Foreground(s.ErrorColor)
+	p.Styles = newjsonParserStyles()
 	return p
 }
 
