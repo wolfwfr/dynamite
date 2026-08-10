@@ -136,8 +136,6 @@ func (m *Help) updateSize() {
 
 	m.dialog.height = min(m.defaultDialogHeight, m.window.height)
 
-	// TODO: some widths mess up the layout, but it seems to be out of my
-	// control. Maybe a bug in help.Model?
 	m.Help.SetWidth(helpWidth)
 
 	m.styles.dialog = m.styles.dialog.

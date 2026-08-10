@@ -314,7 +314,6 @@ func (m *ColumnVis) updateSize() {
 		}
 
 		// set width of the list within the dialog
-		// TODO: help menu goes funky when at width between 55 and 57, uncertain why
 		m.content.SetWidth(m.dialog.width - contentW)
 	}
 
