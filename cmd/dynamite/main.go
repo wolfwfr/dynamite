@@ -56,6 +56,7 @@ const (
 // environment variables
 const (
 	env_config_dir  = "DYNAMITE_TUI_CONFIG_DIR"
+	env_url         = "DYNAMITE_TUI_URL"
 	env_aws_profile = "AWS_PROFILE"
 	env_aws_region  = "AWS_REGION"
 )
@@ -123,6 +124,7 @@ func main() {
 			},
 			&cli.StringFlag{
 				Name:    dynamo_url_key,
+				Sources: cli.EnvVars(env_url),
 				Aliases: []string{"u"},
 				Value:   "",
 				Usage:   "override the dynamodb host URL, useful for connecting to a local dynamodb compatible API (e.g. 'http://localhost:8000')",
