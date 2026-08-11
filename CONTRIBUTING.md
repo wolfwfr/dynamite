@@ -107,6 +107,33 @@ All commits must follow
 - First line must be 72 characters or fewer
 - Breaking changes use `!` suffix: `feat!: redesign config format`
 
+### AI contributions
+
+This project aims to be explicit about its application of AI, favouring human
+effort where possible and reasonable.
+
+Commits that contain AI-generated code must include one of the following
+suffixes in the commit summary:
+
+- `(AI-assist)`
+- `(AI-gen)`
+
+For example:
+
+- `perf [dynamodb]: optimised item parsing (AI-assist)`
+- `chore [readme]: added contributor section (AI-gen)`
+
+You are kindly requested to include at least the `(AI-assist)` suffix when an
+LLM has been used in any capacity to contribute to your change. When an LLM was
+used to consult your idea, but has not contributed any changes to your approach
+or implementation, you are free to omit the suffix, however.
+
+The `(AI-assist)` suffix is sufficient for cases where an LLM was used to verify
+your ideas but you implemented (the vast majority of) your change manually.
+
+The `(AI-gen)` suffix is applied when an LLM was used to generate a considerable
+portion (e.g. > 50%) of your commit, even if the idea was your own.
+
 ---
 
 ## Pull Request Process
