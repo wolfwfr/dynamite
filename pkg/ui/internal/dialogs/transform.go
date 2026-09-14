@@ -142,6 +142,10 @@ func (m *TransformDialog) updateStyles() {
 	m.content.Styles.Title = s.title
 	m.content.Styles.HelpStyle = s.help
 
+	// propagate light/dark theme to content filter-input explicitly
+	inputStyles := syncInputStylesWithTheme()
+	m.content.FilterInput.SetStyles(inputStyles)
+
 	// propagate light/dark theme to content help explicitly
 	m.content.Help.Styles = help.DefaultStyles(theme.DarkTheme)
 

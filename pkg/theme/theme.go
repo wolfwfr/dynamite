@@ -3,6 +3,7 @@ package theme
 import (
 	"image/color"
 
+	"charm.land/bubbles/v2/textinput"
 	"charm.land/lipgloss/v2"
 )
 
@@ -64,6 +65,14 @@ func UpdateTheme(isDark bool, overrides ThemeOverrides) {
 	// list
 	ListPlainFg = PlainText
 	ListFocusFg = AccentOrange
+
+	var inputDefaults = textinput.DefaultStyles(DarkTheme)
+
+	// input
+	InputFocusedTextFg = PlainText
+	InputBlurredTextFg = inputDefaults.Blurred.Text.GetForeground()
+	InputFocusedPlaceholderFg = inputDefaults.Focused.Placeholder.GetForeground()
+	InputBlurredPlaceholderFg = inputDefaults.Blurred.Placeholder.GetForeground()
 
 	// pane borders
 	ViewFocusBorderColour = AccentBlue
@@ -171,6 +180,12 @@ var (
 	// list
 	ListPlainFg color.Color
 	ListFocusFg color.Color
+
+	// input
+	InputFocusedTextFg        color.Color
+	InputBlurredTextFg        color.Color
+	InputFocusedPlaceholderFg color.Color
+	InputBlurredPlaceholderFg color.Color
 
 	// pane borders
 	ViewFocusBorderColour   color.Color

@@ -190,6 +190,8 @@ func (m *MFA) toggleDialog() tea.Cmd {
 func (m *MFA) updateStyles() {
 	s := newMFAStyles()
 
+	m.input.SetStyles(syncInputStylesWithTheme())
+
 	m.help.Styles = help.DefaultStyles(theme.DarkTheme)
 
 	m.styles = s

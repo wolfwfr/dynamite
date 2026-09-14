@@ -396,9 +396,11 @@ func (m *Queryialog) newQueryItemDelegate(s *queryListStyles) regular.ItemDelega
 func (m *Queryialog) updateStyles() {
 	s := newQueryStyles()
 
-	m.content.hashKeyInput.SetStyles(textinput.DefaultStyles(theme.DarkTheme))
-	m.content.rangeKeyInput1.SetStyles(textinput.DefaultStyles(theme.DarkTheme))
-	m.content.rangeKeyInput2.SetStyles(textinput.DefaultStyles(theme.DarkTheme))
+	inputStyles := syncInputStylesWithTheme()
+
+	m.content.hashKeyInput.SetStyles(inputStyles)
+	m.content.rangeKeyInput1.SetStyles(inputStyles)
+	m.content.rangeKeyInput2.SetStyles(inputStyles)
 	m.content.operatorSelection.Styles = list.DefaultStyles(theme.DarkTheme)
 	m.content.indexSelection.Styles = list.DefaultStyles(theme.DarkTheme)
 	m.content.rangeOrderSelection.Styles = list.DefaultStyles(theme.DarkTheme)

@@ -332,12 +332,14 @@ func (m *FilterDialog) updateStyles() {
 
 	m.help.Styles = help.DefaultStyles(theme.DarkTheme)
 
+	inputStyles := syncInputStylesWithTheme()
+
 	for i := range m.content {
 		m.content[i].attrTypeSelection.Styles = list.DefaultStyles(theme.DarkTheme)
 		m.content[i].operatorSelection.Styles = list.DefaultStyles(theme.DarkTheme)
-		m.content[i].attrNameInput.SetStyles(textinput.DefaultStyles(theme.DarkTheme))
-		m.content[i].attrValueInput1.SetStyles(textinput.DefaultStyles(theme.DarkTheme))
-		m.content[i].attrValueInput2.SetStyles(textinput.DefaultStyles(theme.DarkTheme))
+		m.content[i].attrNameInput.SetStyles(inputStyles)
+		m.content[i].attrValueInput1.SetStyles(inputStyles)
+		m.content[i].attrValueInput2.SetStyles(inputStyles)
 
 		m.content[i].attrTypeSelection.SetDelegate(m.newFilterItemDelegate(&s))
 		m.content[i].operatorSelection.SetDelegate(m.newFilterItemDelegate(&s))

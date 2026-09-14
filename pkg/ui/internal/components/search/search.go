@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/google/uuid"
+	"github.com/wolfwfr/dynamite/pkg/theme"
 )
 
 type SearchCallbacks struct {
@@ -91,6 +92,17 @@ func (s *SearchBox) SetPlaceHolder(h string) {
 	s.input.Placeholder = h
 }
 
+func (s *SearchBox) updateStyles() {
+	st := textinput.DefaultStyles(theme.DarkTheme)
+
+	st.Focused.Text = st.Focused.Text.Foreground(theme.InputFocusedTextFg)
+	st.Blurred.Text = st.Blurred.Text.Foreground(theme.InputBlurredTextFg)
+	st.Focused.Placeholder = st.Focused.Placeholder.Foreground(theme.InputFocusedPlaceholderFg)
+	st.Blurred.Placeholder = st.Blurred.Placeholder.Foreground(theme.InputBlurredPlaceholderFg)
+
+	s.input.SetStyles(st)
+}
+
 // SetDivider sets the divider dividing prefix and search.
 //
 // Search will only interpret what follows after the divider and what preceeds
@@ -129,6 +141,9 @@ func (s *SearchBox) Update(msg tea.Msg) tea.Cmd {
 			}
 			s.input = newQuery
 		}
+	case tea.BackgroundColorMsg:
+		s.updateStyles()
+		return nil
 	case FilterMatchesMsg:
 		if msg.ID != s.id {
 			return nil

@@ -41,6 +41,12 @@ type ThemeOverrides struct {
 	ListPlainFg string `yaml:"list_plain_fg"`
 	ListFocusFg string `yaml:"list_focus_fg"`
 
+	// input
+	InputFocusedTextFg        string `yaml:"input_focused_text_fg"`
+	InputBlurredTextFg        string `yaml:"input_blurred_text_fg"`
+	InputFocusedPlaceholderFg string `yaml:"input_focused_Placeholder_fg"`
+	InputBlurredPlaceholderFg string `yaml:"input_blurred_placeholder_fg"`
+
 	// pane borders
 	ViewFocusBorderColour   string `yaml:"view_focus_border_color"`
 	ViewUnFocusBorderColour string `yaml:"view_un_focus_border_color"`
@@ -134,6 +140,11 @@ func (o ThemeOverrides) apply() {
 
 	ListPlainFg = maybeOverride(o.ListPlainFg, ListPlainFg)
 	ListFocusFg = maybeOverride(o.ListFocusFg, ListFocusFg)
+
+	InputFocusedTextFg = maybeOverride(o.InputFocusedTextFg, InputFocusedTextFg)
+	InputBlurredTextFg = maybeOverride(o.InputBlurredTextFg, InputBlurredTextFg)
+	InputFocusedPlaceholderFg = maybeOverride(o.InputFocusedPlaceholderFg, InputFocusedPlaceholderFg)
+	InputBlurredPlaceholderFg = maybeOverride(o.InputBlurredPlaceholderFg, InputBlurredPlaceholderFg)
 
 	ViewFocusBorderColour = maybeOverride(o.ViewFocusBorderColour, ViewFocusBorderColour)
 	ViewUnFocusBorderColour = maybeOverride(o.ViewUnFocusBorderColour, ViewUnFocusBorderColour)
