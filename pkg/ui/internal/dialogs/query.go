@@ -158,7 +158,7 @@ type queryListStyles struct {
 	headerFmt func(s string) string
 }
 
-func newQueryStyles(darkBG bool) queryListStyles {
+func newQueryStyles() queryListStyles {
 	var s queryListStyles
 
 	s.Item = lipgloss.NewStyle().PaddingLeft(4)
@@ -169,7 +169,7 @@ func newQueryStyles(darkBG bool) queryListStyles {
 	s.operatordialog = theme.DialogStyle.Border(lipgloss.RoundedBorder()).Padding(3, 3, 0, 0)
 	s.title = lipgloss.NewStyle().Foreground(theme.TitleFG).Padding(1, 0, 2, 0)
 	s.content = lipgloss.NewStyle().PaddingTop(1).PaddingBottom(2)
-	s.help = list.DefaultStyles(darkBG).HelpStyle.Padding(1, 2, 0, 2)
+	s.help = list.DefaultStyles(theme.DarkTheme).HelpStyle.Padding(1, 2, 0, 2)
 	s.helpLine = lipgloss.NewStyle().PaddingBottom(1)
 
 	// narrow boxes
@@ -233,7 +233,7 @@ func NewQueryDialog(ctx context.Context, logger *slog.Logger, close key.Binding)
 		help: help.New(),
 	}
 
-	d.styles = newQueryStyles(theme.DarkTheme)
+	d.styles = newQueryStyles()
 
 	d.dialog.width = d.defaultDialogWidth
 	d.dialog.height = d.defaultDialogHeight
@@ -288,7 +288,7 @@ func NewQueryDialog(ctx context.Context, logger *slog.Logger, close key.Binding)
 	}
 
 	d.updateSize()
-	d.updateStyles(theme.DarkTheme)
+	d.updateStyles()
 
 	return d
 }
@@ -393,8 +393,19 @@ func (m *Queryialog) newQueryItemDelegate(s *queryListStyles) regular.ItemDelega
 	}
 }
 
-func (m *Queryialog) updateStyles(isDark bool) {
-	s := newQueryStyles(isDark)
+func (m *Queryialog) updateStyles() {
+	s := newQueryStyles()
+
+	m.content.hashKeyInput.SetStyles(textinput.DefaultStyles(theme.DarkTheme))
+	m.content.rangeKeyInput1.SetStyles(textinput.DefaultStyles(theme.DarkTheme))
+	m.content.rangeKeyInput2.SetStyles(textinput.DefaultStyles(theme.DarkTheme))
+	m.content.operatorSelection.Styles = list.DefaultStyles(theme.DarkTheme)
+	m.content.indexSelection.Styles = list.DefaultStyles(theme.DarkTheme)
+	m.content.rangeOrderSelection.Styles = list.DefaultStyles(theme.DarkTheme)
+
+	// propagate light/dark theme to content help explicitly
+	m.help.Styles = help.DefaultStyles(theme.DarkTheme)
+
 	m.content.indexSelection.Styles.Title = s.title
 	m.content.indexSelection.Styles.HelpStyle = s.help
 
@@ -440,6 +451,9 @@ func (m *Queryialog) Update(msg tea.Msg) tea.Cmd {
 		}
 	case tea.WindowSizeMsg:
 		m.applySize(msg.Height, msg.Width)
+		return nil
+	case tea.BackgroundColorMsg:
+		m.updateStyles()
 		return nil
 	case messages.InitQueryParameters:
 		return m.SetState(msg)
@@ -551,7 +565,7 @@ func (m *Queryialog) MoveFocus(i int) tea.Cmd {
 		// nothing to do
 	}
 	m.updateSize()
-	m.updateStyles(true)
+	m.updateStyles()
 	return nil
 }
 
@@ -604,7 +618,7 @@ func (m *Queryialog) SetState(msg messages.InitQueryParameters) tea.Cmd {
 
 	// update list item delegates
 	m.updateSize()
-	m.updateStyles(true)
+	m.updateStyles()
 
 	// initialise the contents
 	cmd := m.InitContent()
@@ -807,7 +821,7 @@ func (m *Queryialog) updateSize() {
 	// set width of the list within the dialog
 	m.content.indexSelection.SetWidth(halfwidth)
 
-	m.updateStyles(true)
+	m.updateStyles()
 
 	// set height & width of dialog itself
 	m.styles.dialog = m.styles.dialog.

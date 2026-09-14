@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"strings"
 
+	"charm.land/bubbles/v2/help"
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/list"
 	tea "charm.land/bubbletea/v2"
@@ -74,14 +75,14 @@ type sortingListStyles struct {
 	helpLine     lipgloss.Style
 }
 
-func newColumnSortingStyles(darkBG bool) sortingListStyles {
+func newColumnSortingStyles() sortingListStyles {
 	var s sortingListStyles
 	s.dialog = theme.DialogStyle
 	s.title = lipgloss.NewStyle().Foreground(theme.TitleFG).Padding(1, 0, 2, 0)
 	s.content = lipgloss.NewStyle().Padding(1, 0, 2, 0)
 	s.item = lipgloss.NewStyle().PaddingLeft(4)
 	s.selectedItem = lipgloss.NewStyle().PaddingLeft(2).Foreground(theme.ListFocusFg)
-	s.help = list.DefaultStyles(darkBG).HelpStyle.Padding(1, 2, 0, 2)
+	s.help = list.DefaultStyles(theme.DarkTheme).HelpStyle.Padding(1, 2, 0, 2)
 	s.helpLine = lipgloss.NewStyle().PaddingBottom(1)
 	return s
 }
@@ -140,7 +141,7 @@ func NewColumnSortingDialog(ctx context.Context, logger *slog.Logger, close key.
 		defaultDialogWidth:  66,
 	}
 
-	c.styles = newColumnSortingStyles(theme.DarkTheme)
+	c.styles = newColumnSortingStyles()
 
 	c.dialog.width = c.defaultDialogWidth
 	c.dialog.height = c.defaultDialogHeight
@@ -168,7 +169,7 @@ func NewColumnSortingDialog(ctx context.Context, logger *slog.Logger, close key.
 		c.content = l
 	}
 
-	c.updateStyles(theme.DarkTheme)
+	c.updateStyles()
 	c.updateSize()
 
 	return c
@@ -180,10 +181,14 @@ func (m *ColumnSorting) newDelegate(s *sortingListStyles) sortingItemDelegate {
 	}
 }
 
-func (m *ColumnSorting) updateStyles(isDark bool) {
-	s := newColumnSortingStyles(isDark)
+func (m *ColumnSorting) updateStyles() {
+	s := newColumnSortingStyles()
+	m.content.Styles = list.DefaultStyles(theme.DarkTheme)
 	m.content.Styles.Title = s.title
 	m.content.Styles.HelpStyle = s.help
+
+	// propagate light/dark theme to content help explicitly
+	m.content.Help.Styles = help.DefaultStyles(theme.DarkTheme)
 
 	// dialog-style is actively resized; retain
 	s.dialog = m.styles.dialog
@@ -213,6 +218,9 @@ func (m *ColumnSorting) Update(msg tea.Msg) tea.Cmd {
 		}
 	case tea.WindowSizeMsg:
 		m.applySize(msg.Height, msg.Width)
+		return nil
+	case tea.BackgroundColorMsg:
+		m.updateStyles()
 		return nil
 	case messages.InitColumnSorting:
 		return m.SetState(msg)

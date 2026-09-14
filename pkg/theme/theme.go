@@ -21,7 +21,6 @@ var (
 // UpdateTheme updates colours in response to a `tea.BackgroundColorMsg`. It
 // will not touch any colours that have been overridden by the user.
 // TODO: tweak theme, light theme & table-name highlights in particular
-// TODO: some UI elements do not yet employ colours from theme
 func UpdateTheme(isDark bool, overrides ThemeOverrides) {
 	DarkTheme = isDark
 
@@ -35,7 +34,8 @@ func UpdateTheme(isDark bool, overrides ThemeOverrides) {
 	SubtleColour4 = choose(c("#878787"), c("#5E5E5E"))
 	SubtleColour5 = choose(c("#B0B0B0"), c("#585858"))
 
-	AccentOrange = choose(c("#B8611A"), c("#F58427"))
+	AccentOrange = c("#F58427")
+
 	AccentBlue = choose(c("#17B2FF"), c("#2381CF"))
 	AccentFadedBlue = choose(c("#95A0BA"), c("#415278"))
 	AccentDarkBlue = choose(c("#8A9FBA"), c("#244673"))

@@ -147,7 +147,7 @@ type filterListStyles struct {
 	applyButtonFocused lipgloss.Style
 }
 
-func newFilterStyles(darkBG bool) filterListStyles {
+func newFilterStyles() filterListStyles {
 	var s filterListStyles
 
 	s.Item = lipgloss.NewStyle().PaddingLeft(4)
@@ -160,7 +160,7 @@ func newFilterStyles(darkBG bool) filterListStyles {
 	s.title = lipgloss.NewStyle().Foreground(theme.TitleFG).Padding(1, 0, 2, 0)
 	s.content = lipgloss.NewStyle().PaddingTop(1).PaddingBottom(2)
 	s.contentLine = lipgloss.NewStyle().PaddingTop(1)
-	s.help = list.DefaultStyles(darkBG).HelpStyle.Padding(1, 2, 0, 2)
+	s.help = list.DefaultStyles(theme.DarkTheme).HelpStyle.Padding(1, 2, 0, 2)
 	s.helpLine = lipgloss.NewStyle().Padding(7, 0, 1, 0)
 
 	// narrow boxes
@@ -239,7 +239,7 @@ func NewFilterDialog(ctx context.Context, logger *slog.Logger, close key.Binding
 
 	d.focus = -1
 
-	d.styles = newFilterStyles(theme.DarkTheme)
+	d.styles = newFilterStyles()
 
 	d.dialog.width = d.defaultDialogWidth
 	d.dialog.height = d.defaultDialogHeight
@@ -252,7 +252,7 @@ func NewFilterDialog(ctx context.Context, logger *slog.Logger, close key.Binding
 	d.InitContent()
 
 	d.updateSize()
-	d.updateStyles(theme.DarkTheme)
+	d.updateStyles()
 
 	return d
 }
@@ -312,8 +312,8 @@ func (m *FilterDialog) newFilterItemDelegate(s *filterListStyles) regular.ItemDe
 	}
 }
 
-func (m *FilterDialog) updateStyles(isDark bool) {
-	s := newFilterStyles(isDark)
+func (m *FilterDialog) updateStyles() {
+	s := newFilterStyles()
 
 	subwidth := m.dialog.width/2 - 28
 
@@ -330,7 +330,15 @@ func (m *FilterDialog) updateStyles(isDark bool) {
 
 	m.styles = s
 
+	m.help.Styles = help.DefaultStyles(theme.DarkTheme)
+
 	for i := range m.content {
+		m.content[i].attrTypeSelection.Styles = list.DefaultStyles(theme.DarkTheme)
+		m.content[i].operatorSelection.Styles = list.DefaultStyles(theme.DarkTheme)
+		m.content[i].attrNameInput.SetStyles(textinput.DefaultStyles(theme.DarkTheme))
+		m.content[i].attrValueInput1.SetStyles(textinput.DefaultStyles(theme.DarkTheme))
+		m.content[i].attrValueInput2.SetStyles(textinput.DefaultStyles(theme.DarkTheme))
+
 		m.content[i].attrTypeSelection.SetDelegate(m.newFilterItemDelegate(&s))
 		m.content[i].operatorSelection.SetDelegate(m.newFilterItemDelegate(&s))
 		m.content[i].attrNameInput.SetWidth(subwidth - 2 - len(m.content[i].attrNameInput.Prompt) - 1)
@@ -369,6 +377,9 @@ func (m *FilterDialog) Update(msg tea.Msg) tea.Cmd {
 		}
 	case tea.WindowSizeMsg:
 		m.applySize(msg.Height, msg.Width)
+		return nil
+	case tea.BackgroundColorMsg:
+		m.updateStyles()
 		return nil
 	case messages.InitFilterParameters:
 		return m.SetState(msg)
@@ -502,7 +513,7 @@ func (m *FilterDialog) MoveFocus(i int, dir direction) tea.Cmd {
 		m.keyMap.enter.SetEnabled(true)
 	}
 	m.updateSize()
-	m.updateStyles(true)
+	m.updateStyles()
 	return nil
 }
 
@@ -680,7 +691,7 @@ func (m *FilterDialog) SetState(msg messages.InitFilterParameters) tea.Cmd {
 
 	// update list item delegates
 	m.updateSize()
-	m.updateStyles(true)
+	m.updateStyles()
 
 	// initialise the contents
 	cmd := m.InitContent()
@@ -888,7 +899,7 @@ func (m *FilterDialog) updateSize() {
 	// set help size
 	m.help.SetWidth(width - borderW)
 
-	m.updateStyles(true)
+	m.updateStyles()
 
 	// set height & width of dialog itself
 	m.styles.dialog = m.styles.dialog.

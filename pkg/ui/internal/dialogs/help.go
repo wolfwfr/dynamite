@@ -94,6 +94,16 @@ func (m *Help) Init() tea.Cmd {
 	return nil
 }
 
+func (m *Help) updateStyles() {
+	s := newHelpStyles()
+	m.Help.Styles = help.DefaultStyles(theme.DarkTheme)
+
+	// dialog-style is actively resized; retain
+	s.dialog = m.styles.dialog
+
+	m.styles = s
+}
+
 func (m *Help) Update(msg tea.Msg) tea.Cmd {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
@@ -103,6 +113,9 @@ func (m *Help) Update(msg tea.Msg) tea.Cmd {
 		}
 	case tea.WindowSizeMsg:
 		m.applySize(msg.Height, msg.Width)
+		return nil
+	case tea.BackgroundColorMsg:
+		m.updateStyles()
 		return nil
 	case messages.SwitchView:
 		m.activeView = msg.NewView

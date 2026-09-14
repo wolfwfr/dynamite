@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"slices"
 
+	"charm.land/bubbles/v2/help"
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/list"
 	tea "charm.land/bubbletea/v2"
@@ -78,7 +79,7 @@ type regionListStyles struct {
 	headerFmt func(string) string
 }
 
-func newRegionStyles(darkBG bool) regionListStyles {
+func newRegionStyles() regionListStyles {
 	var s regionListStyles
 
 	s.Item = lipgloss.NewStyle().PaddingLeft(4)
@@ -88,7 +89,7 @@ func newRegionStyles(darkBG bool) regionListStyles {
 	s.dialog = theme.DialogStyle
 	s.title = lipgloss.NewStyle().Foreground(theme.TitleFG).Padding(1, 0, 2, 0)
 	s.content = lipgloss.NewStyle().PaddingTop(1).PaddingBottom(2)
-	s.help = list.DefaultStyles(darkBG).HelpStyle.Padding(1, 2, 0, 2)
+	s.help = list.DefaultStyles(theme.DarkTheme).HelpStyle.Padding(1, 2, 0, 2)
 	s.helpLine = lipgloss.NewStyle().PaddingBottom(1)
 
 	s.starFullHeader = "*  Starred  *"
@@ -111,7 +112,7 @@ func NewRegionsDialog(ctx context.Context, logger *slog.Logger, available, starr
 		starred:   starred,
 		selected:  current,
 
-		styles: newRegionStyles(theme.DarkTheme),
+		styles: newRegionStyles(),
 
 		keyMap: regionsKeyMap{
 			close: close,
@@ -151,7 +152,7 @@ func NewRegionsDialog(ctx context.Context, logger *slog.Logger, available, starr
 
 	r.content = l
 	r.updateSize()
-	r.updateStyles(theme.DarkTheme)
+	r.updateStyles()
 
 	return r
 }
@@ -222,10 +223,15 @@ func (m *Regions) newDelegate(s *regionListStyles) headed.ItemDelegate {
 
 // NOTE: updateStyles is best executed after updateSize, to first determine the
 // requisite `collapseHeaders` property.
-func (m *Regions) updateStyles(isDark bool) {
-	s := newRegionStyles(isDark)
+func (m *Regions) updateStyles() {
+	s := newRegionStyles()
+
+	m.content.Styles = list.DefaultStyles(theme.DarkTheme)
 	m.content.Styles.Title = s.title
 	m.content.Styles.HelpStyle = s.help
+
+	// propagate light/dark theme to content help explicitly
+	m.content.Help.Styles = help.DefaultStyles(theme.DarkTheme)
 
 	// dialog-style is actively resized; retain
 	s.dialog = m.styles.dialog
@@ -250,11 +256,14 @@ func (m *Regions) Update(msg tea.Msg) tea.Cmd {
 	case tea.WindowSizeMsg:
 		m.applySize(msg.Height, msg.Width)
 		return nil
+	case tea.BackgroundColorMsg:
+		m.updateStyles()
+		return nil
 	}
 	var cmd tea.Cmd
 	m.content, cmd = m.content.Update(msg)
 	m.updateSize()
-	m.updateStyles(true)
+	m.updateStyles()
 	return cmd
 }
 
@@ -287,7 +296,7 @@ func (m *Regions) applySize(height, width int) {
 	m.window.width = width
 	m.window.height = height
 	m.updateSize()
-	m.updateStyles(true)
+	m.updateStyles()
 }
 
 func (m *Regions) updateSize() {

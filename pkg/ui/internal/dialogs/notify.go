@@ -136,6 +136,9 @@ func (m *NotificationDialog) Update(msg tea.Msg) tea.Cmd {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.applySize(msg)
+	case tea.BackgroundColorMsg:
+		m.newStyles()
+		return nil
 	case messages.NotificationTick:
 		if msg.ID == m.id {
 			return m.onTick()

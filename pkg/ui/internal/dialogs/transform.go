@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 
+	"charm.land/bubbles/v2/help"
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/list"
 	tea "charm.land/bubbletea/v2"
@@ -35,7 +36,7 @@ type transformListStyles struct {
 	helpLine lipgloss.Style
 }
 
-func newTransformStyles(darkBG bool) transformListStyles {
+func newTransformStyles() transformListStyles {
 	var s transformListStyles
 
 	s.Item = lipgloss.NewStyle().PaddingLeft(4)
@@ -44,7 +45,7 @@ func newTransformStyles(darkBG bool) transformListStyles {
 	s.dialog = theme.DialogStyle
 	s.title = lipgloss.NewStyle().Foreground(theme.TitleFG).Padding(1, 0, 2, 0)
 	s.content = lipgloss.NewStyle().PaddingTop(1).PaddingBottom(2)
-	s.help = list.DefaultStyles(darkBG).HelpStyle.Padding(1, 2, 0, 2)
+	s.help = list.DefaultStyles(theme.DarkTheme).HelpStyle.Padding(1, 2, 0, 2)
 	s.helpLine = lipgloss.NewStyle().PaddingBottom(1)
 	return s
 }
@@ -101,7 +102,7 @@ func NewTransformDialog(ctx context.Context, logger *slog.Logger, close key.Bind
 		defaultDialogWidth:  66,
 	}
 
-	c.styles = newTransformStyles(theme.DarkTheme)
+	c.styles = newTransformStyles()
 
 	c.dialog.width = c.defaultDialogWidth
 	c.dialog.height = c.defaultDialogHeight
@@ -129,16 +130,20 @@ func NewTransformDialog(ctx context.Context, logger *slog.Logger, close key.Bind
 
 	}
 
-	c.updateStyles(theme.DarkTheme)
+	c.updateStyles()
 	c.updateSize()
 
 	return c
 }
 
-func (m *TransformDialog) updateStyles(isDark bool) {
-	s := newTransformStyles(isDark)
+func (m *TransformDialog) updateStyles() {
+	s := newTransformStyles()
+	m.content.Styles = list.DefaultStyles(theme.DarkTheme)
 	m.content.Styles.Title = s.title
 	m.content.Styles.HelpStyle = s.help
+
+	// propagate light/dark theme to content help explicitly
+	m.content.Help.Styles = help.DefaultStyles(theme.DarkTheme)
 
 	// dialog-style is actively resized; retain
 	s.dialog = m.styles.dialog
@@ -174,6 +179,9 @@ func (m *TransformDialog) Update(msg tea.Msg) tea.Cmd {
 		}
 	case tea.WindowSizeMsg:
 		m.applySize(msg.Height, msg.Width)
+		return nil
+	case tea.BackgroundColorMsg:
+		m.updateStyles()
 		return nil
 	case messages.InitColumnTransform:
 		return m.SetState(msg)
