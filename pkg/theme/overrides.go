@@ -44,8 +44,10 @@ type ThemeOverrides struct {
 	// input
 	InputFocusedTextFg        string `yaml:"input_focused_text_fg"`
 	InputBlurredTextFg        string `yaml:"input_blurred_text_fg"`
-	InputFocusedPlaceholderFg string `yaml:"input_focused_Placeholder_fg"`
+	InputFocusedPlaceholderFg string `yaml:"input_focused_placeholder_fg"`
 	InputBlurredPlaceholderFg string `yaml:"input_blurred_placeholder_fg"`
+	InputFocusedPromptFg      string `yaml:"input_focused_prompt_fg"`
+	InputBlurredPromptFg      string `yaml:"input_blurred_prompt_fg"`
 
 	// pane borders
 	ViewFocusBorderColour   string `yaml:"view_focus_border_color"`
@@ -145,6 +147,8 @@ func (o ThemeOverrides) apply() {
 	InputBlurredTextFg = maybeOverride(o.InputBlurredTextFg, InputBlurredTextFg)
 	InputFocusedPlaceholderFg = maybeOverride(o.InputFocusedPlaceholderFg, InputFocusedPlaceholderFg)
 	InputBlurredPlaceholderFg = maybeOverride(o.InputBlurredPlaceholderFg, InputBlurredPlaceholderFg)
+	InputFocusedPromptFg = maybeOverride(o.InputFocusedPromptFg, InputFocusedPromptFg)
+	InputBlurredPromptFg = maybeOverride(o.InputBlurredPromptFg, InputBlurredPromptFg)
 
 	ViewFocusBorderColour = maybeOverride(o.ViewFocusBorderColour, ViewFocusBorderColour)
 	ViewUnFocusBorderColour = maybeOverride(o.ViewUnFocusBorderColour, ViewUnFocusBorderColour)

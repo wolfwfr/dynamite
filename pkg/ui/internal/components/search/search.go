@@ -99,6 +99,8 @@ func (s *SearchBox) updateStyles() {
 	st.Blurred.Text = st.Blurred.Text.Foreground(theme.InputBlurredTextFg)
 	st.Focused.Placeholder = st.Focused.Placeholder.Foreground(theme.InputFocusedPlaceholderFg)
 	st.Blurred.Placeholder = st.Blurred.Placeholder.Foreground(theme.InputBlurredPlaceholderFg)
+	st.Focused.Prompt = st.Focused.Prompt.Foreground(theme.InputFocusedPromptFg)
+	st.Blurred.Prompt = st.Blurred.Prompt.Foreground(theme.InputBlurredPromptFg)
 
 	s.input.SetStyles(st)
 }

@@ -29,6 +29,8 @@ func syncInputStylesWithTheme() textinput.Styles {
 	s.Blurred.Text = s.Blurred.Text.Foreground(theme.InputBlurredTextFg)
 	s.Focused.Placeholder = s.Focused.Placeholder.Foreground(theme.InputFocusedPlaceholderFg)
 	s.Blurred.Placeholder = s.Blurred.Placeholder.Foreground(theme.InputBlurredPlaceholderFg)
+	s.Focused.Prompt = s.Focused.Prompt.Foreground(theme.InputFocusedPromptFg)
+	s.Blurred.Prompt = s.Blurred.Prompt.Foreground(theme.InputBlurredPromptFg)
 
 	return s
 }
