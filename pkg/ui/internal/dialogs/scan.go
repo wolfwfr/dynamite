@@ -102,7 +102,7 @@ type scanListStyles struct {
 func newscanStyles() scanListStyles {
 	var s scanListStyles
 
-	s.Item = lipgloss.NewStyle().PaddingLeft(4)
+	s.Item = lipgloss.NewStyle().PaddingLeft(4).Foreground(theme.ListPlainFg)
 	s.SelectedItem = lipgloss.NewStyle().PaddingLeft(2).Foreground(theme.ListFocusFg)
 	s.Header = lipgloss.NewStyle().Foreground(theme.SubtleColour1)
 

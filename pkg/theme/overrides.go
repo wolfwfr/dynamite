@@ -38,6 +38,7 @@ type ThemeOverrides struct {
 	SpinnerSymbolBg string `yaml:"spinner_symbol_bg"`
 
 	// list
+	ListPlainFg string `yaml:"list_plain_fg"`
 	ListFocusFg string `yaml:"list_focus_fg"`
 
 	// pane borders
@@ -131,6 +132,7 @@ func (o ThemeOverrides) apply() {
 	SpinnerSymbolFg = maybeOverride(o.SpinnerSymbolFg, SpinnerSymbolFg)
 	SpinnerSymbolBg = maybeOverride(o.SpinnerSymbolBg, SpinnerSymbolBg)
 
+	ListPlainFg = maybeOverride(o.ListPlainFg, ListPlainFg)
 	ListFocusFg = maybeOverride(o.ListFocusFg, ListFocusFg)
 
 	ViewFocusBorderColour = maybeOverride(o.ViewFocusBorderColour, ViewFocusBorderColour)

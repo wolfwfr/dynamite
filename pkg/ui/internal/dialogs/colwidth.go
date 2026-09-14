@@ -41,7 +41,7 @@ type widthListStyles struct {
 func newWidthStyles() widthListStyles {
 	var s widthListStyles
 
-	s.Item = lipgloss.NewStyle().PaddingLeft(4)
+	s.Item = lipgloss.NewStyle().PaddingLeft(4).Foreground(theme.ListPlainFg)
 	s.SelectedItem = lipgloss.NewStyle().PaddingLeft(2).Foreground(theme.ListFocusFg)
 
 	s.dialog = theme.DialogStyle

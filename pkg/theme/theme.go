@@ -62,6 +62,7 @@ func UpdateTheme(isDark bool, overrides ThemeOverrides) {
 	SpinnerSymbolBg = nil // transparent
 
 	// list
+	ListPlainFg = PlainText
 	ListFocusFg = AccentOrange
 
 	// pane borders
@@ -168,6 +169,7 @@ var (
 	SpinnerSymbolBg color.Color
 
 	// list
+	ListPlainFg color.Color
 	ListFocusFg color.Color
 
 	// pane borders
