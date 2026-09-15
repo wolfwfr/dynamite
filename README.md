@@ -280,12 +280,7 @@ The above configuration will match as follows:
 
 ## 🛣 Roadmap
 
-☝️ This is a work in progress and the following is required for a first release:
-
-- **Code Polish**: the code and its style require some polishing
-- **README Polish**: expand the README with images and video among others
-
-✌️ Other features I have in mind are:
+🤘 Some future features I might want to add are:
 
 - **Keymap Configuration**: use the config file to change the keymapping
 - **Themes**: additional themes
