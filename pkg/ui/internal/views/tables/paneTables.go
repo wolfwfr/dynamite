@@ -705,8 +705,7 @@ func (m *tableSelectionPane) updateSize() {
 	h, w := m.window.height, m.window.width
 
 	searchBoxH := u.Ternary(m.search.GetHeight(), 0, m.search.IsEnabled())
-	// TODO: fix the '1' content prints one empty row beyond its allowed height
-	m.content.SetHeight(h - 1 - searchBoxH - u.Ternary(1, 0, m.spinner.active))
+	m.content.SetHeight(h - searchBoxH - u.Ternary(1, 0, m.spinner.active))
 	m.content.SetWidth(w)
 	m.search.SetWidth(w)
 }
@@ -716,7 +715,11 @@ func (m *tableSelectionPane) View() string {
 		return m.err.Error()
 	}
 	content := u.Ternary(m.content.View(), m.noContentMessage(), len(m.content.Rows()) > 0)
-	rendering := []string{content, m.search.View()}
+	search := m.search.View()
+	rendering := []string{content}
+	if len(search) > 0 {
+		rendering = append(rendering, search)
+	}
 	if m.spinner.active {
 		rendering = slices.Insert(rendering, 1, fmt.Sprintf("%s %s", m.spinner.model.View(), m.spinner.textStyle.Render(m.spinner.text)))
 	}

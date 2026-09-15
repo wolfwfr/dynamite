@@ -919,8 +919,7 @@ func (m *ItemSelectionPane) updateSize() {
 	tableInfoH := lipgloss.Height(m.renderTableInfo())
 	m.window.height = h
 	m.window.width = w
-	// TODO: fix the '1'; content prints one empty row beyond its allowed height
-	m.table.UpdateSize(h-1-searchBoxH-tableInfoH-ternary(1, 0, m.spinner.active), w)
+	m.table.UpdateSize(h-searchBoxH-tableInfoH-ternary(1, 0, m.spinner.active), w)
 	m.search.SetWidth(w)
 	if m.config.Items.PageSize <= 0 {
 		m.queryLimit = h
@@ -1416,7 +1415,11 @@ func (m *ItemSelectionPane) View() string {
 	info := m.renderTableInfo()
 	content := m.table.View()
 	content = ternary(content, m.noContentMessage(), !emptyContent(content))
-	rendering := []string{info, content, m.search.View()}
+	search := m.search.View()
+	rendering := []string{info, content}
+	if len(search) > 0 {
+		rendering = append(rendering, search)
+	}
 	if m.spinner.active {
 		rendering = slices.Insert(rendering, 2, fmt.Sprintf("%s %s", m.spinner.model.View(), m.spinner.textStyle.Render(m.spinner.text)))
 	}

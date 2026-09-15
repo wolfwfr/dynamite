@@ -250,7 +250,7 @@ func (m *TableSelection) applySize() {
 	m.panes[detailPaneID] = dt
 
 	// forward
-	m.tablesPane.applySize(tb.height, tb.width)
+	m.tablesPane.applySize(tb.height-1, tb.width) // subtracting 1 from height for slightly cleaner look
 	m.detailPane.applySize(dt.height, dt.width)
 }
 
