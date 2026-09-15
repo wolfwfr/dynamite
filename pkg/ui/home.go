@@ -394,6 +394,8 @@ func (m Model) updateStyles() Model {
 	st.helpBlock = block.Foreground(theme.BoxFg).Background(theme.HelpBoxBg).Margin(0, 0, 0, 0)
 	m.styles = st
 
+	m.Help.Styles = help.DefaultStyles(theme.DarkTheme)
+
 	return m
 }
 

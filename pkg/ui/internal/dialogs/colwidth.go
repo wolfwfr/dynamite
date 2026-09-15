@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 
+	"charm.land/bubbles/v2/help"
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/list"
 	tea "charm.land/bubbletea/v2"
@@ -37,16 +38,16 @@ type widthListStyles struct {
 	helpLine lipgloss.Style
 }
 
-func newWidthStyles(darkBG bool) widthListStyles {
+func newWidthStyles() widthListStyles {
 	var s widthListStyles
 
-	s.Item = lipgloss.NewStyle().PaddingLeft(4)
+	s.Item = lipgloss.NewStyle().PaddingLeft(4).Foreground(theme.ListPlainFg)
 	s.SelectedItem = lipgloss.NewStyle().PaddingLeft(2).Foreground(theme.ListFocusFg)
 
 	s.dialog = theme.DialogStyle
 	s.title = lipgloss.NewStyle().Foreground(theme.TitleFG).Padding(1, 0, 2, 0)
 	s.content = lipgloss.NewStyle().PaddingTop(1).PaddingBottom(2)
-	s.help = list.DefaultStyles(darkBG).HelpStyle.Padding(1, 2, 0, 2)
+	s.help = list.DefaultStyles(theme.DarkTheme).HelpStyle.Padding(1, 2, 0, 2)
 	s.helpLine = lipgloss.NewStyle().PaddingBottom(1)
 	return s
 }
@@ -110,7 +111,7 @@ func NewWidthDialog(ctx context.Context, logger *slog.Logger, close key.Binding)
 		defaultDialogWidth:  66,
 	}
 
-	c.styles = newWidthStyles(theme.DarkTheme)
+	c.styles = newWidthStyles()
 
 	c.dialog.width = c.defaultDialogWidth
 	c.dialog.height = c.defaultDialogHeight
@@ -138,16 +139,24 @@ func NewWidthDialog(ctx context.Context, logger *slog.Logger, close key.Binding)
 
 	}
 
-	c.updateStyles(theme.DarkTheme)
+	c.updateStyles()
 	c.updateSize()
 
 	return c
 }
 
-func (m *WidthDialog) updateStyles(isDark bool) {
-	s := newWidthStyles(isDark)
+func (m *WidthDialog) updateStyles() {
+	s := newWidthStyles()
+	m.content.Styles = list.DefaultStyles(theme.DarkTheme)
 	m.content.Styles.Title = s.title
 	m.content.Styles.HelpStyle = s.help
+
+	// propagate light/dark theme to content filter-input explicitly
+	inputStyles := syncInputStylesWithTheme()
+	m.content.FilterInput.SetStyles(inputStyles)
+
+	// propagate light/dark theme to content help explicitly
+	m.content.Help.Styles = help.DefaultStyles(theme.DarkTheme)
 
 	// dialog-style is actively resized; retain
 	s.dialog = m.styles.dialog
@@ -187,6 +196,9 @@ func (m *WidthDialog) Update(msg tea.Msg) tea.Cmd {
 		}
 	case tea.WindowSizeMsg:
 		m.applySize(msg.Height, msg.Width)
+		return nil
+	case tea.BackgroundColorMsg:
+		m.updateStyles()
 		return nil
 	case messages.InitColumnWidth:
 		return m.SetState(msg)

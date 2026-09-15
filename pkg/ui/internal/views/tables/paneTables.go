@@ -394,6 +394,9 @@ func (m *tableSelectionPane) processPage(msg messages.TablePageReady, preview bo
 func (m *tableSelectionPane) Update(msg tea.Msg) tea.Cmd {
 	cmds := []tea.Cmd{}
 	switch msg := msg.(type) {
+	case tea.BackgroundColorMsg:
+		m.updateStyles()
+		return m.broadcast(msg)
 	case messages.TableDetails:
 		m.details = msg.Details
 		return nil
@@ -417,14 +420,20 @@ func (m *tableSelectionPane) Update(msg tea.Msg) tea.Cmd {
 
 	if search.IsSearchBoxMessage(msg) || m.search.IsFocused() {
 		cmds = append(cmds, m.search.Update(msg))
-	} else if _, ok := msg.(tea.BackgroundColorMsg); ok {
-		m.updateStyles()
-		return nil
 	} else {
 		cmds = append(cmds, m.handleNavigation(msg))
 	}
 
 	cmds = append(cmds, m.MaybePreviewItem(false))
+	return tea.Batch(cmds...)
+}
+
+// broadcast takes a message and forwards it to all children
+func (m *tableSelectionPane) broadcast(msg tea.Msg) tea.Cmd {
+	var cmds []tea.Cmd
+
+	cmds = append(cmds, m.search.Update(msg))
+
 	return tea.Batch(cmds...)
 }
 

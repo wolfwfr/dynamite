@@ -232,7 +232,7 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 	return p
 }
 
-func (m *ItemSelectionPane) updateStyles() tea.Cmd {
+func (m *ItemSelectionPane) updateStyles() {
 	m.logger.Debug("updating styles")
 
 	m.styles.tableInfoBox = lipgloss.NewStyle().
@@ -248,8 +248,6 @@ func (m *ItemSelectionPane) updateStyles() tea.Cmd {
 	m.spinner.textStyle = lipgloss.NewStyle().
 		Foreground(theme.SpinnerTextFg).
 		Background(theme.SpinnerTextBg)
-
-	return nil
 }
 
 func (m *ItemSelectionPane) KeyMapExecutionSafe(k tea.KeyPressMsg) bool {
@@ -463,7 +461,8 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 		m.spinner.model, cmd = m.spinner.model.Update(msg)
 		return cmd
 	case tea.BackgroundColorMsg:
-		return m.updateTheme(msg)
+		m.updateStyles()
+		return m.broadcast(msg)
 	}
 	cmds = append(cmds, m.table.Update(msg))
 
@@ -474,10 +473,13 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 	return tea.Batch(cmds...)
 }
 
-func (m *ItemSelectionPane) updateTheme(msg tea.BackgroundColorMsg) tea.Cmd {
-	cmds := make([]tea.Cmd, 0)
-	cmds = append(cmds, m.updateStyles())
+// broadcast takes a message and forwards it to all children
+func (m *ItemSelectionPane) broadcast(msg tea.Msg) tea.Cmd {
+	var cmds []tea.Cmd
+
+	cmds = append(cmds, m.search.Update(msg))
 	cmds = append(cmds, m.table.Update(msg))
+
 	return tea.Batch(cmds...)
 }
 

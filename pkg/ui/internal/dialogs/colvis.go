@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 
+	"charm.land/bubbles/v2/help"
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/list"
 	tea "charm.land/bubbletea/v2"
@@ -36,16 +37,16 @@ type columnsListStyles struct {
 	helpLine lipgloss.Style
 }
 
-func newColumnStyles(darkBG bool) columnsListStyles {
+func newColumnStyles() columnsListStyles {
 	var s columnsListStyles
 
-	s.Item = lipgloss.NewStyle().PaddingLeft(4)
+	s.Item = lipgloss.NewStyle().PaddingLeft(4).Foreground(theme.ListPlainFg)
 	s.SelectedItem = lipgloss.NewStyle().PaddingLeft(2).Foreground(theme.ListFocusFg)
 
 	s.dialog = theme.DialogStyle
 	s.title = lipgloss.NewStyle().Foreground(theme.TitleFG).Padding(1, 0, 2, 0)
 	s.content = lipgloss.NewStyle().PaddingTop(1).PaddingBottom(2)
-	s.help = list.DefaultStyles(darkBG).HelpStyle.Padding(1, 2, 0, 2)
+	s.help = list.DefaultStyles(theme.DarkTheme).HelpStyle.Padding(1, 2, 0, 2)
 	s.helpLine = lipgloss.NewStyle().PaddingBottom(1)
 	return s
 }
@@ -106,7 +107,7 @@ func NewColumnVisibilityDialog(ctx context.Context, logger *slog.Logger, close k
 		defaultDialogWidth:  66,
 	}
 
-	c.styles = newColumnStyles(theme.DarkTheme)
+	c.styles = newColumnStyles()
 
 	c.dialog.width = c.defaultDialogWidth
 	c.dialog.height = c.defaultDialogHeight
@@ -134,16 +135,24 @@ func NewColumnVisibilityDialog(ctx context.Context, logger *slog.Logger, close k
 
 	}
 
-	c.updateStyles(theme.DarkTheme)
+	c.updateStyles()
 	c.updateSize()
 
 	return c
 }
 
-func (m *ColumnVis) updateStyles(isDark bool) {
-	s := newColumnStyles(isDark)
+func (m *ColumnVis) updateStyles() {
+	s := newColumnStyles()
+	m.content.Styles = list.DefaultStyles(theme.DarkTheme)
 	m.content.Styles.Title = s.title
 	m.content.Styles.HelpStyle = s.help
+
+	// propagate light/dark theme to content filter-input explicitly
+	inputStyles := syncInputStylesWithTheme()
+	m.content.FilterInput.SetStyles(inputStyles)
+
+	// propagate light/dark theme to content help explicitly
+	m.content.Help.Styles = help.DefaultStyles(theme.DarkTheme)
 
 	// dialog-style is actively resized; retain
 	s.dialog = m.styles.dialog
@@ -181,6 +190,9 @@ func (m *ColumnVis) Update(msg tea.Msg) tea.Cmd {
 		}
 	case tea.WindowSizeMsg:
 		m.applySize(msg.Height, msg.Width)
+		return nil
+	case tea.BackgroundColorMsg:
+		m.updateStyles()
 		return nil
 	case messages.InitColumnVisibility:
 		return m.SetState(msg)

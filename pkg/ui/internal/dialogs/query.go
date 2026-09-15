@@ -131,12 +131,12 @@ type queryListStyles struct {
 	operatordialog lipgloss.Style
 
 	// box at width of content
-	narrowBox        lipgloss.Style
-	narrowBoxFocused lipgloss.Style
+	selectionBox        lipgloss.Style
+	selectionBoxFocused lipgloss.Style
 
 	// box at full width of dialog
-	wideBox        lipgloss.Style
-	wideBoxFocused lipgloss.Style
+	textInputBox        lipgloss.Style
+	textInputBoxFocused lipgloss.Style
 
 	// titles
 	hashKeyInputTitle  lipgloss.Style
@@ -158,10 +158,10 @@ type queryListStyles struct {
 	headerFmt func(s string) string
 }
 
-func newQueryStyles(darkBG bool) queryListStyles {
+func newQueryStyles() queryListStyles {
 	var s queryListStyles
 
-	s.Item = lipgloss.NewStyle().PaddingLeft(4)
+	s.Item = lipgloss.NewStyle().PaddingLeft(4).Foreground(theme.ListPlainFg)
 	s.SelectedItem = lipgloss.NewStyle().PaddingLeft(2).Foreground(theme.ListFocusFg)
 	s.Header = lipgloss.NewStyle().Foreground(theme.SubtleColour1)
 
@@ -169,16 +169,16 @@ func newQueryStyles(darkBG bool) queryListStyles {
 	s.operatordialog = theme.DialogStyle.Border(lipgloss.RoundedBorder()).Padding(3, 3, 0, 0)
 	s.title = lipgloss.NewStyle().Foreground(theme.TitleFG).Padding(1, 0, 2, 0)
 	s.content = lipgloss.NewStyle().PaddingTop(1).PaddingBottom(2)
-	s.help = list.DefaultStyles(darkBG).HelpStyle.Padding(1, 2, 0, 2)
+	s.help = list.DefaultStyles(theme.DarkTheme).HelpStyle.Padding(1, 2, 0, 2)
 	s.helpLine = lipgloss.NewStyle().PaddingBottom(1)
 
 	// narrow boxes
-	s.narrowBox = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(theme.DialogUnfocusColour).Padding(0, 1, 0, 1)
-	s.narrowBoxFocused = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(theme.DialogFocusColour).Padding(0, 1, 0, 1)
+	s.selectionBox = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(theme.DialogUnfocusColour).Foreground(theme.SelectionBlurredTextFg).Padding(0, 1, 0, 1)
+	s.selectionBoxFocused = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(theme.DialogFocusColour).Foreground(theme.SelectionFocusedTextFg).Padding(0, 1, 0, 1)
 
 	// wide boxes
-	s.wideBox = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(theme.DialogUnfocusColour)
-	s.wideBoxFocused = s.wideBox.BorderForeground(theme.DialogFocusColour)
+	s.textInputBox = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(theme.DialogUnfocusColour)
+	s.textInputBoxFocused = s.textInputBox.BorderForeground(theme.DialogFocusColour)
 
 	// inputs fields
 	s.hashKeyInputTitle = lipgloss.NewStyle().PaddingLeft(1).Foreground(theme.SubtleColour1)
@@ -186,8 +186,8 @@ func newQueryStyles(darkBG bool) queryListStyles {
 	s.rangeKeyOrderTitle = lipgloss.NewStyle().PaddingLeft(1).Foreground(theme.SubtleColour1).Padding(1, 0, 0, 0)
 
 	// query button
-	s.applyButton = lipgloss.NewStyle().Border(lipgloss.DoubleBorder()).BorderForeground(theme.DialogUnfocusColour).Padding(0, 2, 0, 2).Margin(1, 0, 1, 0)
-	s.applyButtonFocused = lipgloss.NewStyle().Border(lipgloss.DoubleBorder()).BorderForeground(theme.DialogFocusColour).Padding(0, 2, 0, 2).Margin(1, 0, 1, 0)
+	s.applyButton = lipgloss.NewStyle().Border(lipgloss.DoubleBorder()).BorderForeground(theme.DialogUnfocusColour).Foreground(theme.ButtonBlurredTextFg).Padding(0, 2, 0, 2).Margin(1, 0, 1, 0)
+	s.applyButtonFocused = lipgloss.NewStyle().Border(lipgloss.DoubleBorder()).BorderForeground(theme.DialogFocusColour).Foreground(theme.ButtonFocusedTextFg).Padding(0, 2, 0, 2).Margin(1, 0, 1, 0)
 
 	s.tableFullHeader = "Table Index"
 	s.gsiFullHeader = "Global Secondary Indices"
@@ -233,7 +233,7 @@ func NewQueryDialog(ctx context.Context, logger *slog.Logger, close key.Binding)
 		help: help.New(),
 	}
 
-	d.styles = newQueryStyles(theme.DarkTheme)
+	d.styles = newQueryStyles()
 
 	d.dialog.width = d.defaultDialogWidth
 	d.dialog.height = d.defaultDialogHeight
@@ -288,7 +288,7 @@ func NewQueryDialog(ctx context.Context, logger *slog.Logger, close key.Binding)
 	}
 
 	d.updateSize()
-	d.updateStyles(theme.DarkTheme)
+	d.updateStyles()
 
 	return d
 }
@@ -393,15 +393,28 @@ func (m *Queryialog) newQueryItemDelegate(s *queryListStyles) regular.ItemDelega
 	}
 }
 
-func (m *Queryialog) updateStyles(isDark bool) {
-	s := newQueryStyles(isDark)
+func (m *Queryialog) updateStyles() {
+	s := newQueryStyles()
+
+	inputStyles := syncInputStylesWithTheme()
+
+	m.content.hashKeyInput.SetStyles(inputStyles)
+	m.content.rangeKeyInput1.SetStyles(inputStyles)
+	m.content.rangeKeyInput2.SetStyles(inputStyles)
+	m.content.operatorSelection.Styles = list.DefaultStyles(theme.DarkTheme)
+	m.content.indexSelection.Styles = list.DefaultStyles(theme.DarkTheme)
+	m.content.rangeOrderSelection.Styles = list.DefaultStyles(theme.DarkTheme)
+
+	// propagate light/dark theme to content help explicitly
+	m.help.Styles = help.DefaultStyles(theme.DarkTheme)
+
 	m.content.indexSelection.Styles.Title = s.title
 	m.content.indexSelection.Styles.HelpStyle = s.help
 
 	subwidth := m.dialog.width/2 - 10
 
-	s.wideBox = s.wideBox.Width(subwidth)
-	s.wideBoxFocused = s.wideBoxFocused.Width(subwidth)
+	s.textInputBox = s.textInputBox.Width(subwidth)
+	s.textInputBoxFocused = s.textInputBoxFocused.Width(subwidth)
 
 	s.hashKeyInputTitle = s.hashKeyInputTitle.Width(subwidth)
 	s.rangeKeyInputTitle = s.rangeKeyInputTitle.Width(subwidth)
@@ -440,6 +453,9 @@ func (m *Queryialog) Update(msg tea.Msg) tea.Cmd {
 		}
 	case tea.WindowSizeMsg:
 		m.applySize(msg.Height, msg.Width)
+		return nil
+	case tea.BackgroundColorMsg:
+		m.updateStyles()
 		return nil
 	case messages.InitQueryParameters:
 		return m.SetState(msg)
@@ -551,7 +567,7 @@ func (m *Queryialog) MoveFocus(i int) tea.Cmd {
 		// nothing to do
 	}
 	m.updateSize()
-	m.updateStyles(true)
+	m.updateStyles()
 	return nil
 }
 
@@ -604,7 +620,7 @@ func (m *Queryialog) SetState(msg messages.InitQueryParameters) tea.Cmd {
 
 	// update list item delegates
 	m.updateSize()
-	m.updateStyles(true)
+	m.updateStyles()
 
 	// initialise the contents
 	cmd := m.InitContent()
@@ -807,7 +823,7 @@ func (m *Queryialog) updateSize() {
 	// set width of the list within the dialog
 	m.content.indexSelection.SetWidth(halfwidth)
 
-	m.updateStyles(true)
+	m.updateStyles()
 
 	// set height & width of dialog itself
 	m.styles.dialog = m.styles.dialog.
@@ -945,7 +961,7 @@ func (m *Queryialog) renderRangeOrderSelection() string {
 }
 
 func (m *Queryialog) renderHashKey() string {
-	hashKeyInputStyle := u.Ternary(m.styles.wideBoxFocused, m.styles.wideBox, m.focus == queryHashKeyInput)
+	hashKeyInputStyle := u.Ternary(m.styles.textInputBoxFocused, m.styles.textInputBox, m.focus == queryHashKeyInput)
 
 	return lipgloss.JoinVertical(
 		lipgloss.Left,
@@ -955,10 +971,10 @@ func (m *Queryialog) renderHashKey() string {
 }
 
 func (m *Queryialog) renderJoinedRangeKeyFields() string {
-	rangeKeyOperatorStyle := u.Ternary(m.styles.narrowBoxFocused, m.styles.narrowBox, m.focus == queryOperatorField)
-	rangeKeyInputStyle1 := u.Ternary(m.styles.wideBoxFocused, m.styles.wideBox, m.focus == queryRangeKeyInput1)
-	rangeKeyInputStyle2 := u.Ternary(m.styles.wideBoxFocused, m.styles.wideBox, m.focus == queryRangeKeyInput2)
-	rangeOrderStyle := u.Ternary(m.styles.narrowBoxFocused, m.styles.narrowBox, m.focus == queryOrderSelection)
+	rangeKeyOperatorStyle := u.Ternary(m.styles.selectionBoxFocused, m.styles.selectionBox, m.focus == queryOperatorField)
+	rangeKeyInputStyle1 := u.Ternary(m.styles.textInputBoxFocused, m.styles.textInputBox, m.focus == queryRangeKeyInput1)
+	rangeKeyInputStyle2 := u.Ternary(m.styles.textInputBoxFocused, m.styles.textInputBox, m.focus == queryRangeKeyInput2)
+	rangeOrderStyle := u.Ternary(m.styles.selectionBoxFocused, m.styles.selectionBox, m.focus == queryOrderSelection)
 	op := m.content.operatorSelection.SelectedItem().(regular.ListItem).Value
 	or := m.content.rangeOrderSelection.SelectedItem().(regular.ListItem).Value
 

@@ -3,6 +3,7 @@ package theme
 import (
 	"image/color"
 
+	"charm.land/bubbles/v2/textinput"
 	"charm.land/lipgloss/v2"
 )
 
@@ -20,8 +21,6 @@ var (
 
 // UpdateTheme updates colours in response to a `tea.BackgroundColorMsg`. It
 // will not touch any colours that have been overridden by the user.
-// TODO: tweak theme, light theme & table-name highlights in particular
-// TODO: some UI elements do not yet employ colours from theme
 func UpdateTheme(isDark bool, overrides ThemeOverrides) {
 	DarkTheme = isDark
 
@@ -35,7 +34,8 @@ func UpdateTheme(isDark bool, overrides ThemeOverrides) {
 	SubtleColour4 = choose(c("#878787"), c("#5E5E5E"))
 	SubtleColour5 = choose(c("#B0B0B0"), c("#585858"))
 
-	AccentOrange = choose(c("#B8611A"), c("#F58427"))
+	AccentOrange = c("#F58427")
+
 	AccentBlue = choose(c("#17B2FF"), c("#2381CF"))
 	AccentFadedBlue = choose(c("#95A0BA"), c("#415278"))
 	AccentDarkBlue = choose(c("#8A9FBA"), c("#244673"))
@@ -55,6 +55,11 @@ func UpdateTheme(isDark bool, overrides ThemeOverrides) {
 	DialogBorderColour = AccentOrange
 	TitleFG = PlainText
 
+	// notification
+	NotificationMessageFg = PlainText
+	NotificationErrorFg = choose(c("#B80F0F"), c("#EB5454"))
+	NotificationProgressFg = SubtleColour2
+
 	// spinners
 	SpinnerTextFg = PlainText
 	SpinnerTextBg = nil // transparent
@@ -62,7 +67,26 @@ func UpdateTheme(isDark bool, overrides ThemeOverrides) {
 	SpinnerSymbolBg = nil // transparent
 
 	// list
+	ListPlainFg = PlainText
 	ListFocusFg = AccentOrange
+
+	var inputDefaults = textinput.DefaultStyles(DarkTheme)
+
+	// input
+	InputFocusedTextFg = PlainText
+	InputBlurredTextFg = inputDefaults.Blurred.Text.GetForeground()
+	InputFocusedPlaceholderFg = inputDefaults.Focused.Placeholder.GetForeground()
+	InputBlurredPlaceholderFg = inputDefaults.Blurred.Placeholder.GetForeground()
+	InputFocusedPromptFg = inputDefaults.Focused.Prompt.GetForeground()
+	InputBlurredPromptFg = inputDefaults.Blurred.Prompt.GetForeground()
+
+	// selection
+	SelectionFocusedTextFg = PlainText
+	SelectionBlurredTextFg = PlainText
+
+	// button
+	ButtonFocusedTextFg = PlainText
+	ButtonBlurredTextFg = PlainText
 
 	// pane borders
 	ViewFocusBorderColour = AccentBlue
@@ -161,6 +185,11 @@ var (
 	DialogBorderColour  color.Color
 	TitleFG             color.Color
 
+	// notification
+	NotificationMessageFg  color.Color
+	NotificationErrorFg    color.Color
+	NotificationProgressFg color.Color
+
 	// spinners
 	SpinnerTextFg   color.Color
 	SpinnerTextBg   color.Color
@@ -168,7 +197,24 @@ var (
 	SpinnerSymbolBg color.Color
 
 	// list
+	ListPlainFg color.Color
 	ListFocusFg color.Color
+
+	// input
+	InputFocusedTextFg        color.Color
+	InputBlurredTextFg        color.Color
+	InputFocusedPlaceholderFg color.Color
+	InputBlurredPlaceholderFg color.Color
+	InputFocusedPromptFg      color.Color
+	InputBlurredPromptFg      color.Color
+
+	// button
+	ButtonFocusedTextFg color.Color
+	ButtonBlurredTextFg color.Color
+
+	// selection
+	SelectionFocusedTextFg color.Color
+	SelectionBlurredTextFg color.Color
 
 	// pane borders
 	ViewFocusBorderColour   color.Color

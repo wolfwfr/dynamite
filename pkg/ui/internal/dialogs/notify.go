@@ -103,10 +103,10 @@ func NewNotificationDialog(msg string, err error, opts ...Option) *NotificationD
 func (m *NotificationDialog) newStyles() {
 	s := notificationDialogStyles{}
 	s.dialogStyle = theme.DialogStyle.Align(lipgloss.Left, lipgloss.Center)
-	s.messageStyle = lipgloss.NewStyle()
-	s.errorStyle = lipgloss.NewStyle()
+	s.messageStyle = lipgloss.NewStyle().Foreground(theme.NotificationMessageFg)
+	s.errorStyle = lipgloss.NewStyle().Foreground(theme.NotificationErrorFg)
 	s.dividerStyle = lipgloss.NewStyle().Foreground(theme.SubtleColour4)
-	s.progressStyle = lipgloss.NewStyle().PaddingTop(1)
+	s.progressStyle = lipgloss.NewStyle().PaddingTop(1).Foreground(theme.NotificationProgressFg)
 	m.styles = s
 }
 
@@ -136,6 +136,9 @@ func (m *NotificationDialog) Update(msg tea.Msg) tea.Cmd {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.applySize(msg)
+	case tea.BackgroundColorMsg:
+		m.newStyles()
+		return nil
 	case messages.NotificationTick:
 		if msg.ID == m.id {
 			return m.onTick()

@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"time"
 
+	"charm.land/bubbles/v2/help"
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/list"
 	tea "charm.land/bubbletea/v2"
@@ -72,16 +73,16 @@ type copyStyles struct {
 	helpLine lipgloss.Style
 }
 
-func newCopyStyles(darkBG bool) copyStyles {
+func newCopyStyles() copyStyles {
 	var s copyStyles
 
-	s.Item = lipgloss.NewStyle().PaddingLeft(4)
+	s.Item = lipgloss.NewStyle().PaddingLeft(4).Foreground(theme.ListPlainFg)
 	s.SelectedItem = lipgloss.NewStyle().PaddingLeft(2).Foreground(theme.ListFocusFg)
 
 	s.dialog = theme.DialogStyle
 	s.title = lipgloss.NewStyle().Foreground(theme.TitleFG).Padding(1, 0, 2, 0)
 	s.content = lipgloss.NewStyle().Padding(1, 0, 2, 0)
-	s.help = list.DefaultStyles(darkBG).HelpStyle.Padding(1, 2, 0, 2)
+	s.help = list.DefaultStyles(theme.DarkTheme).HelpStyle.Padding(1, 2, 0, 2)
 	s.helpLine = lipgloss.NewStyle().PaddingBottom(1)
 	return s
 }
@@ -102,7 +103,7 @@ func NewCopyDialog(ctx context.Context, logger *slog.Logger, close key.Binding) 
 		defaultDialogWidth:  66,
 	}
 
-	c.styles = newCopyStyles(theme.DarkTheme)
+	c.styles = newCopyStyles()
 	c.dialog.width = c.defaultDialogWidth
 	c.dialog.height = c.defaultDialogHeight
 
@@ -129,7 +130,7 @@ func NewCopyDialog(ctx context.Context, logger *slog.Logger, close key.Binding) 
 		c.content = l
 	}
 
-	c.updateStyles(theme.DarkTheme)
+	c.updateStyles()
 	c.updateSize()
 
 	return c
@@ -141,10 +142,18 @@ func (m *CopyDialog) newDelegate(s *copyStyles) regular.ItemDelegate {
 	}
 }
 
-func (m *CopyDialog) updateStyles(isDark bool) {
-	s := newCopyStyles(isDark)
+func (m *CopyDialog) updateStyles() {
+	s := newCopyStyles()
+	m.content.Styles = list.DefaultStyles(theme.DarkTheme)
 	m.content.Styles.Title = s.title
 	m.content.Styles.HelpStyle = s.help
+
+	// propagate light/dark theme to content filter-input explicitly
+	inputStyles := syncInputStylesWithTheme()
+	m.content.FilterInput.SetStyles(inputStyles)
+
+	// propagate light/dark theme to content help explicitly
+	m.content.Help.Styles = help.DefaultStyles(theme.DarkTheme)
 
 	// dialog-style is actively resized; retain
 	s.dialog = m.styles.dialog
@@ -172,6 +181,9 @@ func (m *CopyDialog) Update(msg tea.Msg) tea.Cmd {
 		}
 	case tea.WindowSizeMsg:
 		m.applySize(msg.Height, msg.Width)
+		return nil
+	case tea.BackgroundColorMsg:
+		m.updateStyles()
 		return nil
 	case messages.InitColumnCopy:
 		return m.SetState(msg)

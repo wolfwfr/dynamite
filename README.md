@@ -293,7 +293,6 @@ The above configuration will match as follows:
 ☝️ This is a work in progress and the following is required for a first release:
 
 - **Code Polish**: the code and its style require some polishing
-- **Theme Polish**: dark & light theme compatibility & tweaking of theme colours
 - **README Polish**: expand the README with images and video among others
 
 ✌️ Other features I have in mind are:

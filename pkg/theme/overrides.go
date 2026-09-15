@@ -31,6 +31,11 @@ type ThemeOverrides struct {
 	DialogBorderColour  string `yaml:"dialog_border_color"`
 	TitleFG             string `yaml:"title_fg"`
 
+	// Notification
+	NotificationMessageFg  string `yaml:"notification_message_fg"`
+	NotificationErrorFg    string `yaml:"notification_error_fg"`
+	NotificationProgressFg string `yaml:"notification_progress_fg"`
+
 	// spinners
 	SpinnerTextFg   string `yaml:"spinner_text_fg"`
 	SpinnerTextBg   string `yaml:"spinner_text_bg"`
@@ -38,7 +43,24 @@ type ThemeOverrides struct {
 	SpinnerSymbolBg string `yaml:"spinner_symbol_bg"`
 
 	// list
+	ListPlainFg string `yaml:"list_plain_fg"`
 	ListFocusFg string `yaml:"list_focus_fg"`
+
+	// input
+	InputFocusedTextFg        string `yaml:"input_focused_text_fg"`
+	InputBlurredTextFg        string `yaml:"input_blurred_text_fg"`
+	InputFocusedPlaceholderFg string `yaml:"input_focused_placeholder_fg"`
+	InputBlurredPlaceholderFg string `yaml:"input_blurred_placeholder_fg"`
+	InputFocusedPromptFg      string `yaml:"input_focused_prompt_fg"`
+	InputBlurredPromptFg      string `yaml:"input_blurred_prompt_fg"`
+
+	// selection
+	SelectionFocusedTextFg string `yaml:"selection_focused_text_fg"`
+	SelectionBlurredTextFg string `yaml:"selection_blurred_text_fg"`
+
+	// button
+	ButtonFocusedTextFg string `yaml:"button_focused_text_fg"`
+	ButtonBlurredTextFg string `yaml:"button_blurred_text_fg"`
 
 	// pane borders
 	ViewFocusBorderColour   string `yaml:"view_focus_border_color"`
@@ -126,12 +148,30 @@ func (o ThemeOverrides) apply() {
 	DialogBorderColour = maybeOverride(o.DialogBorderColour, DialogBorderColour)
 	TitleFG = maybeOverride(o.TitleFG, TitleFG)
 
+	NotificationMessageFg = maybeOverride(o.NotificationMessageFg, NotificationMessageFg)
+	NotificationErrorFg = maybeOverride(o.NotificationErrorFg, NotificationErrorFg)
+	NotificationProgressFg = maybeOverride(o.NotificationProgressFg, NotificationProgressFg)
+
 	SpinnerTextFg = maybeOverride(o.SpinnerTextFg, SpinnerTextFg)
 	SpinnerTextBg = maybeOverride(o.SpinnerTextBg, SpinnerTextBg)
 	SpinnerSymbolFg = maybeOverride(o.SpinnerSymbolFg, SpinnerSymbolFg)
 	SpinnerSymbolBg = maybeOverride(o.SpinnerSymbolBg, SpinnerSymbolBg)
 
+	ListPlainFg = maybeOverride(o.ListPlainFg, ListPlainFg)
 	ListFocusFg = maybeOverride(o.ListFocusFg, ListFocusFg)
+
+	InputFocusedTextFg = maybeOverride(o.InputFocusedTextFg, InputFocusedTextFg)
+	InputBlurredTextFg = maybeOverride(o.InputBlurredTextFg, InputBlurredTextFg)
+	InputFocusedPlaceholderFg = maybeOverride(o.InputFocusedPlaceholderFg, InputFocusedPlaceholderFg)
+	InputBlurredPlaceholderFg = maybeOverride(o.InputBlurredPlaceholderFg, InputBlurredPlaceholderFg)
+	InputFocusedPromptFg = maybeOverride(o.InputFocusedPromptFg, InputFocusedPromptFg)
+	InputBlurredPromptFg = maybeOverride(o.InputBlurredPromptFg, InputBlurredPromptFg)
+
+	SelectionFocusedTextFg = maybeOverride(o.SelectionFocusedTextFg, SelectionFocusedTextFg)
+	SelectionBlurredTextFg = maybeOverride(o.SelectionBlurredTextFg, SelectionBlurredTextFg)
+
+	ButtonFocusedTextFg = maybeOverride(o.ButtonFocusedTextFg, ButtonFocusedTextFg)
+	ButtonBlurredTextFg = maybeOverride(o.ButtonBlurredTextFg, ButtonBlurredTextFg)
 
 	ViewFocusBorderColour = maybeOverride(o.ViewFocusBorderColour, ViewFocusBorderColour)
 	ViewUnFocusBorderColour = maybeOverride(o.ViewUnFocusBorderColour, ViewUnFocusBorderColour)

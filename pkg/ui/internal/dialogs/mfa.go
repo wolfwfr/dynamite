@@ -154,6 +154,9 @@ func (m *MFA) Update(msg tea.Msg) tea.Cmd {
 	case tea.WindowSizeMsg:
 		m.applySize(msg)
 		return nil
+	case tea.BackgroundColorMsg:
+		m.updateStyles()
+		return nil
 	default:
 		var cmd tea.Cmd
 		m.input, cmd = m.input.Update(msg)
@@ -182,6 +185,16 @@ func (m *MFA) toggleDialog() tea.Cmd {
 	return func() tea.Msg {
 		return messages.CloseMFADialog{}
 	}
+}
+
+func (m *MFA) updateStyles() {
+	s := newMFAStyles()
+
+	m.input.SetStyles(syncInputStylesWithTheme())
+
+	m.help.Styles = help.DefaultStyles(theme.DarkTheme)
+
+	m.styles = s
 }
 
 func (m *MFA) applySize(msg tea.WindowSizeMsg) {

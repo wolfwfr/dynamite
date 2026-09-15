@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"charm.land/bubbles/v2/help"
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/list"
 	tea "charm.land/bubbletea/v2"
@@ -98,17 +99,17 @@ type scanListStyles struct {
 	headerFmt func(s string) string
 }
 
-func newscanStyles(darkBG bool) scanListStyles {
+func newscanStyles() scanListStyles {
 	var s scanListStyles
 
-	s.Item = lipgloss.NewStyle().PaddingLeft(4)
+	s.Item = lipgloss.NewStyle().PaddingLeft(4).Foreground(theme.ListPlainFg)
 	s.SelectedItem = lipgloss.NewStyle().PaddingLeft(2).Foreground(theme.ListFocusFg)
 	s.Header = lipgloss.NewStyle().Foreground(theme.SubtleColour1)
 
 	s.dialog = theme.DialogStyle
 	s.title = lipgloss.NewStyle().Foreground(theme.TitleFG).Padding(1, 0, 2, 0)
 	s.content = lipgloss.NewStyle().PaddingTop(1).PaddingBottom(2)
-	s.help = list.DefaultStyles(darkBG).HelpStyle.Padding(1, 2, 0, 2)
+	s.help = list.DefaultStyles(theme.DarkTheme).HelpStyle.Padding(1, 2, 0, 2)
 	s.helpLine = lipgloss.NewStyle().PaddingBottom(1)
 	s.keyInfo = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(theme.DialogUnfocusColour).Padding(1, 2, 1, 2)
 
@@ -147,7 +148,7 @@ func NewScanDialog(ctx context.Context, logger *slog.Logger, close key.Binding) 
 		defaultDialogWidth:  55,
 	}
 
-	r.styles = newscanStyles(theme.DarkTheme)
+	r.styles = newscanStyles()
 
 	r.dialog.width = r.defaultDialogWidth
 	r.dialog.height = r.defaultDialogHeight
@@ -172,7 +173,7 @@ func NewScanDialog(ctx context.Context, logger *slog.Logger, close key.Binding) 
 
 	r.content = l
 	r.updateSize()
-	r.updateStyles(theme.DarkTheme)
+	r.updateStyles()
 
 	return r
 }
@@ -223,11 +224,15 @@ func (m *ScanDialog) newDelegate(s *scanListStyles) headed.ItemDelegate {
 	return d
 }
 
-func (m *ScanDialog) updateStyles(isDark bool) {
-	s := newscanStyles(isDark)
+func (m *ScanDialog) updateStyles() {
+	s := newscanStyles()
+	m.content.Styles = list.DefaultStyles(theme.DarkTheme)
 	m.content.Styles.Title = s.title
 	m.content.Styles.HelpStyle = s.help
 	s.keyInfo = s.keyInfo.Width(m.dialog.width - 10)
+
+	// propagate light/dark theme to content help explicitly
+	m.content.Help.Styles = help.DefaultStyles(theme.DarkTheme)
 
 	// dialog-style is actively resized; retain
 	s.dialog = m.styles.dialog
@@ -252,13 +257,16 @@ func (m *ScanDialog) Update(msg tea.Msg) tea.Cmd {
 	case tea.WindowSizeMsg:
 		m.applySize(msg.Height, msg.Width)
 		return nil
+	case tea.BackgroundColorMsg:
+		m.updateStyles()
+		return nil
 	case messages.InitScanParameters:
 		return m.SetState(msg)
 	}
 	var cmd tea.Cmd
 	m.content, cmd = m.content.Update(msg)
 	m.updateSize()
-	m.updateStyles(true)
+	m.updateStyles()
 	return cmd
 }
 
@@ -283,7 +291,7 @@ func (m *ScanDialog) SetState(msg messages.InitScanParameters) tea.Cmd {
 		m.selected = *msg.CurrentIndex
 	}
 
-	m.updateStyles(true) // to set delegate
+	m.updateStyles() // to set delegate
 	return m.updateContent()
 }
 
@@ -355,7 +363,7 @@ func (m *ScanDialog) applySize(height, width int) {
 	m.window.width = width
 	m.window.height = height
 	m.updateSize()
-	m.updateStyles(true)
+	m.updateStyles()
 }
 
 func (m *ScanDialog) updateSize() {

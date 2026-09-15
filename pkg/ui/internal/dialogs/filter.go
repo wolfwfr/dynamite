@@ -118,12 +118,12 @@ type filterListStyles struct {
 	operatordialog lipgloss.Style
 
 	// box at width of content
-	narrowBox        lipgloss.Style
-	narrowBoxFocused lipgloss.Style
+	selectionBox        lipgloss.Style
+	selectionBoxFocused lipgloss.Style
 
 	// box at full width of dialog
-	wideBox        lipgloss.Style
-	wideBoxFocused lipgloss.Style
+	textInputBox        lipgloss.Style
+	textInputBoxFocused lipgloss.Style
 
 	// ignored fields
 	ignored lipgloss.Style
@@ -147,10 +147,10 @@ type filterListStyles struct {
 	applyButtonFocused lipgloss.Style
 }
 
-func newFilterStyles(darkBG bool) filterListStyles {
+func newFilterStyles() filterListStyles {
 	var s filterListStyles
 
-	s.Item = lipgloss.NewStyle().PaddingLeft(4)
+	s.Item = lipgloss.NewStyle().PaddingLeft(4).Foreground(theme.ListPlainFg)
 	s.SelectedItem = lipgloss.NewStyle().PaddingLeft(2).Foreground(theme.ListFocusFg)
 	s.Header = lipgloss.NewStyle().Foreground(theme.SubtleColour1)
 
@@ -160,16 +160,16 @@ func newFilterStyles(darkBG bool) filterListStyles {
 	s.title = lipgloss.NewStyle().Foreground(theme.TitleFG).Padding(1, 0, 2, 0)
 	s.content = lipgloss.NewStyle().PaddingTop(1).PaddingBottom(2)
 	s.contentLine = lipgloss.NewStyle().PaddingTop(1)
-	s.help = list.DefaultStyles(darkBG).HelpStyle.Padding(1, 2, 0, 2)
+	s.help = list.DefaultStyles(theme.DarkTheme).HelpStyle.Padding(1, 2, 0, 2)
 	s.helpLine = lipgloss.NewStyle().Padding(7, 0, 1, 0)
 
 	// narrow boxes
-	s.narrowBox = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(theme.DialogUnfocusColour).Padding(0, 1, 0, 1)
-	s.narrowBoxFocused = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(theme.DialogFocusColour).Padding(0, 1, 0, 1)
+	s.selectionBox = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(theme.DialogUnfocusColour).Foreground(theme.SelectionBlurredTextFg).Padding(0, 1, 0, 1)
+	s.selectionBoxFocused = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(theme.DialogFocusColour).Foreground(theme.SelectionFocusedTextFg).Padding(0, 1, 0, 1)
 
 	// wide boxes
-	s.wideBox = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(theme.DialogUnfocusColour)
-	s.wideBoxFocused = s.wideBox.BorderForeground(theme.DialogFocusColour)
+	s.textInputBox = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(theme.DialogUnfocusColour)
+	s.textInputBoxFocused = s.textInputBox.BorderForeground(theme.DialogFocusColour)
 
 	// ignored fields
 	s.ignored = lipgloss.NewStyle().Foreground(theme.DialogUnfocusColour).Padding(1, 1, 0, 1)
@@ -181,16 +181,16 @@ func newFilterStyles(darkBG bool) filterListStyles {
 	s.OperatorTitle = lipgloss.NewStyle().Foreground(theme.SubtleColour1).Padding(0, 0, 0, 1)
 
 	// remove button
-	s.removeButton = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(theme.DialogUnfocusColour).Padding(0, 2, 0, 2).Margin(0, 0, 1, 0)
-	s.removeButtonFocused = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(theme.DialogFocusColour).Padding(0, 2, 0, 2).Margin(0, 0, 1, 0)
+	s.removeButton = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(theme.DialogUnfocusColour).Foreground(theme.ButtonBlurredTextFg).Padding(0, 2, 0, 2).Margin(0, 0, 1, 0)
+	s.removeButtonFocused = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(theme.DialogFocusColour).Foreground(theme.ButtonFocusedTextFg).Padding(0, 2, 0, 2).Margin(0, 0, 1, 0)
 
 	// add button
-	s.addButton = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(theme.DialogUnfocusColour).Padding(0, 2, 0, 2).Margin(1, 0, 1, 0)
-	s.addButtonFocused = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(theme.DialogFocusColour).Padding(0, 2, 0, 2).Margin(1, 0, 1, 0)
+	s.addButton = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(theme.DialogUnfocusColour).Foreground(theme.ButtonBlurredTextFg).Padding(0, 2, 0, 2).Margin(1, 0, 1, 0)
+	s.addButtonFocused = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(theme.DialogFocusColour).Foreground(theme.ButtonFocusedTextFg).Padding(0, 2, 0, 2).Margin(1, 0, 1, 0)
 
 	// apply button
-	s.applyButton = lipgloss.NewStyle().Border(lipgloss.DoubleBorder()).BorderForeground(theme.DialogUnfocusColour).Padding(0, 2, 0, 2).Margin(1, 0, 1, 0)
-	s.applyButtonFocused = lipgloss.NewStyle().Border(lipgloss.DoubleBorder()).BorderForeground(theme.DialogFocusColour).Padding(0, 2, 0, 2).Margin(1, 0, 1, 0)
+	s.applyButton = lipgloss.NewStyle().Border(lipgloss.DoubleBorder()).BorderForeground(theme.DialogUnfocusColour).Foreground(theme.ButtonBlurredTextFg).Padding(0, 2, 0, 2).Margin(1, 0, 1, 0)
+	s.applyButtonFocused = lipgloss.NewStyle().Border(lipgloss.DoubleBorder()).BorderForeground(theme.DialogFocusColour).Foreground(theme.ButtonFocusedTextFg).Padding(0, 2, 0, 2).Margin(1, 0, 1, 0)
 
 	return s
 }
@@ -239,7 +239,7 @@ func NewFilterDialog(ctx context.Context, logger *slog.Logger, close key.Binding
 
 	d.focus = -1
 
-	d.styles = newFilterStyles(theme.DarkTheme)
+	d.styles = newFilterStyles()
 
 	d.dialog.width = d.defaultDialogWidth
 	d.dialog.height = d.defaultDialogHeight
@@ -252,7 +252,7 @@ func NewFilterDialog(ctx context.Context, logger *slog.Logger, close key.Binding
 	d.InitContent()
 
 	d.updateSize()
-	d.updateStyles(theme.DarkTheme)
+	d.updateStyles()
 
 	return d
 }
@@ -312,13 +312,13 @@ func (m *FilterDialog) newFilterItemDelegate(s *filterListStyles) regular.ItemDe
 	}
 }
 
-func (m *FilterDialog) updateStyles(isDark bool) {
-	s := newFilterStyles(isDark)
+func (m *FilterDialog) updateStyles() {
+	s := newFilterStyles()
 
 	subwidth := m.dialog.width/2 - 28
 
-	s.wideBox = s.wideBox.Width(subwidth)
-	s.wideBoxFocused = s.wideBoxFocused.Width(subwidth)
+	s.textInputBox = s.textInputBox.Width(subwidth)
+	s.textInputBoxFocused = s.textInputBoxFocused.Width(subwidth)
 
 	s.AttrNameInputTitle = s.AttrNameInputTitle.Width(subwidth)
 	s.AttrValueInputTitle = s.AttrValueInputTitle.Width(subwidth)
@@ -330,7 +330,17 @@ func (m *FilterDialog) updateStyles(isDark bool) {
 
 	m.styles = s
 
+	m.help.Styles = help.DefaultStyles(theme.DarkTheme)
+
+	inputStyles := syncInputStylesWithTheme()
+
 	for i := range m.content {
+		m.content[i].attrTypeSelection.Styles = list.DefaultStyles(theme.DarkTheme)
+		m.content[i].operatorSelection.Styles = list.DefaultStyles(theme.DarkTheme)
+		m.content[i].attrNameInput.SetStyles(inputStyles)
+		m.content[i].attrValueInput1.SetStyles(inputStyles)
+		m.content[i].attrValueInput2.SetStyles(inputStyles)
+
 		m.content[i].attrTypeSelection.SetDelegate(m.newFilterItemDelegate(&s))
 		m.content[i].operatorSelection.SetDelegate(m.newFilterItemDelegate(&s))
 		m.content[i].attrNameInput.SetWidth(subwidth - 2 - len(m.content[i].attrNameInput.Prompt) - 1)
@@ -369,6 +379,9 @@ func (m *FilterDialog) Update(msg tea.Msg) tea.Cmd {
 		}
 	case tea.WindowSizeMsg:
 		m.applySize(msg.Height, msg.Width)
+		return nil
+	case tea.BackgroundColorMsg:
+		m.updateStyles()
 		return nil
 	case messages.InitFilterParameters:
 		return m.SetState(msg)
@@ -502,7 +515,7 @@ func (m *FilterDialog) MoveFocus(i int, dir direction) tea.Cmd {
 		m.keyMap.enter.SetEnabled(true)
 	}
 	m.updateSize()
-	m.updateStyles(true)
+	m.updateStyles()
 	return nil
 }
 
@@ -680,7 +693,7 @@ func (m *FilterDialog) SetState(msg messages.InitFilterParameters) tea.Cmd {
 
 	// update list item delegates
 	m.updateSize()
-	m.updateStyles(true)
+	m.updateStyles()
 
 	// initialise the contents
 	cmd := m.InitContent()
@@ -888,7 +901,7 @@ func (m *FilterDialog) updateSize() {
 	// set help size
 	m.help.SetWidth(width - borderW)
 
-	m.updateStyles(true)
+	m.updateStyles()
 
 	// set height & width of dialog itself
 	m.styles.dialog = m.styles.dialog.
@@ -1025,8 +1038,8 @@ func (m *FilterDialog) selectContentLineFieldStyle(f filterDialogFocus, i int) l
 		style    lipgloss.Style
 
 		boxAddW  = 2 // border width
-		nBoxPadW = m.styles.narrowBox.GetPaddingLeft() + m.styles.narrowBox.GetPaddingRight()
-		wBoxPadW = m.styles.wideBox.GetPaddingLeft() + m.styles.wideBox.GetPaddingRight()
+		nBoxPadW = m.styles.selectionBox.GetPaddingLeft() + m.styles.selectionBox.GetPaddingRight()
+		wBoxPadW = m.styles.textInputBox.GetPaddingLeft() + m.styles.textInputBox.GetPaddingRight()
 		hasField = m.hasContentLineField(f, i)
 	)
 
@@ -1036,19 +1049,19 @@ func (m *FilterDialog) selectContentLineFieldStyle(f filterDialogFocus, i int) l
 
 	switch f {
 	case filterAttrNameInput:
-		style = u.Ternary(m.styles.wideBoxFocused, m.styles.wideBox, m.contentIdx == i && m.focus == f)
+		style = u.Ternary(m.styles.textInputBoxFocused, m.styles.textInputBox, m.contentIdx == i && m.focus == f)
 		fieldLen = lipgloss.Width(m.content[i].attrNameInput.View()) + wBoxPadW
 	case filterAttrTypeField:
-		style = u.Ternary(m.styles.narrowBoxFocused, m.styles.narrowBox, m.contentIdx == i && m.focus == f)
+		style = u.Ternary(m.styles.selectionBoxFocused, m.styles.selectionBox, m.contentIdx == i && m.focus == f)
 		fieldLen = len(m.content[i].attrTypeSelection.SelectedItem().(regular.ListItem).Value) + nBoxPadW
 	case filterOperatorField:
-		style = u.Ternary(m.styles.narrowBoxFocused, m.styles.narrowBox, m.contentIdx == i && m.focus == f)
+		style = u.Ternary(m.styles.selectionBoxFocused, m.styles.selectionBox, m.contentIdx == i && m.focus == f)
 		fieldLen = len(m.content[i].operatorSelection.SelectedItem().(regular.ListItem).Value) + nBoxPadW
 	case filterAttrValueInput1:
-		style = u.Ternary(m.styles.wideBoxFocused, m.styles.wideBox, m.contentIdx == i && m.focus == f)
+		style = u.Ternary(m.styles.textInputBoxFocused, m.styles.textInputBox, m.contentIdx == i && m.focus == f)
 		fieldLen = lipgloss.Width(m.content[i].attrValueInput1.View()) + wBoxPadW
 	case filterAttrValueInput2:
-		style = u.Ternary(m.styles.wideBoxFocused, m.styles.wideBox, m.contentIdx == i && m.focus == f)
+		style = u.Ternary(m.styles.textInputBoxFocused, m.styles.textInputBox, m.contentIdx == i && m.focus == f)
 		fieldLen = lipgloss.Width(m.content[i].attrValueInput2.View()) + wBoxPadW
 	}
 
