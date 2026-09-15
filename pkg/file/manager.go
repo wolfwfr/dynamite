@@ -69,7 +69,6 @@ func (m *Manager) readConfigFromDisk() (*configFile, error) {
 		return nil, fmt.Errorf("failed to read config file; %w", err)
 	}
 
-	// TODO: move to toml config
 	err = yaml.Unmarshal(bytes, &cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal config file; %w", err)

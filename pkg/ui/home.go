@@ -574,16 +574,12 @@ func (m Model) ToggleCopyDialog() (Model, tea.Cmd) {
 	return m, nil
 }
 
-// TODO: now assuming no dialog can be open prior to MFA call; ensure existing
-// dialogs are closed first!
 func (m Model) OpenMFADialog() (Model, tea.Cmd) {
 	m.dialogs.open = true
 	m.dialogs.active = mfa_dialog
 	return m, m.dialogs.mfa.Update(messages.MFAFocus{}) // init focus
 }
 
-// TODO: now assuming no dialog can be open prior to MFA call; fallback to
-// previous dialog if appliccable!
 func (m Model) CloseMFADialog() (Model, tea.Cmd) {
 	m.dialogs.open = false
 	return m, nil
