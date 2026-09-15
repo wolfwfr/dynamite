@@ -144,7 +144,7 @@ dynamite --aws_profile="my-profile"
 - **Search** with `/`
 - **Escape** search-mode and dialogs with `Esc`
 - **Move Back** to the tables view with `Backspace`
-- **Much more**: see the help menu (with `?`)
+- **Much More**: see the help menu (with `?`)
 
 <br/>
 
