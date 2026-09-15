@@ -58,29 +58,19 @@ _  /_/ /_  /_/ /_  / / / /_/ /_  / / / / /  / / /_ /  __/
 <br/>
 <br/>
 
-## 🚧 WORK IN PROGRESS 🚧
+## 🎁 Dynamite
 
-> [!Warning]
-> This is a work in progress!
-> 
-> Breaking changes may occur!
+`Dynamite` is a keyboard-focused, configurable, two-pane TUI for querying and browsing items in Amazon DynamoDB.
 
-<br/>
-
-## 🤖 AI NOTICE 🤖
-
-> [!NOTE]
-> At least up until the first release,
-> 
-> this project will be exclusively hand-crafted.
+It aims to provide impactful quality-of-life features and a pleasant, minimalist look-and-feel.
 
 <br/>
 
-## ❔ Why
+## 🤖 AI notice 🤖
 
-I wanted a TUI for quickly finding and browsing Amazon Dynamo-DB items. It needed quality of life features such as the ability to toggle columns on or off, easily copying items or fields, and sorting by a given field.
+`Dynamite`'s foundation (i.e. all pre-release code) is proudly crafted by hand, without any involvement of LLM assistance.
 
-I couldn't find one that felt exactly right to me, so I decided to build one myself.  
+Future polishing, fixes & feature implementation might involve AI usage, but any such changes will be applied with care.
 
 <br/>
 
