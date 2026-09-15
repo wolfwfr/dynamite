@@ -31,6 +31,11 @@ type ThemeOverrides struct {
 	DialogBorderColour  string `yaml:"dialog_border_color"`
 	TitleFG             string `yaml:"title_fg"`
 
+	// Notification
+	NotificationMessageFg  string `yaml:"notification_message_fg"`
+	NotificationErrorFg    string `yaml:"notification_error_fg"`
+	NotificationProgressFg string `yaml:"notification_progress_fg"`
+
 	// spinners
 	SpinnerTextFg   string `yaml:"spinner_text_fg"`
 	SpinnerTextBg   string `yaml:"spinner_text_bg"`
@@ -134,6 +139,10 @@ func (o ThemeOverrides) apply() {
 	DialogUnfocusColour = maybeOverride(o.DialogUnfocusColour, DialogUnfocusColour)
 	DialogBorderColour = maybeOverride(o.DialogBorderColour, DialogBorderColour)
 	TitleFG = maybeOverride(o.TitleFG, TitleFG)
+
+	NotificationMessageFg = maybeOverride(o.NotificationMessageFg, NotificationMessageFg)
+	NotificationErrorFg = maybeOverride(o.NotificationErrorFg, NotificationErrorFg)
+	NotificationProgressFg = maybeOverride(o.NotificationProgressFg, NotificationProgressFg)
 
 	SpinnerTextFg = maybeOverride(o.SpinnerTextFg, SpinnerTextFg)
 	SpinnerTextBg = maybeOverride(o.SpinnerTextBg, SpinnerTextBg)

@@ -56,6 +56,11 @@ func UpdateTheme(isDark bool, overrides ThemeOverrides) {
 	DialogBorderColour = AccentOrange
 	TitleFG = PlainText
 
+	// notification
+	NotificationMessageFg = PlainText
+	NotificationErrorFg = choose(c("#B80F0F"), c("#EB5454"))
+	NotificationProgressFg = SubtleColour2
+
 	// spinners
 	SpinnerTextFg = PlainText
 	SpinnerTextBg = nil // transparent
@@ -172,6 +177,11 @@ var (
 	DialogUnfocusColour color.Color
 	DialogBorderColour  color.Color
 	TitleFG             color.Color
+
+	// notification
+	NotificationMessageFg  color.Color
+	NotificationErrorFg    color.Color
+	NotificationProgressFg color.Color
 
 	// spinners
 	SpinnerTextFg   color.Color
