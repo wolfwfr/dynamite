@@ -81,6 +81,14 @@ func UpdateTheme(isDark bool, overrides ThemeOverrides) {
 	InputFocusedPromptFg = inputDefaults.Focused.Prompt.GetForeground()
 	InputBlurredPromptFg = inputDefaults.Blurred.Prompt.GetForeground()
 
+	// selection
+	SelectionFocusedTextFg = PlainText
+	SelectionBlurredTextFg = PlainText
+
+	// button
+	ButtonFocusedTextFg = PlainText
+	ButtonBlurredTextFg = PlainText
+
 	// pane borders
 	ViewFocusBorderColour = AccentBlue
 	ViewUnFocusBorderColour = AccentFadedBlue
@@ -200,6 +208,14 @@ var (
 	InputBlurredPlaceholderFg color.Color
 	InputFocusedPromptFg      color.Color
 	InputBlurredPromptFg      color.Color
+
+	// button
+	ButtonFocusedTextFg color.Color
+	ButtonBlurredTextFg color.Color
+
+	// selection
+	SelectionFocusedTextFg color.Color
+	SelectionBlurredTextFg color.Color
 
 	// pane borders
 	ViewFocusBorderColour   color.Color

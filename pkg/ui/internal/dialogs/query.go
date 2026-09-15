@@ -131,12 +131,12 @@ type queryListStyles struct {
 	operatordialog lipgloss.Style
 
 	// box at width of content
-	narrowBox        lipgloss.Style
-	narrowBoxFocused lipgloss.Style
+	selectionBox        lipgloss.Style
+	selectionBoxFocused lipgloss.Style
 
 	// box at full width of dialog
-	wideBox        lipgloss.Style
-	wideBoxFocused lipgloss.Style
+	textInputBox        lipgloss.Style
+	textInputBoxFocused lipgloss.Style
 
 	// titles
 	hashKeyInputTitle  lipgloss.Style
@@ -173,12 +173,12 @@ func newQueryStyles() queryListStyles {
 	s.helpLine = lipgloss.NewStyle().PaddingBottom(1)
 
 	// narrow boxes
-	s.narrowBox = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(theme.DialogUnfocusColour).Padding(0, 1, 0, 1)
-	s.narrowBoxFocused = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(theme.DialogFocusColour).Padding(0, 1, 0, 1)
+	s.selectionBox = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(theme.DialogUnfocusColour).Foreground(theme.SelectionBlurredTextFg).Padding(0, 1, 0, 1)
+	s.selectionBoxFocused = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(theme.DialogFocusColour).Foreground(theme.SelectionFocusedTextFg).Padding(0, 1, 0, 1)
 
 	// wide boxes
-	s.wideBox = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(theme.DialogUnfocusColour)
-	s.wideBoxFocused = s.wideBox.BorderForeground(theme.DialogFocusColour)
+	s.textInputBox = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(theme.DialogUnfocusColour)
+	s.textInputBoxFocused = s.textInputBox.BorderForeground(theme.DialogFocusColour)
 
 	// inputs fields
 	s.hashKeyInputTitle = lipgloss.NewStyle().PaddingLeft(1).Foreground(theme.SubtleColour1)
@@ -186,8 +186,8 @@ func newQueryStyles() queryListStyles {
 	s.rangeKeyOrderTitle = lipgloss.NewStyle().PaddingLeft(1).Foreground(theme.SubtleColour1).Padding(1, 0, 0, 0)
 
 	// query button
-	s.applyButton = lipgloss.NewStyle().Border(lipgloss.DoubleBorder()).BorderForeground(theme.DialogUnfocusColour).Padding(0, 2, 0, 2).Margin(1, 0, 1, 0)
-	s.applyButtonFocused = lipgloss.NewStyle().Border(lipgloss.DoubleBorder()).BorderForeground(theme.DialogFocusColour).Padding(0, 2, 0, 2).Margin(1, 0, 1, 0)
+	s.applyButton = lipgloss.NewStyle().Border(lipgloss.DoubleBorder()).BorderForeground(theme.DialogUnfocusColour).Foreground(theme.ButtonBlurredTextFg).Padding(0, 2, 0, 2).Margin(1, 0, 1, 0)
+	s.applyButtonFocused = lipgloss.NewStyle().Border(lipgloss.DoubleBorder()).BorderForeground(theme.DialogFocusColour).Foreground(theme.ButtonFocusedTextFg).Padding(0, 2, 0, 2).Margin(1, 0, 1, 0)
 
 	s.tableFullHeader = "Table Index"
 	s.gsiFullHeader = "Global Secondary Indices"
@@ -413,8 +413,8 @@ func (m *Queryialog) updateStyles() {
 
 	subwidth := m.dialog.width/2 - 10
 
-	s.wideBox = s.wideBox.Width(subwidth)
-	s.wideBoxFocused = s.wideBoxFocused.Width(subwidth)
+	s.textInputBox = s.textInputBox.Width(subwidth)
+	s.textInputBoxFocused = s.textInputBoxFocused.Width(subwidth)
 
 	s.hashKeyInputTitle = s.hashKeyInputTitle.Width(subwidth)
 	s.rangeKeyInputTitle = s.rangeKeyInputTitle.Width(subwidth)
@@ -961,7 +961,7 @@ func (m *Queryialog) renderRangeOrderSelection() string {
 }
 
 func (m *Queryialog) renderHashKey() string {
-	hashKeyInputStyle := u.Ternary(m.styles.wideBoxFocused, m.styles.wideBox, m.focus == queryHashKeyInput)
+	hashKeyInputStyle := u.Ternary(m.styles.textInputBoxFocused, m.styles.textInputBox, m.focus == queryHashKeyInput)
 
 	return lipgloss.JoinVertical(
 		lipgloss.Left,
@@ -971,10 +971,10 @@ func (m *Queryialog) renderHashKey() string {
 }
 
 func (m *Queryialog) renderJoinedRangeKeyFields() string {
-	rangeKeyOperatorStyle := u.Ternary(m.styles.narrowBoxFocused, m.styles.narrowBox, m.focus == queryOperatorField)
-	rangeKeyInputStyle1 := u.Ternary(m.styles.wideBoxFocused, m.styles.wideBox, m.focus == queryRangeKeyInput1)
-	rangeKeyInputStyle2 := u.Ternary(m.styles.wideBoxFocused, m.styles.wideBox, m.focus == queryRangeKeyInput2)
-	rangeOrderStyle := u.Ternary(m.styles.narrowBoxFocused, m.styles.narrowBox, m.focus == queryOrderSelection)
+	rangeKeyOperatorStyle := u.Ternary(m.styles.selectionBoxFocused, m.styles.selectionBox, m.focus == queryOperatorField)
+	rangeKeyInputStyle1 := u.Ternary(m.styles.textInputBoxFocused, m.styles.textInputBox, m.focus == queryRangeKeyInput1)
+	rangeKeyInputStyle2 := u.Ternary(m.styles.textInputBoxFocused, m.styles.textInputBox, m.focus == queryRangeKeyInput2)
+	rangeOrderStyle := u.Ternary(m.styles.selectionBoxFocused, m.styles.selectionBox, m.focus == queryOrderSelection)
 	op := m.content.operatorSelection.SelectedItem().(regular.ListItem).Value
 	or := m.content.rangeOrderSelection.SelectedItem().(regular.ListItem).Value
 
