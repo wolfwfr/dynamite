@@ -21,7 +21,6 @@ var (
 
 // UpdateTheme updates colours in response to a `tea.BackgroundColorMsg`. It
 // will not touch any colours that have been overridden by the user.
-// TODO: tweak theme, light theme & table-name highlights in particular
 func UpdateTheme(isDark bool, overrides ThemeOverrides) {
 	DarkTheme = isDark
 
