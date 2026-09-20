@@ -353,10 +353,24 @@ func (m *ItemSelectionPane) softReset() tea.Cmd {
 	return cmd
 }
 
-// Update handles incoming messages, when it cannot match a message or a
+// Update handles any incoming message and ensures post-handling-effects are
+// executed; no early returns.
+func (m *ItemSelectionPane) Update(msg tea.Msg) (cmd tea.Cmd) {
+	cmds := []tea.Cmd{}
+	cmds = append(cmds, m.update(msg))
+	if !m.pagingSuspended && m.table.PaginationEligible() {
+		cmds = append(cmds, m.PageNext(false))
+	}
+	cmds = append(cmds, m.MaybePreviewItem(false))
+	m.updateKeyMaps()
+
+	return tea.Batch(cmds...)
+}
+
+// update handles incoming messages, when it cannot match a message or a
 // message-handler does not explicitly return, it will always broadcast the
 // message to all children.
-func (m *ItemSelectionPane) Update(msg tea.Msg) (cmd tea.Cmd) {
+func (m *ItemSelectionPane) update(msg tea.Msg) (cmd tea.Cmd) {
 	cmds := []tea.Cmd{}
 
 	switch msg := msg.(type) {
@@ -407,13 +421,6 @@ func (m *ItemSelectionPane) Update(msg tea.Msg) (cmd tea.Cmd) {
 		// unmatched events or events handled without explicit returns are broadcast
 		cmds = append(cmds, m.broadcast(msg))
 	}
-
-	if !m.pagingSuspended && m.table.PaginationEligible() {
-		cmds = append(cmds, m.PageNext(false))
-	}
-
-	cmds = append(cmds, m.MaybePreviewItem(false))
-	m.updateKeyMaps()
 
 	return tea.Batch(cmds...)
 }

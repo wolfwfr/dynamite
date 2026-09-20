@@ -391,10 +391,19 @@ func (m *tableSelectionPane) processPage(msg messages.TablePageReady, preview bo
 	return tea.Batch(cmds...)
 }
 
-// Update handles incoming messages, when it cannot match a message or a
+// Update handles any incoming message and ensures post-handling-effects are
+// executed; no early returns.
+func (m *tableSelectionPane) Update(msg tea.Msg) tea.Cmd {
+	cmds := []tea.Cmd{}
+	cmds = append(cmds, m.update(msg))
+	cmds = append(cmds, m.MaybePreviewItem(false))
+	return tea.Batch(cmds...)
+}
+
+// update handles incoming messages, when it cannot match a message or a
 // message-handler does not explicitly return, it will always broadcast the
 // message to all children.
-func (m *tableSelectionPane) Update(msg tea.Msg) tea.Cmd {
+func (m *tableSelectionPane) update(msg tea.Msg) tea.Cmd {
 	cmds := []tea.Cmd{}
 	switch msg := msg.(type) {
 	case tea.BackgroundColorMsg:
@@ -430,7 +439,6 @@ func (m *tableSelectionPane) Update(msg tea.Msg) tea.Cmd {
 		cmds = append(cmds, m.broadcast(msg))
 	}
 
-	cmds = append(cmds, m.MaybePreviewItem(false))
 	return tea.Batch(cmds...)
 }
 
