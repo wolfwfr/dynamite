@@ -353,81 +353,13 @@ func (m *ItemSelectionPane) softReset() tea.Cmd {
 	return cmd
 }
 
+// Update handles incoming messages, when it cannot match a message or a
+// message-handler does not explicitly return, it will always broadcast the
+// message to all children.
 func (m *ItemSelectionPane) Update(msg tea.Msg) (cmd tea.Cmd) {
 	cmds := []tea.Cmd{}
-	// TODO: extend; missing a few matches
-	_, isSelect := msg.(messages.SelectTable)
-	_, isToggleFmt := msg.(messages.ToggleJSONYAML)
-	_, isTick := msg.(spinner.TickMsg)
-	_, isColVis := msg.(messages.ColumnVisibilityUpdate)
-	_, isColSort := msg.(messages.ColumnSortingUpdate)
-	_, isColSortRes := msg.(messages.ColumnSortingReset)
-	_, isPreview := msg.(messages.PreviewItem)
-	_, isBgMsg := msg.(tea.BackgroundColorMsg)
 
-	excludeSearch := isSelect || isToggleFmt || isTick || isColVis || isColSort || isColSortRes || isPreview || isBgMsg
-
-	if search.IsSearchBoxMessage(msg) || (!excludeSearch && m.search.IsFocused()) {
-		cmds = append(cmds, m.search.Update(msg))
-	} else {
-		cmds = append(cmds, m.handleNavigation(msg))
-	}
-	cmds = append(cmds, m.MaybePreviewItem(false))
-	m.updateKeyMaps()
-	return tea.Batch(cmds...)
-}
-
-// handleNavigation handles events when search is not active.
-func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
-	cmds := []tea.Cmd{}
 	switch msg := msg.(type) {
-	case tea.KeyPressMsg:
-		switch {
-		case key.Matches(msg, m.KeyMap.Search):
-			cmds = append(cmds, m.search.OpenSearchBox())
-		case key.Matches(msg, m.KeyMap.Esc):
-			if m.search.IsEnabled() {
-				return m.search.Reset()
-			} else if m.paging {
-				return m.cancelPaging()
-			}
-		case key.Matches(msg, m.KeyMap.Continue):
-			return m.continuePaging()
-		case key.Matches(msg, m.KeyMap.Reload):
-			return m.Reload()
-		case key.Matches(msg, m.KeyMap.ColWidth):
-			return m.toggleColumnWidthDialog(msg)
-		case key.Matches(msg, m.KeyMap.AllColWidth):
-			return m.toggleColumnWidthForAll()
-		case key.Matches(msg, m.KeyMap.Zoom):
-			return m.Zoom()
-		case key.Matches(msg, m.KeyMap.ToggleFmt):
-			return m.ToggleJSONYAMLFormat()
-		case key.Matches(msg, m.KeyMap.Query):
-			return m.enableQueryMode(false)
-		case key.Matches(msg, m.KeyMap.Scan):
-			return m.enableScanMode(false)
-		case key.Matches(msg, m.KeyMap.ScanParameters):
-			return m.ToggleScanParametersDialog()
-		case key.Matches(msg, m.KeyMap.QueryParameters):
-			return m.ToggleQueryParametersDialog()
-		case key.Matches(msg, m.KeyMap.FilterParameters):
-			return m.ToggleFilterParametersDialog()
-		case key.Matches(msg, m.KeyMap.Copy):
-			return m.toggleCopyDialog()
-		case key.Matches(msg, m.KeyMap.Browser):
-			return m.openInBrowser(m.resolveBrowserURL())
-		case key.Matches(msg, m.KeyMap.ColVis):
-			return m.toggleColumnVisibilityDialog(msg)
-		case key.Matches(msg, m.KeyMap.ColSort):
-			return m.toggleColumnSortingDialog(msg)
-		case key.Matches(msg, m.KeyMap.ColTransform):
-			return m.toggleColumnTransformDialog(msg)
-		default:
-			if match, call := m.AddKeyMap.Matches(msg); match {
-				return call
-			}
-		}
 	case messages.PreviewItem:
 		m.lastPreviewMsg = &msg
 		return nil
@@ -461,16 +393,81 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 		m.spinner.model, cmd = m.spinner.model.Update(msg)
 		return cmd
 	case tea.BackgroundColorMsg:
-		m.updateStyles()
-		return m.broadcast(msg)
+		m.updateStyles() // fallthrough to broadcast
 	}
-	cmds = append(cmds, m.table.Update(msg))
+
+	keypress, isKeyPress := msg.(tea.KeyPressMsg)
+
+	// when search is focused, it has exclusive access to key-presses
+	if search.IsSearchBoxMessage(msg) || (m.search.IsFocused() && isKeyPress) {
+		cmds = append(cmds, m.search.Update(msg))
+	} else if isKeyPress {
+		cmds = append(cmds, m.handleKeyPress(keypress))
+	} else {
+		// unmatched events or events handled without explicit returns are broadcast
+		cmds = append(cmds, m.broadcast(msg))
+	}
 
 	if !m.pagingSuspended && m.table.PaginationEligible() {
-		return m.PageNext(false)
+		cmds = append(cmds, m.PageNext(false))
 	}
 
+	cmds = append(cmds, m.MaybePreviewItem(false))
+	m.updateKeyMaps()
+
 	return tea.Batch(cmds...)
+}
+
+func (m *ItemSelectionPane) handleKeyPress(msg tea.KeyPressMsg) tea.Cmd {
+	switch {
+	case key.Matches(msg, m.KeyMap.Search):
+		return m.search.OpenSearchBox()
+	case key.Matches(msg, m.KeyMap.Esc):
+		if m.search.IsEnabled() {
+			return m.search.Reset() // make search-box disappear
+		} else if m.paging {
+			return m.cancelPaging()
+		}
+	case key.Matches(msg, m.KeyMap.Continue):
+		return m.continuePaging()
+	case key.Matches(msg, m.KeyMap.Reload):
+		return m.Reload()
+	case key.Matches(msg, m.KeyMap.ColWidth):
+		return m.toggleColumnWidthDialog(msg)
+	case key.Matches(msg, m.KeyMap.AllColWidth):
+		return m.toggleColumnWidthForAll()
+	case key.Matches(msg, m.KeyMap.Zoom):
+		return m.Zoom()
+	case key.Matches(msg, m.KeyMap.ToggleFmt):
+		return m.ToggleJSONYAMLFormat()
+	case key.Matches(msg, m.KeyMap.Query):
+		return m.enableQueryMode(false)
+	case key.Matches(msg, m.KeyMap.Scan):
+		return m.enableScanMode(false)
+	case key.Matches(msg, m.KeyMap.ScanParameters):
+		return m.ToggleScanParametersDialog()
+	case key.Matches(msg, m.KeyMap.QueryParameters):
+		return m.ToggleQueryParametersDialog()
+	case key.Matches(msg, m.KeyMap.FilterParameters):
+		return m.ToggleFilterParametersDialog()
+	case key.Matches(msg, m.KeyMap.Copy):
+		return m.toggleCopyDialog()
+	case key.Matches(msg, m.KeyMap.Browser):
+		return m.openInBrowser(m.resolveBrowserURL())
+	case key.Matches(msg, m.KeyMap.ColVis):
+		return m.toggleColumnVisibilityDialog(msg)
+	case key.Matches(msg, m.KeyMap.ColSort):
+		return m.toggleColumnSortingDialog(msg)
+	case key.Matches(msg, m.KeyMap.ColTransform):
+		return m.toggleColumnTransformDialog(msg)
+	default:
+		if match, call := m.AddKeyMap.Matches(msg); match {
+			return call
+		}
+		// forward unmatched keypresses to child table
+		return m.table.Update(msg)
+	}
+	return nil
 }
 
 // broadcast takes a message and forwards it to all children

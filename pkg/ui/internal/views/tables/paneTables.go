@@ -391,12 +391,14 @@ func (m *tableSelectionPane) processPage(msg messages.TablePageReady, preview bo
 	return tea.Batch(cmds...)
 }
 
+// Update handles incoming messages, when it cannot match a message or a
+// message-handler does not explicitly return, it will always broadcast the
+// message to all children.
 func (m *tableSelectionPane) Update(msg tea.Msg) tea.Cmd {
 	cmds := []tea.Cmd{}
 	switch msg := msg.(type) {
 	case tea.BackgroundColorMsg:
-		m.updateStyles()
-		return m.broadcast(msg)
+		m.updateStyles() // falls through to broadcast at the end
 	case messages.TableDetails:
 		m.details = msg.Details
 		return nil
@@ -418,10 +420,14 @@ func (m *tableSelectionPane) Update(msg tea.Msg) tea.Cmd {
 		return cmd
 	}
 
-	if search.IsSearchBoxMessage(msg) || m.search.IsFocused() {
+	keypress, isKeyPress := msg.(tea.KeyPressMsg)
+
+	if search.IsSearchBoxMessage(msg) || m.search.IsFocused() && isKeyPress {
 		cmds = append(cmds, m.search.Update(msg))
-	} else {
-		cmds = append(cmds, m.handleNavigation(msg))
+	} else if isKeyPress {
+		cmds = append(cmds, m.handleKeyPress(keypress))
+	} else { // default to broadcast
+		cmds = append(cmds, m.broadcast(msg))
 	}
 
 	cmds = append(cmds, m.MaybePreviewItem(false))
@@ -437,30 +443,27 @@ func (m *tableSelectionPane) broadcast(msg tea.Msg) tea.Cmd {
 	return tea.Batch(cmds...)
 }
 
-// handleNavigation handles events when search is not active.
-func (m *tableSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
+// handleKeyPress handles events when search is not active.
+func (m *tableSelectionPane) handleKeyPress(msg tea.KeyPressMsg) tea.Cmd {
 	cmds := []tea.Cmd{}
-	switch msg := msg.(type) {
-	case tea.KeyPressMsg:
-		switch {
-		case key.Matches(msg, m.KeyMap.Search):
-			cmds = append(cmds, m.search.OpenSearchBox())
-		case key.Matches(msg, m.KeyMap.Select):
-			return m.selectTable()
-		case key.Matches(msg, m.KeyMap.Zoom):
-			return m.Zoom()
-		case key.Matches(msg, m.KeyMap.Esc):
-			m.search.Reset()
-		case key.Matches(msg, m.KeyMap.Reload):
-			return m.Init()
-		case key.Matches(msg, m.KeyMap.Browser):
-			return m.openInBrowser()
-		case key.Matches(msg, m.KeyMap.Copy):
-			return m.copy()
-		default:
-			if match, call := m.AddKeyMap.Matches(msg); match {
-				return call
-			}
+	switch {
+	case key.Matches(msg, m.KeyMap.Search):
+		cmds = append(cmds, m.search.OpenSearchBox())
+	case key.Matches(msg, m.KeyMap.Select):
+		return m.selectTable()
+	case key.Matches(msg, m.KeyMap.Zoom):
+		return m.Zoom()
+	case key.Matches(msg, m.KeyMap.Esc):
+		m.search.Reset()
+	case key.Matches(msg, m.KeyMap.Reload):
+		return m.Init()
+	case key.Matches(msg, m.KeyMap.Browser):
+		return m.openInBrowser()
+	case key.Matches(msg, m.KeyMap.Copy):
+		return m.copy()
+	default:
+		if match, call := m.AddKeyMap.Matches(msg); match {
+			return call
 		}
 	}
 	cmds = append(cmds, m.content.Update(msg))
