@@ -595,21 +595,23 @@ func (m *ItemSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
 		return nil
 	}
 
-	m.logger.Debug("proceeding with request to preview item",
-		slog.Bool("force", force),
-		slog.Bool("initialised", m.initialised),
-	)
-
 	item, idx := m.table.GetSelectedItem()
 
 	// if no item or preview was already instructed to preview this item, skip
 	if idx == m.lastPreviewItem && !force {
-		m.logger.Debug("eligible to skip; aborting preview",
+		m.logger.Log(m.ctx, logging.LevelTrace,
+			"eligible to skip; aborting preview",
 			slog.Int("selected_item_index", idx),
 			slog.Int("last_preview_index", m.lastPreviewItem),
 		)
 		return nil
 	}
+
+	m.logger.Debug("proceeding with request to preview item",
+		slog.Bool("force", force),
+		slog.Bool("initialised", m.initialised),
+	)
+
 	m.lastPreviewItem = idx
 	if item == nil {
 		m.logger.Debug("no item; sending empty preview message")

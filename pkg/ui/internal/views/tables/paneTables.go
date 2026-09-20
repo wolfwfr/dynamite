@@ -563,7 +563,8 @@ func (m *tableSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
 		idx = m.tablefiltering.matchedTables[idx]
 	}
 	if idx == m.lastTableDetails && !force {
-		m.logger.Debug("preview request is a duplicate; skipping",
+		m.logger.Log(m.ctx, logging.LevelTrace,
+			"preview request is a duplicate; skipping",
 			slog.Int("table_index", idx),
 			slog.Int("last_previewed_index", m.lastTableDetails),
 			slog.Bool("force", force),
