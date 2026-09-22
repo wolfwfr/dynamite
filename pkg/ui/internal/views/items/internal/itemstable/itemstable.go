@@ -16,10 +16,28 @@ import (
 	u "github.com/wolfwfr/dynamite/pkg/util"
 )
 
-func NewItemsTable(ctx context.Context, l *slog.Logger) *ItemsTable {
+type options struct {
+	transformFmt string
+}
+
+type Option func(*options)
+
+func WithTransformFmt(fmt string) Option {
+	return func(opts *options) {
+		opts.transformFmt = fmt
+	}
+}
+
+func NewItemsTable(ctx context.Context, l *slog.Logger, opts ...Option) *ItemsTable {
 	m := ItemsTable{}
 
-	// m.state.ColumnVisibility.InVisible = map[string]struct{}{}
+	options := options{}
+	for _, o := range opts {
+		o(&options)
+	}
+
+	m.transformFmt = options.transformFmt
+
 	m.viewOptions = viewoptions.NewViewOptions()
 
 	{ // contents table

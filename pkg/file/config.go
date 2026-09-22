@@ -75,25 +75,27 @@ type TableViewSettings struct {
 }
 
 type ItemViewSettings struct {
-	PrimaryWidth  int    `yaml:"primary_width_percent"`
-	PageSize      int    `yaml:"page_size"`
-	DefaultFormat string `yaml:"format"`
+	PrimaryWidth             int    `yaml:"primary_width_percent"`
+	PageSize                 int    `yaml:"page_size"`
+	PreviewFormat            string `yaml:"preview_format"`
+	TransformTimestampFormat string `yaml:"transform_timestamp_format"`
 }
 
 type Config struct {
-	AWSRegions            []string
-	StarredRegions        []string
-	DefaultRegion         string
-	DefaultToLastRegion   bool
-	DefaultProfile        string
-	TablesPrimaryWidth    int
-	TablesPageSize        int
-	TablesMax             int
-	TablesHighlightRegexp []string
-	ItemsPrimaryWidth     int
-	ItemsPageSize         int
-	ItemsDefaultFormat    string
-	ThemeOverrides        theme.ThemeOverrides
+	AWSRegions                    []string
+	StarredRegions                []string
+	DefaultRegion                 string
+	DefaultToLastRegion           bool
+	DefaultProfile                string
+	TablesPrimaryWidth            int
+	TablesPageSize                int
+	TablesMax                     int
+	TablesHighlightRegexp         []string
+	ItemsPrimaryWidth             int
+	ItemsPageSize                 int
+	ItemsPreviewFormat            string
+	ItemsTransformTimestampFormat string
+	ThemeOverrides                theme.ThemeOverrides
 }
 
 func defaultConfig() Config {
@@ -132,7 +134,8 @@ func mergeWithDefault(cfg configFile) Config {
 	res.TablesHighlightRegexp = cfg.Tables.HighLightRegexp
 	res.ThemeOverrides = cfg.ThemeOverrides
 
-	res.ItemsDefaultFormat = cfg.Items.DefaultFormat
+	res.ItemsPreviewFormat = cfg.Items.PreviewFormat
+	res.ItemsTransformTimestampFormat = cfg.Items.TransformTimestampFormat
 
 	return res
 }

@@ -46,6 +46,8 @@ type ItemsTable struct {
 	// ColumnAttributes represents a unique set of dynamo-db item keys that
 	// exhaustively cover all keys in the currently paged set of items
 	ColumnAttributes []ColumnAttributes
+
+	transformFmt string
 }
 
 type ColumnAttributes struct {

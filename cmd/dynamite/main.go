@@ -287,9 +287,10 @@ func runApplication(ctx context.Context, cmd *cli.Command) error {
 			HighlightRegexp: cfgf.TablesHighlightRegexp,
 		},
 		Items: appconfig.Items{
-			PrimaryWidth: cfgf.ItemsPrimaryWidth,
-			PageSize:     cfgf.ItemsPageSize,
-			Format:       appconfig.ParseItemPreviewFormat(cfgf.ItemsDefaultFormat),
+			PrimaryWidth:             cfgf.ItemsPrimaryWidth,
+			PageSize:                 cfgf.ItemsPageSize,
+			PreviewFormat:            appconfig.ParseItemPreviewFormat(cfgf.ItemsPreviewFormat),
+			TransformTimestampFormat: cfgf.ItemsTransformTimestampFormat,
 		},
 		MFACredentialCB: f,
 		MFACredentialC:  credsC,

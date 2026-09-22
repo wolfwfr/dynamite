@@ -213,7 +213,10 @@ items:
   # page-size override, paginates items from dynamodb table with given pagesize, by default page-size depends on window-size
   page_size: 0
   # item preview formatting, either 'json' or 'yaml', case-insensitive
-  format: json
+  preview_format: json
+  # format applied to unix timestamps when applying transform. 
+  # Must conform to go's time Layout specification; see: https://pkg.go.dev/time#Layout
+  transform_timestamp_format: "2006-01-02 15:04:05 Z07:00"
 
 colors:
   # All theme colours can be overridden here

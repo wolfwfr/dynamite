@@ -64,9 +64,10 @@ type Tables struct {
 }
 
 type Items struct {
-	PrimaryWidth int
-	PageSize     int
-	Format       ItemPreviewFormat
+	PrimaryWidth             int
+	PageSize                 int
+	PreviewFormat            ItemPreviewFormat
+	TransformTimestampFormat string
 }
 
 type CredentialsRequest struct{}

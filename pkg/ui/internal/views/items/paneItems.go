@@ -186,12 +186,20 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 		scanLimit:      max(10, config.Items.PageSize),
 		queryLimit:     max(10, config.Items.PageSize),
 		pageCancel:     func() {}, // init as noop
-		table:          itemstable.NewItemsTable(ctx, config.Logger),
 		pageIgnore:     make(map[uint8]struct{}),
 	}
 
+	{ //table
+		var opts []itemstable.Option
+		if config.Items.TransformTimestampFormat != "" {
+			opts = append(opts, itemstable.WithTransformFmt(config.Items.TransformTimestampFormat))
+		}
+		table := itemstable.NewItemsTable(ctx, config.Logger, opts...)
+		p.table = table
+	}
+
 	{ // format
-		f := config.Items.Format
+		f := config.Items.PreviewFormat
 		if f == appconfig.JSONFormat {
 			p.previewFormat = messages.JSONformat
 		} else if f == appconfig.YAMLFormat {
