@@ -357,7 +357,12 @@ func (m *ItemSelectionPane) softReset() tea.Cmd {
 // executed; no early returns.
 func (m *ItemSelectionPane) Update(msg tea.Msg) (cmd tea.Cmd) {
 	cmds := []tea.Cmd{}
+
+	// handle updates
 	cmds = append(cmds, m.update(msg))
+
+	// always conduct post-update state-change checks; this ensures state-change
+	// handling consistency at the cost of CPU-time.
 	if !m.pagingSuspended && m.table.PaginationEligible() {
 		cmds = append(cmds, m.PageNext(false))
 	}
@@ -588,6 +593,8 @@ func (m *ItemSelectionPane) ToggleJSONYAMLFormat() tea.Cmd {
 }
 
 // force is used on new pane initialization because lastPreviewItem could be 0
+// NOTE: this function represents a post-update effect and could potentially be
+// incurred at high frequency, log carefully.
 func (m *ItemSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
 	m.logger.Log(m.ctx, logging.LevelTrace,
 		"received request to preview item",
@@ -595,7 +602,8 @@ func (m *ItemSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
 	)
 
 	if !m.initialised {
-		m.logger.Log(m.ctx, logging.LevelTrace, "not initialised; aborting preview",
+		m.logger.Log(m.ctx, logging.LevelTrace,
+			"not initialised; aborting preview",
 			slog.Bool("initialised", m.initialised),
 			slog.Bool("force", force),
 		)
@@ -607,9 +615,10 @@ func (m *ItemSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
 	// if no item or preview was already instructed to preview this item, skip
 	if idx == m.lastPreviewItem && !force {
 		m.logger.Log(m.ctx, logging.LevelTrace,
-			"eligible to skip; aborting preview",
+			"preview request is a duplicate; skipping preview",
 			slog.Int("selected_item_index", idx),
-			slog.Int("last_preview_index", m.lastPreviewItem),
+			slog.Int("last_previewed_index", m.lastPreviewItem),
+			slog.Bool("force", force),
 		)
 		return nil
 	}

@@ -392,10 +392,17 @@ func (m *tableSelectionPane) processPage(msg messages.TablePageReady, preview bo
 }
 
 // Update handles any incoming message and ensures post-handling-effects are
-// executed; no early returns.
+// executed; no early returns (trivial, high-frequency messages excluded).
 func (m *tableSelectionPane) Update(msg tea.Msg) tea.Cmd {
+	// if cmd, ok := m.handleTrivialMessages(msg); ok {
+	// 	return cmd // no post-handling effects for trivial messages
+	// }
+	//
 	cmds := []tea.Cmd{}
 	cmds = append(cmds, m.update(msg))
+
+	// always conduct post-update state-change checks; this ensures state-change
+	// handling consistency at the cost of CPU-time.
 	cmds = append(cmds, m.MaybePreviewItem(false))
 	return tea.Batch(cmds...)
 }
@@ -548,13 +555,26 @@ func (m *tableSelectionPane) copy() tea.Cmd {
 }
 
 // force is used on new pane initialization because lastPreviewItem could be 0
+// NOTE: this function represents a post-update effect and could potentially be
+// incurred at high frequency, log carefully.
 func (m *tableSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
 	m.logger.Log(m.ctx, logging.LevelTrace,
 		"received request to preview table details",
 		slog.Bool("force", force),
 	)
+
+	if !m.initialised {
+		m.logger.Log(m.ctx, logging.LevelTrace,
+			"not initialised; aborting preview",
+			slog.Bool("initialised", m.initialised),
+			slog.Bool("force", force),
+		)
+		return nil
+	}
+
 	if len(m.tables) == 0 || (m.tablefiltering.enabled && len(m.tablefiltering.matchedTables) == 0) {
-		m.logger.Debug("nothing to view; emptying details pane",
+		m.logger.Log(m.ctx, logging.LevelTrace,
+			"nothing to view; emptying details pane",
 			slog.Int("len_tables", len(m.tables)),
 			slog.Bool("search_enabled", m.tablefiltering.enabled),
 			slog.Int("seach_matches", len(m.tablefiltering.matchedTables)),
@@ -570,15 +590,22 @@ func (m *tableSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
 	if len(m.tablefiltering.matchedTables) > 0 { // cursor refers to filtered items
 		idx = m.tablefiltering.matchedTables[idx]
 	}
+
 	if idx == m.lastTableDetails && !force {
 		m.logger.Log(m.ctx, logging.LevelTrace,
-			"preview request is a duplicate; skipping",
+			"preview request is a duplicate; skipping preview",
 			slog.Int("table_index", idx),
 			slog.Int("last_previewed_index", m.lastTableDetails),
 			slog.Bool("force", force),
 		)
 		return nil
 	}
+
+	m.logger.Debug("proceeding with request to preview table",
+		slog.Bool("force", force),
+		slog.Bool("initialised", m.initialised),
+	)
+
 	m.lastTableDetails = idx
 	table := m.tables[idx]
 
