@@ -198,6 +198,7 @@ func TestItemSelectionResets(t *testing.T) {
 			sut, tbl := newSUT(t) // initialise
 			tbl.EXPECT().ResetColumnSorting().Times(1)
 			tbl.EXPECT().GetAllowedOptions().Return(viewAll).Times(1)   // expect call to get-view-options for keymap update
+			tbl.EXPECT().PaginationEligible().Return(false).AnyTimes()  // expect calls to check for continued pagination
 			sut.Update(messages.ColumnSortingReset{TableARN: tableARN}) // send message
 		})
 		t.Run("execute table reset when", func(t *testing.T) {
@@ -206,6 +207,7 @@ func TestItemSelectionResets(t *testing.T) {
 				sut, tbl := newSUT(t)                                                       // defaults to scan
 				tbl.EXPECT().Reset().Times(1)                                               // expect call to full table reset
 				tbl.EXPECT().GetAllowedOptions().Return(viewAll).Times(1)                   // expect call to view-options for keymap update
+				tbl.EXPECT().PaginationEligible().Return(false).AnyTimes()                  // expect calls to check for continued pagination
 				sut.Update(queryKey)                                                        // switch to query mode
 			})
 			t.Run("switching from query to scan", func(t *testing.T) {
@@ -216,6 +218,7 @@ func TestItemSelectionResets(t *testing.T) {
 				tbl.EXPECT().GetAllowedOptions().Return(viewAll).Times(2)                   // expect call to view-options for keymap update
 				tbl.EXPECT().GetVisualRows().Return([]table.Row{}).AnyTimes()               /// expect calls to get-visual-rows from update-size
 				tbl.EXPECT().UpdateSize(gm.Any(), gm.Any()).AnyTimes()                      // expect calls to update-size
+				tbl.EXPECT().PaginationEligible().Return(false).AnyTimes()                  // expect calls to check for continued pagination
 				sut.Update(queryKey)                                                        // first enable query mode before switching back
 				sut.Update(scanKey)                                                         // switch to scan mode
 			})
@@ -225,6 +228,7 @@ func TestItemSelectionResets(t *testing.T) {
 				tbl.EXPECT().GetAllowedOptions().Return(viewAll).Times(1)     // expect call to view-options for keymap update
 				tbl.EXPECT().GetVisualRows().Return([]table.Row{}).AnyTimes() /// expect calls to get-visual-rows from update-size
 				tbl.EXPECT().UpdateSize(gm.Any(), gm.Any()).AnyTimes()        // expect calls to update-size
+				tbl.EXPECT().PaginationEligible().Return(false).AnyTimes()    // expect calls to check for continued pagination
 				simpleChangeScanIndex(sut, tableARN, "new")                   // change index
 			})
 			t.Run("changing query parameters", func(t *testing.T) {
@@ -234,6 +238,7 @@ func TestItemSelectionResets(t *testing.T) {
 				tbl.EXPECT().GetAllowedOptions().Return(viewAll).Times(2)                   // expect call to view-options for keymap update
 				tbl.EXPECT().GetVisualRows().Return([]table.Row{}).AnyTimes()               /// expect calls to get-visual-rows from update-size
 				tbl.EXPECT().UpdateSize(gm.Any(), gm.Any()).AnyTimes()                      // expect calls to update-size
+				tbl.EXPECT().PaginationEligible().Return(false).AnyTimes()                  // expect calls to check for continued pagination
 				sut.Update(queryKey)                                                        // first enable query mode to accept query settings
 				simpleChangeQParams(sut, tableARN, "new")                                   // change query index
 			})

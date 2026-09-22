@@ -353,81 +353,32 @@ func (m *ItemSelectionPane) softReset() tea.Cmd {
 	return cmd
 }
 
+// Update handles any incoming message and ensures post-handling-effects are
+// executed; no early returns.
 func (m *ItemSelectionPane) Update(msg tea.Msg) (cmd tea.Cmd) {
 	cmds := []tea.Cmd{}
-	// TODO: extend; missing a few matches
-	_, isSelect := msg.(messages.SelectTable)
-	_, isToggleFmt := msg.(messages.ToggleJSONYAML)
-	_, isTick := msg.(spinner.TickMsg)
-	_, isColVis := msg.(messages.ColumnVisibilityUpdate)
-	_, isColSort := msg.(messages.ColumnSortingUpdate)
-	_, isColSortRes := msg.(messages.ColumnSortingReset)
-	_, isPreview := msg.(messages.PreviewItem)
-	_, isBgMsg := msg.(tea.BackgroundColorMsg)
 
-	excludeSearch := isSelect || isToggleFmt || isTick || isColVis || isColSort || isColSortRes || isPreview || isBgMsg
+	// handle updates
+	cmds = append(cmds, m.update(msg))
 
-	if search.IsSearchBoxMessage(msg) || (!excludeSearch && m.search.IsFocused()) {
-		cmds = append(cmds, m.search.Update(msg))
-	} else {
-		cmds = append(cmds, m.handleNavigation(msg))
+	// always conduct post-update state-change checks; this ensures state-change
+	// handling consistency at the cost of CPU-time.
+	if !m.pagingSuspended && m.table.PaginationEligible() {
+		cmds = append(cmds, m.PageNext(false))
 	}
 	cmds = append(cmds, m.MaybePreviewItem(false))
 	m.updateKeyMaps()
+
 	return tea.Batch(cmds...)
 }
 
-// handleNavigation handles events when search is not active.
-func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
+// update handles incoming messages, when it cannot match a message or a
+// message-handler does not explicitly return, it will always broadcast the
+// message to all children.
+func (m *ItemSelectionPane) update(msg tea.Msg) (cmd tea.Cmd) {
 	cmds := []tea.Cmd{}
+
 	switch msg := msg.(type) {
-	case tea.KeyPressMsg:
-		switch {
-		case key.Matches(msg, m.KeyMap.Search):
-			cmds = append(cmds, m.search.OpenSearchBox())
-		case key.Matches(msg, m.KeyMap.Esc):
-			if m.search.IsEnabled() {
-				return m.search.Reset()
-			} else if m.paging {
-				return m.cancelPaging()
-			}
-		case key.Matches(msg, m.KeyMap.Continue):
-			return m.continuePaging()
-		case key.Matches(msg, m.KeyMap.Reload):
-			return m.Reload()
-		case key.Matches(msg, m.KeyMap.ColWidth):
-			return m.toggleColumnWidthDialog(msg)
-		case key.Matches(msg, m.KeyMap.AllColWidth):
-			return m.toggleColumnWidthForAll()
-		case key.Matches(msg, m.KeyMap.Zoom):
-			return m.Zoom()
-		case key.Matches(msg, m.KeyMap.ToggleFmt):
-			return m.ToggleJSONYAMLFormat()
-		case key.Matches(msg, m.KeyMap.Query):
-			return m.enableQueryMode(false)
-		case key.Matches(msg, m.KeyMap.Scan):
-			return m.enableScanMode(false)
-		case key.Matches(msg, m.KeyMap.ScanParameters):
-			return m.ToggleScanParametersDialog()
-		case key.Matches(msg, m.KeyMap.QueryParameters):
-			return m.ToggleQueryParametersDialog()
-		case key.Matches(msg, m.KeyMap.FilterParameters):
-			return m.ToggleFilterParametersDialog()
-		case key.Matches(msg, m.KeyMap.Copy):
-			return m.toggleCopyDialog()
-		case key.Matches(msg, m.KeyMap.Browser):
-			return m.openInBrowser(m.resolveBrowserURL())
-		case key.Matches(msg, m.KeyMap.ColVis):
-			return m.toggleColumnVisibilityDialog(msg)
-		case key.Matches(msg, m.KeyMap.ColSort):
-			return m.toggleColumnSortingDialog(msg)
-		case key.Matches(msg, m.KeyMap.ColTransform):
-			return m.toggleColumnTransformDialog(msg)
-		default:
-			if match, call := m.AddKeyMap.Matches(msg); match {
-				return call
-			}
-		}
 	case messages.PreviewItem:
 		m.lastPreviewMsg = &msg
 		return nil
@@ -461,16 +412,74 @@ func (m *ItemSelectionPane) handleNavigation(msg tea.Msg) tea.Cmd {
 		m.spinner.model, cmd = m.spinner.model.Update(msg)
 		return cmd
 	case tea.BackgroundColorMsg:
-		m.updateStyles()
-		return m.broadcast(msg)
+		m.updateStyles() // fallthrough to broadcast
 	}
-	cmds = append(cmds, m.table.Update(msg))
 
-	if !m.pagingSuspended && m.table.PaginationEligible() {
-		return m.PageNext(false)
+	keypress, isKeyPress := msg.(tea.KeyPressMsg)
+
+	// when search is focused, it has exclusive access to key-presses
+	if search.IsSearchBoxMessage(msg) || (m.search.IsFocused() && isKeyPress) {
+		cmds = append(cmds, m.search.Update(msg))
+	} else if isKeyPress {
+		cmds = append(cmds, m.handleKeyPress(keypress))
+	} else {
+		// unmatched events or events handled without explicit returns are broadcast
+		cmds = append(cmds, m.broadcast(msg))
 	}
 
 	return tea.Batch(cmds...)
+}
+
+func (m *ItemSelectionPane) handleKeyPress(msg tea.KeyPressMsg) tea.Cmd {
+	switch {
+	case key.Matches(msg, m.KeyMap.Search):
+		return m.search.OpenSearchBox()
+	case key.Matches(msg, m.KeyMap.Esc):
+		if m.search.IsEnabled() {
+			return m.search.Reset() // make search-box disappear
+		} else if m.paging {
+			return m.cancelPaging()
+		}
+	case key.Matches(msg, m.KeyMap.Continue):
+		return m.continuePaging()
+	case key.Matches(msg, m.KeyMap.Reload):
+		return m.Reload()
+	case key.Matches(msg, m.KeyMap.ColWidth):
+		return m.toggleColumnWidthDialog(msg)
+	case key.Matches(msg, m.KeyMap.AllColWidth):
+		return m.toggleColumnWidthForAll()
+	case key.Matches(msg, m.KeyMap.Zoom):
+		return m.Zoom()
+	case key.Matches(msg, m.KeyMap.ToggleFmt):
+		return m.ToggleJSONYAMLFormat()
+	case key.Matches(msg, m.KeyMap.Query):
+		return m.enableQueryMode(false)
+	case key.Matches(msg, m.KeyMap.Scan):
+		return m.enableScanMode(false)
+	case key.Matches(msg, m.KeyMap.ScanParameters):
+		return m.ToggleScanParametersDialog()
+	case key.Matches(msg, m.KeyMap.QueryParameters):
+		return m.ToggleQueryParametersDialog()
+	case key.Matches(msg, m.KeyMap.FilterParameters):
+		return m.ToggleFilterParametersDialog()
+	case key.Matches(msg, m.KeyMap.Copy):
+		return m.toggleCopyDialog()
+	case key.Matches(msg, m.KeyMap.Browser):
+		return m.openInBrowser(m.resolveBrowserURL())
+	case key.Matches(msg, m.KeyMap.ColVis):
+		return m.toggleColumnVisibilityDialog(msg)
+	case key.Matches(msg, m.KeyMap.ColSort):
+		return m.toggleColumnSortingDialog(msg)
+	case key.Matches(msg, m.KeyMap.ColTransform):
+		return m.toggleColumnTransformDialog(msg)
+	default:
+		if match, call := m.AddKeyMap.Matches(msg); match {
+			return call
+		}
+		// forward unmatched keypresses to child table
+		return m.table.Update(msg)
+	}
+	return nil
 }
 
 // broadcast takes a message and forwards it to all children
@@ -584,6 +593,8 @@ func (m *ItemSelectionPane) ToggleJSONYAMLFormat() tea.Cmd {
 }
 
 // force is used on new pane initialization because lastPreviewItem could be 0
+// NOTE: this function represents a post-update effect and could potentially be
+// incurred at high frequency, log carefully.
 func (m *ItemSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
 	m.logger.Log(m.ctx, logging.LevelTrace,
 		"received request to preview item",
@@ -591,8 +602,22 @@ func (m *ItemSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
 	)
 
 	if !m.initialised {
-		m.logger.Log(m.ctx, logging.LevelTrace, "not initialised; aborting preview",
+		m.logger.Log(m.ctx, logging.LevelTrace,
+			"not initialised; aborting preview",
 			slog.Bool("initialised", m.initialised),
+			slog.Bool("force", force),
+		)
+		return nil
+	}
+
+	item, idx := m.table.GetSelectedItem()
+
+	// if no item or preview was already instructed to preview this item, skip
+	if idx == m.lastPreviewItem && !force {
+		m.logger.Log(m.ctx, logging.LevelTrace,
+			"preview request is a duplicate; skipping preview",
+			slog.Int("selected_item_index", idx),
+			slog.Int("last_previewed_index", m.lastPreviewItem),
 			slog.Bool("force", force),
 		)
 		return nil
@@ -603,16 +628,6 @@ func (m *ItemSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
 		slog.Bool("initialised", m.initialised),
 	)
 
-	item, idx := m.table.GetSelectedItem()
-
-	// if no item or preview was already instructed to preview this item, skip
-	if idx == m.lastPreviewItem && !force {
-		m.logger.Debug("eligible to skip; aborting preview",
-			slog.Int("selected_item_index", idx),
-			slog.Int("last_preview_index", m.lastPreviewItem),
-		)
-		return nil
-	}
 	m.lastPreviewItem = idx
 	if item == nil {
 		m.logger.Debug("no item; sending empty preview message")

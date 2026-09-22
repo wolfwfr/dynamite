@@ -62,6 +62,7 @@ func TestTableSelectionDetails(t *testing.T) {
 			ctrl := gm.NewController(t)                  // init mock controller
 			db := mocks.NewMockdynamodbClient(ctrl)      // init mocked DynamoDB client
 			sut := newSUT(db)                            // init sut
+			sut.initialised = true                       // pretend to be initialised
 			tables := []string{"table-A", "table-B"}     // page
 			cmd := simpleLoadTables(sut, region, tables) // load tables
 			db.EXPECT().
@@ -77,6 +78,7 @@ func TestTableSelectionDetails(t *testing.T) {
 			ctrl := gm.NewController(t)                                          // init mock controller
 			db := mocks.NewMockdynamodbClient(ctrl)                              // init mocked DynamoDB client
 			sut := newSUT(db)                                                    // init sut
+			sut.initialised = true                                               // pretend to be initialised
 			tables := []string{"table-A", "table-B"}                             // page
 			cmd := simpleLoadTables(sut, region, tables)                         // load tables
 			sut.Update(searchKey)                                                // enable search

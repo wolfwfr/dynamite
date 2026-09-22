@@ -3,10 +3,12 @@ package search
 import (
 	"strings"
 
+	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/google/uuid"
+
 	"github.com/wolfwfr/dynamite/pkg/theme"
 )
 
@@ -16,6 +18,25 @@ type SearchCallbacks struct {
 	Results        func(prefix string, items []FilteredItem) tea.Cmd
 	Reset          func(searchHeight int) tea.Cmd
 	SearchBoxOpens func(searchHeight int) tea.Cmd
+}
+
+type KeyMap struct {
+	Unfocus key.Binding
+	Focus   key.Binding
+}
+
+func DefaultKeymap() KeyMap {
+	return KeyMap{
+		Unfocus: key.NewBinding(
+			key.WithKeys("esc", "enter"),
+			key.WithHelp("esc/enter", "unfocus"),
+			key.WithDisabled(),
+		),
+		Focus: key.NewBinding(
+			key.WithKeys("/"),
+			key.WithHelp("/", "focus"),
+		),
+	}
 }
 
 type SearchBox struct {
@@ -34,6 +55,8 @@ type SearchBox struct {
 	F FilterFunc
 
 	Callbacks SearchCallbacks
+
+	Keymap KeyMap
 }
 
 func NewSearchBox(cb SearchCallbacks) *SearchBox {
@@ -53,6 +76,8 @@ func NewSearchBox(cb SearchCallbacks) *SearchBox {
 		F: DefaultFilter,
 
 		Callbacks: cb,
+
+		Keymap: DefaultKeymap(),
 	}
 }
 
@@ -131,11 +156,15 @@ func (s *SearchBox) Update(msg tea.Msg) tea.Cmd {
 
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
-		switch txt := msg.String(); txt {
-		case "esc", "enter":
+		switch {
+		case key.Matches(msg, s.Keymap.Unfocus):
 			s.UnFocus()
-			fallthrough
+		case key.Matches(msg, s.Keymap.Focus):
+			return s.Focus()
 		default:
+			if !s.focused {
+				return nil
+			}
 			newQuery, cmd := s.input.Update(msg)
 			cmds = append(cmds, cmd)
 			if newQuery.Value() != s.input.Value() { // if new query
@@ -227,6 +256,8 @@ func (s *SearchBox) Search(q string) tea.Cmd {
 // enabled (i.e. hidden), the function will enable it and call the appropriate
 // callback.
 func (s *SearchBox) OpenSearchBox() tea.Cmd {
+	s.Keymap.Focus.SetEnabled(false)
+	s.Keymap.Unfocus.SetEnabled(true)
 	cmds := []tea.Cmd{}
 	s.focused = true
 	cmds = append(cmds, s.input.Focus())
@@ -244,6 +275,13 @@ func (s *SearchBox) OpenSearchBox() tea.Cmd {
 func (s *SearchBox) UnFocus() {
 	s.focused = false
 	s.input.Blur()
+	s.Keymap.Focus.SetEnabled(true)
+	s.Keymap.Unfocus.SetEnabled(false)
+}
+
+// Focus re-enables focus for the search-box.
+func (s *SearchBox) Focus() tea.Cmd {
+	return s.OpenSearchBox()
 }
 
 // Reset removes any text and completely disables the search-box. It will also
