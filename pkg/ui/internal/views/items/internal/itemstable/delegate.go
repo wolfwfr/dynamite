@@ -55,13 +55,16 @@ func (t *ItemsTable) TableRowFieldDelegate(row table.Row, col table.Column, colI
 		style = style.Override(len([]rune(truncated))-1, st.PaddingRight(padR))
 	}
 	field.RawValue = truncated
+	raw := field.RawValue
+	runes := []rune(raw)
+	lenRunes := len(runes)
 
 	// apply background styling for selected row
 	if selected {
 		// fill up any remaining space
-		if len([]rune(field.RawValue)) < fullWidth {
-			st, _ := style.GetAt(len([]rune(field.RawValue)) - 1)
-			style = style.Override(len([]rune(field.RawValue))-1, st.PaddingRight(fullWidth-len([]rune(field.RawValue))))
+		if lenRunes < fullWidth {
+			st, _ := style.GetAt(lenRunes - 1)
+			style = style.Override(lenRunes-1, st.PaddingRight(fullWidth-lenRunes))
 		}
 		style = style.SetBackgroundAll(t.styles.SelectedBackground)
 	}
@@ -84,17 +87,14 @@ func (t *ItemsTable) TableRowFieldDelegate(row table.Row, col table.Column, colI
 	}
 
 	enforceWidth := lipgloss.NewStyle().Width(fullWidth).MaxWidth(fullWidth).Inline(true).Render
-	raw := field.RawValue
 
 	// not trimming styling end, because with a trimmed input string, that
 	// section never gets executed anyway, expect little to no performance
 	// gains.
-	if offL > padL && // padL already included
-		style.Len() > 1 { // ensure there is at least 1 styled rune left, for selection background
-		style = style.TrimStart(offL - padL)
+	if offL > padL { // padL already included in offL
+		style = style.TrimStart(min(offL-padL, style.Len()-1)) // ensure there is at least 1 styled rune left, for selection background
 		style = style.SetLeftPaddingFirst(offL)
 	}
-	runes := []rune(raw)
 	cutSize := offR - padR - (colW - len(runes))
 	if offR > padR && len(runes) <= colW && cutSize > 0 {
 		runes = runes[0:max(0, len(runes)-cutSize)]
