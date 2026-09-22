@@ -78,6 +78,7 @@ type ItemViewSettings struct {
 	PrimaryWidth             int    `yaml:"primary_width_percent"`
 	PageSize                 int    `yaml:"page_size"`
 	PreviewFormat            string `yaml:"preview_format"`
+	PreviewTabSize           *int   `yaml:"preview_tab_size"`
 	TransformTimestampFormat string `yaml:"transform_timestamp_format"`
 }
 
@@ -94,6 +95,7 @@ type Config struct {
 	ItemsPrimaryWidth             int
 	ItemsPageSize                 int
 	ItemsPreviewFormat            string
+	ItemsPreviewTabSize           *int
 	ItemsTransformTimestampFormat string
 	ThemeOverrides                theme.ThemeOverrides
 }
@@ -134,6 +136,7 @@ func mergeWithDefault(cfg configFile) Config {
 	res.TablesHighlightRegexp = cfg.Tables.HighLightRegexp
 	res.ThemeOverrides = cfg.ThemeOverrides
 
+	res.ItemsPreviewTabSize = cfg.Items.PreviewTabSize
 	res.ItemsPreviewFormat = cfg.Items.PreviewFormat
 	res.ItemsTransformTimestampFormat = cfg.Items.TransformTimestampFormat
 

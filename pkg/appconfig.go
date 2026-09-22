@@ -68,6 +68,7 @@ type Items struct {
 	PageSize                 int
 	PreviewFormat            ItemPreviewFormat
 	TransformTimestampFormat string
+	PreviewFormatTabSize     *int
 }
 
 type CredentialsRequest struct{}

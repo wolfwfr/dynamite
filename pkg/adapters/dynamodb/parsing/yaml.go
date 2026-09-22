@@ -17,7 +17,8 @@ const (
 )
 
 type YAMLParser struct {
-	Styles yamlParserStyles
+	Styles  yamlParserStyles
+	tabSize int
 }
 
 type yamlParserStyles struct {
@@ -44,8 +45,8 @@ func newYamlParserStyles() yamlParserStyles {
 	return p
 }
 
-func NewYAMLParser() YAMLParser {
-	p := YAMLParser{}
+func NewYAMLParser(tabSize int) YAMLParser {
+	p := YAMLParser{tabSize: tabSize}
 	p.Styles = newYamlParserStyles()
 	return p
 }
@@ -66,7 +67,7 @@ func (p YAMLParser) pYAML(elements map[string]types.AttributeValue, hashkey stri
 	fieldNameSt := p.Styles.FieldNameStyle
 	tokenSt := p.Styles.TokenStyle
 
-	tbs := tabs(nestLevel)
+	tbs := tabs(p.tabSize, nestLevel)
 	for _, k := range keysSorted {
 		fmt.Fprintf(&raw, "%s%s: ", tbs, k)
 		styled = append(styled, styles.LineStyle{}.
@@ -112,9 +113,9 @@ func (p YAMLParser) switchAttrValueYAML(v types.AttributeValue, hashkey string, 
 	case *types.AttributeValueMemberBOOL:
 		return obj(pYAMLBool(vv.Value, bolSt))
 	case *types.AttributeValueMemberBS:
-		return stringableAsListYAML(p.Styles, vv.Value, nestLevel, func(s []byte) (string, styles.ObjectStyle) { return obj(pYAMLBytes(s, bytSt)) })
+		return stringableAsListYAML(p.Styles, vv.Value, p.tabSize, nestLevel, func(s []byte) (string, styles.ObjectStyle) { return obj(pYAMLBytes(s, bytSt)) })
 	case *types.AttributeValueMemberL:
-		return stringableAsListYAML(p.Styles, vv.Value, nestLevel, func(s types.AttributeValue) (string, styles.ObjectStyle) {
+		return stringableAsListYAML(p.Styles, vv.Value, p.tabSize, nestLevel, func(s types.AttributeValue) (string, styles.ObjectStyle) {
 			return p.switchAttrValueYAML(s, hashkey, rangekey, nestLevel, true)
 		})
 	case *types.AttributeValueMemberM:
@@ -135,7 +136,7 @@ func (p YAMLParser) switchAttrValueYAML(v types.AttributeValue, hashkey string, 
 				contentStyling[i] = st.Override(0, first.PaddingLeft(first.GetPaddingLeft()+2))
 			}
 		}
-		tbs := tabs(nestLevel + 1)
+		tbs := tabs(p.tabSize, nestLevel+1)
 		prefix := func(s string) string {
 			// if not a list item (then newline already prepended) && object not empty, then prepend with newline
 			// if list-item, remove prepended tabs (list does that for first line)
@@ -148,21 +149,21 @@ func (p YAMLParser) switchAttrValueYAML(v types.AttributeValue, hashkey string, 
 	case *types.AttributeValueMemberN:
 		return obj(pYAMLNum(vv.Value, numSt))
 	case *types.AttributeValueMemberNS:
-		return stringableAsListYAML(p.Styles, vv.Value, nestLevel, func(s string) (string, styles.ObjectStyle) { return obj(pYAMLNum(s, numSt)) })
+		return stringableAsListYAML(p.Styles, vv.Value, p.tabSize, nestLevel, func(s string) (string, styles.ObjectStyle) { return obj(pYAMLNum(s, numSt)) })
 	case *types.AttributeValueMemberNULL:
 		v := util.Ternary("NULL", "NOT NULL", vv.Value)
 		return obj(pYAMLNULL(v, nulSt))
 	case *types.AttributeValueMemberS:
 		return obj(pYAMLString(vv.Value, strSt))
 	case *types.AttributeValueMemberSS:
-		return stringableAsListYAML(p.Styles, vv.Value, nestLevel, func(s string) (string, styles.ObjectStyle) { return obj(pYAMLString(s, strSt)) })
+		return stringableAsListYAML(p.Styles, vv.Value, p.tabSize, nestLevel, func(s string) (string, styles.ObjectStyle) { return obj(pYAMLString(s, strSt)) })
 	default:
 		fm := "<failed to parse>"
 		return obj(pYAMLERR(fm, errSt))
 	}
 }
 
-func stringableAsListYAML[S []E, E any](stls yamlParserStyles, s S, nestLevel int, tr func(E) (string, styles.ObjectStyle)) (string, styles.ObjectStyle) {
+func stringableAsListYAML[S []E, E any](stls yamlParserStyles, s S, tabSize, nestLevel int, tr func(E) (string, styles.ObjectStyle)) (string, styles.ObjectStyle) {
 	tokenSt := stls.TokenStyle
 
 	raw := strings.Builder{}
@@ -170,7 +171,7 @@ func stringableAsListYAML[S []E, E any](stls yamlParserStyles, s S, nestLevel in
 
 	raw.WriteString("\n")
 
-	tbs := tabs(nestLevel + 1)
+	tbs := tabs(tabSize, nestLevel+1)
 
 	for _, v := range s {
 		r, contentStyling := tr(v)

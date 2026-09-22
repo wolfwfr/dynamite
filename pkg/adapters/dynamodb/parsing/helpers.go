@@ -47,12 +47,9 @@ func trimSuffixIf(s string, x string, b bool) string {
 	return s
 }
 
-// TODO: make configurable
-var tabsize = 3
-
-func tabs(n int) string {
+func tabs(size, n int) string {
 	var res string
-	for range n * tabsize {
+	for range n * size {
 		res += spf(" ")
 	}
 	return res

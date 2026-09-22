@@ -74,7 +74,6 @@ func genericTestItem() map[string]types.AttributeValue {
 }
 
 func genericTestItemJSON() string {
-	tabsize = 2
 	return `{
   "string-key": "string-value\nwith-newline",
   "bool-false-key": false,
@@ -122,7 +121,7 @@ func genericTestItemJSON() string {
 func TestJSONParsing(t *testing.T) {
 	item := genericTestItem()
 	exp := genericTestItemJSON()
-	p := JSONParser{}
+	p := JSONParser{tabSize: 2}
 	res, _ := p.ParseItemToJSON(item, "string-key", nil)
 	assert.EqualValues(t, exp, res)
 }

@@ -4,11 +4,14 @@
 <div align="center">
 <img width="700" height="175" alt="dynamite_logo_v0 1_transparent" src="https://github.com/user-attachments/assets/208dfa02-7c35-4532-8733-e547fb9bf616" />
 
-  <br/><br/>
+<br/><br/>
 
-  [Installation](#-installation) &bull; [Getting Started](#-getting-started) &bull; [Features](#-features) &bull; [Configuration](#-configuration) &bull; [Troubleshooting](#-troubleshooting)
-  
-  ---
+[Installation](#-installation) &bull; [Getting Started](#-getting-started)
+&bull; [Features](#-features) &bull; [Configuration](#-configuration) &bull;
+[Troubleshooting](#-troubleshooting)
+
+---
+
 </div>
 
 <!--
@@ -47,30 +50,31 @@ _  /_/ /_  /_/ /_  / / / /_/ /_  / / / / /  / / /_ /  __/
 
 <img width="1600" height="800" alt="demo_v0 4_compressed" src="https://github.com/user-attachments/assets/2ba09803-4355-4975-8e8d-f07915e26a0f" />
 
-
 <br/>
 <br/>
 
 <img width="3250" height="1650" alt="dynamite_screenshots_v0 4" src="https://github.com/user-attachments/assets/5d721b42-ea8b-4976-9613-0750c318cc3f" />
-
-
 
 <br/>
 <br/>
 
 ## 🎁 Dynamite
 
-`Dynamite` is a keyboard-focused, configurable, two-pane TUI for querying and browsing items in Amazon DynamoDB.
+`Dynamite` is a keyboard-focused, configurable, two-pane TUI for querying and
+browsing items in Amazon DynamoDB.
 
-It aims to provide impactful quality-of-life features and a pleasant, minimalist look-and-feel.
+It aims to provide impactful quality-of-life features and a pleasant, minimalist
+look-and-feel.
 
 <br/>
 
 ## 🤖 AI notice 🤖
 
-`Dynamite`'s foundation (i.e. all pre-release code) is proudly crafted by hand, without any involvement of LLM assistance.
+`Dynamite`'s foundation (i.e. all pre-release code) is proudly crafted by hand,
+without any involvement of LLM assistance.
 
-Future polishing, fixes & feature implementation might involve AI usage, but any such changes will be applied with care.
+Future polishing, fixes & feature implementation might involve AI usage, but any
+such changes will be applied with care.
 
 <br/>
 
@@ -107,14 +111,14 @@ dynamite
 ### Help
 
 For help, simply run:
+
 ```bash
 dynamite --help
 ```
 
 ### Execute
 
-Install `Dynamite`.
-Then execute with the valid AWS credentials:
+Install `Dynamite`. Then execute with the valid AWS credentials:
 
 > [!NOTE]
 >
@@ -123,6 +127,7 @@ Then execute with the valid AWS credentials:
 <br/>
 
 **With AWS Credentials in Environment**
+
 ```bash
 # AWS_SESSION_TOKEN=*******
 # AWS_PROFILE=******
@@ -130,6 +135,7 @@ dynamite
 ```
 
 **With an AWS Profile Flag**
+
 ```bash
 dynamite --aws_profile="my-profile"
 ```
@@ -169,13 +175,15 @@ Among others, Dynamite offers:
 
 ## 🔧 Configuration
 
-By default, the `config.yaml` is stored in a `dynamite-tui` sub-directory at your OS default config location:
+By default, the `config.yaml` is stored in a `dynamite-tui` sub-directory at
+your OS default config location:
 
 - **Unix/Linux**: `{XDG_CONFIG_HOME}` or`{HOME}/.config/`
 - **windows**: `{AppData}/`
 - **darwin/ios**: `{HOME}/Library/Application Support/`
 
-A custom config_path can be provided to the CLI with `--cfg` or the `DYNAMITE_TUI_CONFIG_DIR` ENVIRONMENT variable.
+A custom config_path can be provided to the CLI with `--cfg` or the
+`DYNAMITE_TUI_CONFIG_DIR` ENVIRONMENT variable.
 
 Here is the default configuration:
 
@@ -214,7 +222,9 @@ items:
   page_size: 0
   # item preview formatting, either 'json' or 'yaml', case-insensitive
   preview_format: json
-  # format applied to unix timestamps when applying transform. 
+  # tab-size applied to json/yaml renders in the item preview; accepts values in range [0,20]
+  preview_tab_size: 3
+  # format applied to unix timestamps when applying transform.
   # Must conform to go's time Layout specification; see: https://pkg.go.dev/time#Layout
   transform_timestamp_format: "2006-01-02 15:04:05 Z07:00"
 
@@ -245,7 +255,6 @@ colors:
   spinner_symbol_fg: nil
 ```
 
-
 <br/>
 
 ### Highlighting Table Names
@@ -254,6 +263,7 @@ Table names can be highlighted by matching them against regular expressions that
 you define in the configuration file.
 
 **how it works**
+
 - Expressions that fail to compile are ignored.
 - Each table name is matched against the expressions in order.
 - The first full match wins.
@@ -271,13 +281,15 @@ tables:
     - ^(staging|prod)(.*-api)(.*)$
 ```
 
-The above configuration will match as follows:
-| table-name                        | matching expression | highlighted segments                    | number of segments |
-| --------------------------------- | ------------------- | --------------------------------------- | ------------------ |
-| `prod-happiness-service-YEF15`    | 1                   | `[prod, -happiness-service, -YEF15]`    | 3                  |
-| `staging-cataclysm-service-EFI89` | 1                   | `[staging, -cataclysm-service, -EFI89]` | 3                  |
-| `staging-chaos-api-YAK36`         | 2                   | `[staging, -chaos-service, -YAK36]`     | 3                  |
-| `NewYork-rockstar-api`            | NONE                | `[NewYork-rockstar-api]`                | 1                  |
+The above configuration will match as follows: | table-name | matching
+expression | highlighted segments | number of segments | |
+--------------------------------- | ------------------- |
+--------------------------------------- | ------------------ | |
+`prod-happiness-service-YEF15` | 1 | `[prod, -happiness-service, -YEF15]` | 3 |
+| `staging-cataclysm-service-EFI89` | 1 |
+`[staging, -cataclysm-service, -EFI89]` | 3 | | `staging-chaos-api-YAK36` | 2 |
+`[staging, -chaos-service, -YAK36]` | 3 | | `NewYork-rockstar-api` | NONE |
+`[NewYork-rockstar-api]` | 1 |
 
 <br/>
 
@@ -287,22 +299,27 @@ The above configuration will match as follows:
 
 - **Keymap Configuration**: use the config file to change the keymapping
 - **Themes**: additional themes
-- **Merged Feature Dialog**: Merging the various dialogs to streamline the experience for users that prefer fewer keybindings.
+- **Merged Feature Dialog**: Merging the various dialogs to streamline the
+  experience for users that prefer fewer keybindings.
 
 <br/>
 
 ## ✋ Non Goals
 
-- **ADMIN Mode**: Although I'm considering it, I'm currently flagging write operations as a non-goal
-- **Full API Compatibility**: Full integration with all of the aws-sdk-go-v2 dynamo-db related functions
+- **ADMIN Mode**: Although I'm considering it, I'm currently flagging write
+  operations as a non-goal
+- **Full API Compatibility**: Full integration with all of the aws-sdk-go-v2
+  dynamo-db related functions
 - **Mouse Support**: Support for navigating the TUI using the mouse cursor
 
 <br/>
 
 ## 🫴 Alternatives
 
-- **[Sacha](https://github.com/Sachamama/sacha)** another 2-pane TUI that also integrates with S3, EC2, Lambda, and more!
-- **[ddv](https://github.com/lusingander/ddv)** a blazing fast dynamo-DB viewer for the terminal, written in Rust
+- **[Sacha](https://github.com/Sachamama/sacha)** another 2-pane TUI that also
+  integrates with S3, EC2, Lambda, and more!
+- **[ddv](https://github.com/lusingander/ddv)** a blazing fast dynamo-DB viewer
+  for the terminal, written in Rust
 
 <br/>
 
@@ -341,16 +358,30 @@ dynamite --debug
 
 **Scrolling down doesn't automatically retrieve the next page**
 
-If not all pages have been retrieved, it is possible that pagination is disabled because of an enabled search (default key: `/`) or because page-retrieval had been explicitly canceled by pressing the `Esc` key during page-retrieval (in which case a ~PAGING~ box should appear in the bottom-left corner). Re-enable pagination with the `c` key, or view the help menu (default key: `?`) for the appropriate key-binding.
+If not all pages have been retrieved, it is possible that pagination is disabled
+because of an enabled search (default key: `/`) or because page-retrieval had
+been explicitly canceled by pressing the `Esc` key during page-retrieval (in
+which case a ~PAGING~ box should appear in the bottom-left corner). Re-enable
+pagination with the `c` key, or view the help menu (default key: `?`) for the
+appropriate key-binding.
 
 <br/>
 
 **My scan or query is not returning the expected results**
 
-If filter parameters were left enabled, then they will affect your search results. Check for the `FILTER` box in the bottom-left corner, if it is depicted, then filters are being applied. Open the filter-parameters dialog (default key: `f`), reset (default key: `ctrl+r`), and commit (default key: `alt+enter`). This should remove any applied filters to your current operation. Note that Dynamite maintains a separate set of filter-parameters for scan- & query-modes and stores a session per table that restores any scan-, query-, and filter-parameters when re-selecting that table within the same Dynamite session.
+If filter parameters were left enabled, then they will affect your search
+results. Check for the `FILTER` box in the bottom-left corner, if it is
+depicted, then filters are being applied. Open the filter-parameters dialog
+(default key: `f`), reset (default key: `ctrl+r`), and commit (default key:
+`alt+enter`). This should remove any applied filters to your current operation.
+Note that Dynamite maintains a separate set of filter-parameters for scan- &
+query-modes and stores a session per table that restores any scan-, query-, and
+filter-parameters when re-selecting that table within the same Dynamite session.
 
 <br/>
 
 **I cannot enable search or sort**
 
-The search and sorting features are mutually exclusive. If you cannot use one of them, then you likely have the other enabled. They are not compatible because search implements its own sorting based on match-score.
+The search and sorting features are mutually exclusive. If you cannot use one of
+them, then you likely have the other enabled. They are not compatible because
+search implements its own sorting based on match-score.

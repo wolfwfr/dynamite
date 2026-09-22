@@ -18,7 +18,8 @@ const (
 )
 
 type JSONParser struct {
-	Styles jsonParserStyles
+	Styles  jsonParserStyles
+	tabSize int
 }
 
 type jsonParserStyles struct {
@@ -45,8 +46,8 @@ func newjsonParserStyles() jsonParserStyles {
 	return p
 }
 
-func NewJSONParser() JSONParser {
-	p := JSONParser{}
+func NewJSONParser(tabSize int) JSONParser {
+	p := JSONParser{tabSize: tabSize}
 	p.Styles = newjsonParserStyles()
 	return p
 }
@@ -109,7 +110,7 @@ func (p JSONParser) pJSON(elements map[string]types.AttributeValue, hashkey stri
 
 		// write field-name
 		quotedName := spf("\"%s\"", k)
-		tbs := tabs(nestLevel)
+		tbs := tabs(p.tabSize, nestLevel)
 		raw.WriteString(spf("%s%s: ", tbs, quotedName))
 
 		styled = append(styled, styles.LineStyle{}.AppendStringLG(quotedName, fieldSt, styles.
@@ -138,7 +139,7 @@ func (p JSONParser) pJSON(elements map[string]types.AttributeValue, hashkey stri
 	}
 
 	//write suffix tokens
-	tbs := tabs(nestLevel - 1)
+	tbs := tabs(p.tabSize, nestLevel-1)
 	raw.WriteString(spf("%s},\n", tbs))
 	styled = append(styled, styles.LineStyle{}.AppendRuneLG(tokenSt.PaddingLeft(len(tbs))).AppendRuneLG(tokenSt))
 
@@ -162,9 +163,9 @@ func (p JSONParser) switchAttrValueJSON(v types.AttributeValue, hashkey string, 
 	case *types.AttributeValueMemberBOOL:
 		return obj(pJSONBool(vv.Value, tokSt, bolSt))
 	case *types.AttributeValueMemberBS:
-		return stringableAsListJSON(p.Styles, vv.Value, nestLevel, func(s []byte) (string, styles.ObjectStyle) { return obj(pJSONBytes(s, tokSt, bytSt)) })
+		return stringableAsListJSON(p.Styles, vv.Value, p.tabSize, nestLevel, func(s []byte) (string, styles.ObjectStyle) { return obj(pJSONBytes(s, tokSt, bytSt)) })
 	case *types.AttributeValueMemberL:
-		return stringableAsListJSON(p.Styles, vv.Value, nestLevel, func(s types.AttributeValue) (string, styles.ObjectStyle) {
+		return stringableAsListJSON(p.Styles, vv.Value, p.tabSize, nestLevel, func(s types.AttributeValue) (string, styles.ObjectStyle) {
 			return p.switchAttrValueJSON(s, hashkey, rangekey, nestLevel+1)
 		})
 	case *types.AttributeValueMemberM:
@@ -175,21 +176,21 @@ func (p JSONParser) switchAttrValueJSON(v types.AttributeValue, hashkey string, 
 	case *types.AttributeValueMemberN:
 		return obj(pJSONNum(vv.Value, tokSt, numSt))
 	case *types.AttributeValueMemberNS:
-		return stringableAsListJSON(p.Styles, vv.Value, nestLevel, func(s string) (string, styles.ObjectStyle) { return obj(pJSONNum(s, tokSt, numSt)) })
+		return stringableAsListJSON(p.Styles, vv.Value, p.tabSize, nestLevel, func(s string) (string, styles.ObjectStyle) { return obj(pJSONNum(s, tokSt, numSt)) })
 	case *types.AttributeValueMemberNULL:
 		v := util.Ternary("NULL", "NOT NULL", vv.Value)
 		return obj(pJSONNULL(v, tokSt, nulSt))
 	case *types.AttributeValueMemberS:
 		return obj(pJSONString(vv.Value, tokSt, strSt))
 	case *types.AttributeValueMemberSS:
-		return stringableAsListJSON(p.Styles, vv.Value, nestLevel, func(s string) (string, styles.ObjectStyle) { return obj(pJSONString(s, tokSt, strSt)) })
+		return stringableAsListJSON(p.Styles, vv.Value, p.tabSize, nestLevel, func(s string) (string, styles.ObjectStyle) { return obj(pJSONString(s, tokSt, strSt)) })
 	default:
 		fm := "<failed to parse>"
 		return obj(pJSONERR(fm, tokSt, errSt))
 	}
 }
 
-func stringableAsListJSON[S []E, E any](stls jsonParserStyles, items S, nestLevel int, tr func(E) (string, styles.ObjectStyle)) (string, styles.ObjectStyle) {
+func stringableAsListJSON[S []E, E any](stls jsonParserStyles, items S, tabSize, nestLevel int, tr func(E) (string, styles.ObjectStyle)) (string, styles.ObjectStyle) {
 	tokenSt := stls.TokenStyle
 
 	if len(items) == 0 {
@@ -202,7 +203,7 @@ func stringableAsListJSON[S []E, E any](stls jsonParserStyles, items S, nestLeve
 	json.WriteString("[\n")
 	styled = append(styled, styles.LineStyle{}.AppendRuneLG(tokenSt))
 
-	tbs := tabs(nestLevel + 1)
+	tbs := tabs(tabSize, nestLevel+1)
 	listItem := func(in string, atEnd bool) string {
 		return spf("%s%s",
 			tbs, // only tab the first line of the parsed item, rest should already be tabbed; helps with tabbing of '{' in list vs outside list
@@ -223,7 +224,7 @@ func stringableAsListJSON[S []E, E any](stls jsonParserStyles, items S, nestLeve
 		}
 	}
 
-	tbs = tabs(nestLevel)
+	tbs = tabs(tabSize, nestLevel)
 	json.WriteString(spf("%s],\n", tbs))
 	styled = append(styled, styles.LineStyle{}.AppendRuneLG(tokenSt.PaddingLeft(len(tbs))).AppendRuneLG(tokenSt))
 

@@ -9,7 +9,6 @@ import (
 )
 
 func genericTestItemYAML() string {
-	tabsize = 2
 	return `string-key: "string-value\nwith-newline"
 bool-false-key: false
 bool-true-key: true
@@ -44,9 +43,8 @@ string-set-key:
 }
 
 func TestYAMLParsing(t *testing.T) {
-	tabsize = 2
 	item := genericTestItem()
-	res, _ := YAMLParser{}.ParseItemToYAML(item, "string-key", nil)
+	res, _ := YAMLParser{tabSize: 2}.ParseItemToYAML(item, "string-key", nil)
 	exp := genericTestItemYAML()
 	assert.EqualValues(t, exp, res)
 	fmt.Print(res)

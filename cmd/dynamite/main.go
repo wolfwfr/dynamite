@@ -291,6 +291,7 @@ func runApplication(ctx context.Context, cmd *cli.Command) error {
 			PageSize:                 cfgf.ItemsPageSize,
 			PreviewFormat:            appconfig.ParseItemPreviewFormat(cfgf.ItemsPreviewFormat),
 			TransformTimestampFormat: cfgf.ItemsTransformTimestampFormat,
+			PreviewFormatTabSize:     cfgf.ItemsPreviewTabSize,
 		},
 		MFACredentialCB: f,
 		MFACredentialC:  credsC,

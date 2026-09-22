@@ -174,19 +174,27 @@ func withItemsPaneKeys(keys keymaps.AdditionalKeys) itemsPaneOption {
 
 func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ...itemsPaneOption) *ItemSelectionPane {
 	p := &ItemSelectionPane{
-		ctx:            ctx,
-		logger:         config.Logger.With(slog.String(logging.ViewKey, Log_ItemsView), slog.String(logging.PaneKey, "items")),
-		config:         config,
-		dynamodbClient: dynamodb.NewAdapter(config.Logger),
-		stdTO:          30 * time.Second,
-		KeyMap:         DefaultItemPaneKeyMap(),
-		sessions:       make(map[string]SessionData),
-		queryMode:      messages.ScanMode,
-		previewFormat:  messages.JSONformat,
-		scanLimit:      max(10, config.Items.PageSize),
-		queryLimit:     max(10, config.Items.PageSize),
-		pageCancel:     func() {}, // init as noop
-		pageIgnore:     make(map[uint8]struct{}),
+		ctx:           ctx,
+		logger:        config.Logger.With(slog.String(logging.ViewKey, Log_ItemsView), slog.String(logging.PaneKey, "items")),
+		config:        config,
+		stdTO:         30 * time.Second,
+		KeyMap:        DefaultItemPaneKeyMap(),
+		sessions:      make(map[string]SessionData),
+		queryMode:     messages.ScanMode,
+		previewFormat: messages.JSONformat,
+		scanLimit:     max(10, config.Items.PageSize),
+		queryLimit:    max(10, config.Items.PageSize),
+		pageCancel:    func() {}, // init as noop
+		pageIgnore:    make(map[uint8]struct{}),
+	}
+
+	{ // dynamo-db adapter
+		var opts []dynamodb.Option
+		if config.Items.PreviewFormatTabSize != nil {
+			opts = append(opts, dynamodb.WithTabSize(*config.Items.PreviewFormatTabSize))
+		}
+		adapter := dynamodb.NewAdapter(config.Logger, opts...)
+		p.dynamodbClient = adapter
 	}
 
 	{ //table
