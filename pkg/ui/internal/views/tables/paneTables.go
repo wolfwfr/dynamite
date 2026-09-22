@@ -269,6 +269,7 @@ func (m *tableSelectionPane) Init() tea.Cmd {
 	m.cleanSlate()
 	m.lastPageKey = nil
 	m.tables = []string{}
+	m.lastTableDetails = -1
 	m.initialiseRegex(m.config.Tables.HighlightRegexp)
 
 	// cancel any lingering calls
@@ -284,7 +285,7 @@ func (m *tableSelectionPane) Init() tea.Cmd {
 		cmd = m.pageNext(true)
 	}
 
-	m.logger.Info("initilasation complete")
+	m.logger.Info("initialisation complete")
 
 	m.initialised = true
 
@@ -563,10 +564,11 @@ func (m *tableSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
 		slog.Bool("force", force),
 	)
 
-	if !m.initialised {
+	if !m.initialised || m.skipped {
 		m.logger.Log(m.ctx, logging.LevelTrace,
-			"not initialised; aborting preview",
+			"not initialised or skipped; aborting preview",
 			slog.Bool("initialised", m.initialised),
+			slog.Bool("skipped", m.skipped),
 			slog.Bool("force", force),
 		)
 		return nil
@@ -579,6 +581,9 @@ func (m *tableSelectionPane) MaybePreviewItem(force bool) tea.Cmd {
 			slog.Bool("search_enabled", m.tablefiltering.enabled),
 			slog.Int("seach_matches", len(m.tablefiltering.matchedTables)),
 		)
+		if m.details == nil { // already sent
+			return nil
+		}
 		return func() tea.Msg {
 			return messages.TableDetails{
 				Details: nil,

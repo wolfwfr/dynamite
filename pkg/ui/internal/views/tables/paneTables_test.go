@@ -92,6 +92,16 @@ func TestTableSelectionDetails(t *testing.T) {
 			require.NotEmpty(t, targets)                                               // require presence of target messages
 			assert.EqualValues(t, tableARN, *targets[len(targets)-1].Details.TableArn) // assert correct table being previewed
 		})
+		t.Run("do not preview when skipped == true", func(t *testing.T) {
+			tu.SkipIf(t, !searchKeyValid, "skipping due to outdated search key") // skip if testing-keymap needs updating
+			ctrl := gm.NewController(t)                                          // init mock controller
+			db := mocks.NewMockdynamodbClient(ctrl)                              // init mocked DynamoDB client
+			sut := newSUT(db)                                                    // init sut
+			sut.initialised = true                                               // pretend to be initialised
+			sut.skipped = true                                                   // mock CLI use of --table flag
+			cmd := sut.Update(messages.PreviewItem{})                            // send some event
+			assert.Nil(t, cmd)                                                   // assert no commands returned
+		})
 	})
 }
 
