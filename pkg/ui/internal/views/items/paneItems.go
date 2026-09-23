@@ -1444,8 +1444,14 @@ func (m *ItemSelectionPane) View() string {
 		return m.err.Error()
 	}
 	info := m.renderTableInfo()
+
 	content := m.table.View()
-	content = ternary(content, m.noContentMessage(), !emptyContent(content))
+	if !m.initialised {
+		content = "" // display nothing when not initialised
+	} else if contentIsEmpty(content) {
+		content = m.noContentMessage() // display no-content when initalised with empty table
+	}
+
 	search := m.search.View()
 	rendering := []string{info, content}
 	if len(search) > 0 {
@@ -1457,7 +1463,7 @@ func (m *ItemSelectionPane) View() string {
 	return lipgloss.JoinVertical(lipgloss.Left, rendering...)
 }
 
-func emptyContent(content string) bool {
+func contentIsEmpty(content string) bool {
 	content = strings.ReplaceAll(content, " ", "")
 	content = strings.ReplaceAll(content, "\n", "")
 	content = strings.ReplaceAll(content, "\t", "")
