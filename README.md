@@ -82,6 +82,12 @@ such changes will be applied with care.
 
 Install the package using go:
 
+> [!NOTE]
+>
+> Currently this install raises a warning about the `replace` directive in `go.mod`.  
+> I am awaiting the merge of my proposed [fix](https://github.com/charmbracelet/bubbles/pull/1032) into the main [bubbles](https://github.com/charmbracelet/bubbles) library.  
+> When this is fixed, the library version will be updated & the `replace` directive removed.
+
 ```bash
 # install
 go install github.com/wolfwfr/dynamite/cmd/dynamite@latest
