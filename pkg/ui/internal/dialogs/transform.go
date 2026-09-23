@@ -75,9 +75,9 @@ type TransformDialog struct {
 	styles transformListStyles
 
 	state struct {
-		TableARN   string
-		AllColumns []string // matching by index
-		Transform  []bool   // matching by index
+		tableARN   string
+		allColumns []string // matching by index
+		transform  []bool   // matching by index
 	}
 
 	content list.Model
@@ -199,25 +199,25 @@ func (m *TransformDialog) Update(msg tea.Msg) tea.Cmd {
 }
 
 func (m *TransformDialog) SetState(msg messages.InitColumnTransform) tea.Cmd {
-	m.state.TableARN = msg.TableARN
-	m.state.AllColumns = msg.AllColumns
-	m.state.Transform = msg.Transform
+	m.state.tableARN = msg.TableARN
+	m.state.allColumns = msg.AllColumns
+	m.state.transform = msg.Transform
 	return m.updateContent()
 }
 
 func (m *TransformDialog) Reset() tea.Cmd {
-	for i := range m.state.Transform {
-		m.state.Transform[i] = false
+	for i := range m.state.transform {
+		m.state.transform[i] = false
 	}
 	return tea.Batch(m.updateContent(), m.UpdateMessage())
 }
 
 func (m *TransformDialog) updateContent() tea.Cmd {
-	items := make([]list.Item, 0, len(m.state.AllColumns))
-	for i := range m.state.AllColumns {
+	items := make([]list.Item, 0, len(m.state.allColumns))
+	for i := range m.state.allColumns {
 		items = append(items, checkbox.Item{
-			Checked: m.state.Transform[i],
-			Name:    m.state.AllColumns[i],
+			Checked: m.state.transform[i],
+			Name:    m.state.allColumns[i],
 			Meta: map[string]any{
 				"idx": i,
 			},
@@ -234,15 +234,15 @@ func (m *TransformDialog) selectItem() tea.Cmd {
 		return nil
 	}
 	idx := itm.Meta["idx"].(int)
-	if idx > len(m.state.AllColumns) {
+	if idx > len(m.state.allColumns) {
 		m.logger.Error("content returned index that exceeds maximum",
 			slog.Int("selected_item_index", idx),
-			slog.Int("n_columns", len(m.state.AllColumns)),
+			slog.Int("n_columns", len(m.state.allColumns)),
 		)
 		panic("dialog state not up to date")
 	}
-	m.state.Transform[idx] = !m.state.Transform[idx]
-	itm.Checked = m.state.Transform[idx]
+	m.state.transform[idx] = !m.state.transform[idx]
+	itm.Checked = m.state.transform[idx]
 	listUpdate := m.content.SetItem(idx, itm) // cmd for filtering
 	columnUpdate := m.UpdateMessage()
 	return tea.Batch(listUpdate, columnUpdate)
@@ -251,9 +251,9 @@ func (m *TransformDialog) selectItem() tea.Cmd {
 func (m *TransformDialog) UpdateMessage() tea.Cmd {
 	return func() tea.Msg {
 		msg := messages.ColumnTransformUpdate{}
-		msg.TableARN = m.state.TableARN
-		msg.AllColumns = m.state.AllColumns
-		msg.Transform = m.state.Transform
+		msg.TableARN = m.state.tableARN
+		msg.AllColumns = m.state.allColumns
+		msg.Transform = m.state.transform
 		return msg
 	}
 }

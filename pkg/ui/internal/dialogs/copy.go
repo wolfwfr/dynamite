@@ -54,9 +54,9 @@ type CopyDialog struct {
 	}
 
 	state struct {
-		TableARN   string
-		AllColumns []string // matching by index
-		ColValues  []string // matching by index
+		tableARN   string
+		allColumns []string // matching by index
+		colValues  []string // matching by index
 	}
 
 	styles copyStyles
@@ -197,18 +197,18 @@ func (m *CopyDialog) Update(msg tea.Msg) tea.Cmd {
 }
 
 func (m *CopyDialog) SetState(msg messages.InitColumnCopy) tea.Cmd {
-	m.state.TableARN = msg.TableARN
-	m.state.AllColumns = msg.AllColumns
-	m.state.ColValues = msg.ColValues
+	m.state.tableARN = msg.TableARN
+	m.state.allColumns = msg.AllColumns
+	m.state.colValues = msg.ColValues
 	return m.updateContent()
 }
 
 func (m *CopyDialog) updateContent() tea.Cmd {
-	items := make([]list.Item, 0, len(m.state.AllColumns))
-	for i := range m.state.AllColumns {
+	items := make([]list.Item, 0, len(m.state.allColumns))
+	for i := range m.state.allColumns {
 		items = append(items, regular.ListItem{
-			Value: m.state.AllColumns[i],
-			Meta:  map[string]any{"colval": m.state.ColValues[i]},
+			Value: m.state.allColumns[i],
+			Meta:  map[string]any{"colval": m.state.colValues[i]},
 		})
 	}
 	cmd := m.content.SetItems(items)
@@ -218,10 +218,10 @@ func (m *CopyDialog) updateContent() tea.Cmd {
 
 func (m *CopyDialog) selectItem() tea.Cmd {
 	idx := m.content.Index()
-	if idx >= len(m.state.ColValues) {
+	if idx >= len(m.state.colValues) {
 		m.logger.Error("content returned index that exceeds maximum",
 			slog.Int("selected_item_index", idx),
-			slog.Int("n_values", len(m.state.ColValues)),
+			slog.Int("n_values", len(m.state.colValues)),
 		)
 		panic("dialog state not up to date")
 	}

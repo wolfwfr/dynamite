@@ -32,11 +32,11 @@ import (
 	u "github.com/wolfwfr/dynamite/pkg/util"
 )
 
-type TableStyles struct {
-	SelectedBackground    color.Color
-	SearchMatchBackground color.Color
-	MatchedNames          []lipgloss.Style
-	DefaultStyle          lipgloss.Style
+type tableStyles struct {
+	selectedBackground    color.Color
+	searchMatchBackground color.Color
+	matchedNames          []lipgloss.Style
+	defaultStyle          lipgloss.Style
 }
 
 type tableSelectionPane struct {
@@ -54,7 +54,7 @@ type tableSelectionPane struct {
 
 	// styles
 	styles struct {
-		Table TableStyles
+		table tableStyles
 	}
 
 	// spinner
@@ -94,10 +94,10 @@ type tableSelectionPane struct {
 	search *search.SearchBox
 
 	// key map
-	KeyMap *TablePaneKeyMap
+	keyMap *TablePaneKeyMap
 
 	// Additional Keys
-	AddKeyMap keymaps.AdditionalKeys
+	addKeyMap keymaps.AdditionalKeys
 
 	// the underlying table
 	content *table.Model
@@ -124,7 +124,7 @@ type tablePaneOption func(p *tableSelectionPane)
 // withTablePaneKeys
 func withTablePaneKeys(keys keymaps.AdditionalKeys) tablePaneOption {
 	return func(t *tableSelectionPane) {
-		t.AddKeyMap = keys
+		t.addKeyMap = keys
 	}
 }
 
@@ -138,7 +138,7 @@ func newTableSelectionPane(ctx context.Context, config *appconfig.Config, opts .
 		config:         config,
 		dynamodbClient: dynamodb.NewAdapter(config.Logger),
 		stdTO:          30 * time.Second,
-		KeyMap:         DefaultTablePaneKeyMap(),
+		keyMap:         DefaultTablePaneKeyMap(),
 	}
 
 	{ // contents table
@@ -204,7 +204,7 @@ func newTableSelectionPane(ctx context.Context, config *appconfig.Config, opts .
 		o(p)
 	}
 
-	if !keymaps.UniqueKeyMaps(p.KeyMap.ShortHelp(), p.AddKeyMap.Bindings()) {
+	if !keymaps.UniqueKeyMaps(p.keyMap.ShortHelp(), p.addKeyMap.Bindings()) {
 		panic("overlapping keymaps!")
 	}
 
@@ -228,10 +228,10 @@ func (m *tableSelectionPane) updateStyles() {
 		Bold(false)
 	m.content.SetStyles(s)
 
-	st := TableStyles{
-		SelectedBackground:    theme.TableSelectedBg,
-		SearchMatchBackground: theme.SearchHighlight,
-		MatchedNames: []lipgloss.Style{
+	st := tableStyles{
+		selectedBackground:    theme.TableSelectedBg,
+		searchMatchBackground: theme.SearchHighlight,
+		matchedNames: []lipgloss.Style{
 			lipgloss.NewStyle().Foreground(theme.TableHighlightDefault1),
 			lipgloss.NewStyle().Foreground(theme.TableHighlightDefault2),
 			lipgloss.NewStyle().Foreground(theme.TableHighlightDefault3),
@@ -240,10 +240,10 @@ func (m *tableSelectionPane) updateStyles() {
 			lipgloss.NewStyle().Foreground(theme.TableHighlightDefault6),
 			lipgloss.NewStyle().Foreground(theme.TableHighlightDefault7),
 		},
-		DefaultStyle: lipgloss.NewStyle().Foreground(theme.TableHighlightDefault0),
+		defaultStyle: lipgloss.NewStyle().Foreground(theme.TableHighlightDefault0),
 	}
 
-	m.styles.Table = st
+	m.styles.table = st
 
 	m.spinner.model.Style = lipgloss.NewStyle().
 		Foreground(theme.SpinnerSymbolFg).
@@ -463,22 +463,22 @@ func (m *tableSelectionPane) broadcast(msg tea.Msg) tea.Cmd {
 func (m *tableSelectionPane) handleKeyPress(msg tea.KeyPressMsg) tea.Cmd {
 	cmds := []tea.Cmd{}
 	switch {
-	case key.Matches(msg, m.KeyMap.Search):
+	case key.Matches(msg, m.keyMap.Search):
 		cmds = append(cmds, m.search.OpenSearchBox())
-	case key.Matches(msg, m.KeyMap.Select):
+	case key.Matches(msg, m.keyMap.Select):
 		return m.selectTable()
-	case key.Matches(msg, m.KeyMap.Zoom):
+	case key.Matches(msg, m.keyMap.Zoom):
 		return m.Zoom()
-	case key.Matches(msg, m.KeyMap.Esc):
+	case key.Matches(msg, m.keyMap.Esc):
 		m.search.Reset()
-	case key.Matches(msg, m.KeyMap.Reload):
+	case key.Matches(msg, m.keyMap.Reload):
 		return m.Init()
-	case key.Matches(msg, m.KeyMap.Browser):
+	case key.Matches(msg, m.keyMap.Browser):
 		return m.openInBrowser()
-	case key.Matches(msg, m.KeyMap.Copy):
+	case key.Matches(msg, m.keyMap.Copy):
 		return m.copy()
 	default:
-		if match, call := m.AddKeyMap.Matches(msg); match {
+		if match, call := m.addKeyMap.Matches(msg); match {
 			return call
 		}
 	}
@@ -503,7 +503,7 @@ func (m *tableSelectionPane) TableRowFieldDelegate(row table.Row, col table.Colu
 
 	enforceWidth := lipgloss.NewStyle().Width(fullWidth).MaxWidth(fullWidth).Inline(true).Render
 
-	segments, styling := compileMatchedStyles(field.value, m.styles.Table.MatchedNames, m.styles.Table.DefaultStyle)
+	segments, styling := compileMatchedStyles(field.value, m.styles.table.matchedNames, m.styles.table.defaultStyle)
 	var style styles.LineStyle
 	for i := range segments {
 		style = style.AppendStringLG(segments[i], styling[i])
@@ -520,16 +520,16 @@ func (m *tableSelectionPane) TableRowFieldDelegate(row table.Row, col table.Colu
 			st, _ := style.GetAt(len([]rune(field.value)) - 1)
 			style = style.Override(len([]rune(field.value))-1, st.PaddingRight(fullWidth-len([]rune(field.value))))
 		}
-		style = style.SetBackgroundAll(m.styles.Table.SelectedBackground)
+		style = style.SetBackgroundAll(m.styles.table.selectedBackground)
 	}
 
 	// override background styling for search matches
 	if m.tablefiltering.enabled {
 		for _, idx := range m.tablefiltering.matchedRunes[rowIdx] {
 			runeStyle, _ := style.GetAt(idx)
-			c := m.styles.Table.SearchMatchBackground
+			c := m.styles.table.searchMatchBackground
 			if selected {
-				c = lipgloss.Blend1D(10, c, m.styles.Table.SelectedBackground)[3]
+				c = lipgloss.Blend1D(10, c, m.styles.table.selectedBackground)[3]
 			}
 			style = style.Override(idx, runeStyle.Background(c))
 		}

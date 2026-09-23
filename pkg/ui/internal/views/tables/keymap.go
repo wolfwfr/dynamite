@@ -106,9 +106,9 @@ type DialogKeyMaps struct {
 	RegionDialog key.Binding
 }
 
-func (m *TableSelection) DialogKeyMaps() DialogKeyMaps {
+func (m *TableSelectionView) DialogKeyMaps() DialogKeyMaps {
 	return DialogKeyMaps{
-		RegionDialog: m.KeyMap.Regions,
+		RegionDialog: m.keyMap.Regions,
 	}
 }
 

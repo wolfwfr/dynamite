@@ -106,8 +106,8 @@ type Model struct {
 	config *appconfig.Config
 
 	// views
-	tableSelection *tablesview.TableSelection
-	itemselection  *itemsview.ItemSelection
+	tableSelection *tablesview.TableSelectionView
+	itemselection  *itemsview.ItemSelectionView
 
 	// help
 	Help help.Model

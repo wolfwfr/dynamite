@@ -70,11 +70,11 @@ func TestQuery(t *testing.T) {
 		t.Run("modify query & query-parameters keys on entering/exiting query-mode", func(t *testing.T) {
 			skipIf(t, !queryKeyValid, "skipping due to outdated keymap") // skip if keymap needs updating
 			sut := newSUT(nil)                                           // init sut
-			require.True(t, sut.KeyMap.Query.Enabled())                  // require key; query-key enabled
-			require.False(t, sut.KeyMap.QueryParameters.Enabled())       // require key; query-parameters key disabled
+			require.True(t, sut.keyMap.Query.Enabled())                  // require key; query-key enabled
+			require.False(t, sut.keyMap.QueryParameters.Enabled())       // require key; query-parameters key disabled
 			sut.Update(queryKey)                                         // switch to query-mode
-			assert.False(t, sut.KeyMap.Query.Enabled())                  // assert key; query-key disabled
-			assert.True(t, sut.KeyMap.QueryParameters.Enabled())         // assert key; query-parameters key enabled
+			assert.False(t, sut.keyMap.Query.Enabled())                  // assert key; query-key disabled
+			assert.True(t, sut.keyMap.QueryParameters.Enabled())         // assert key; query-parameters key enabled
 		})
 		t.Run("send a complete query request with all parameters included", func(t *testing.T) {
 			skipIf(t, !queryKeyValid, "skipping due to outdated keymap") // skip if keymap needs updating

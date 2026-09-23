@@ -67,11 +67,11 @@ func TestScan(t *testing.T) {
 		t.Run("modify scan & scan-parameters keys on entering/exiting scan-mode", func(t *testing.T) {
 			skipIf(t, !queryKeyValid, "skipping due to outdated keymap") // skip if keymap needs updating
 			sut := newSUT(nil)                                           // init sut
-			require.False(t, sut.KeyMap.Scan.Enabled())                  // require key; scan-key disabled
-			require.True(t, sut.KeyMap.ScanParameters.Enabled())         // require key; scan-parameters key enabled
+			require.False(t, sut.keyMap.Scan.Enabled())                  // require key; scan-key disabled
+			require.True(t, sut.keyMap.ScanParameters.Enabled())         // require key; scan-parameters key enabled
 			sut.Update(queryKey)                                         // exit scan mode
-			assert.True(t, sut.KeyMap.Scan.Enabled())                    // assert key; scan-key enabled
-			assert.False(t, sut.KeyMap.ScanParameters.Enabled())         // assert key; scan-parameters key disabled
+			assert.True(t, sut.keyMap.Scan.Enabled())                    // assert key; scan-key enabled
+			assert.False(t, sut.keyMap.ScanParameters.Enabled())         // assert key; scan-parameters key disabled
 		})
 		t.Run("send a complete scan request with all parameters included", func(t *testing.T) {
 			skipIf(t, !queryKeyValid, "skipping due to outdated keymap") // skip if keymap needs updating

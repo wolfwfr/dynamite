@@ -30,7 +30,7 @@ type paneProperties struct {
 	style  lipgloss.Style
 }
 
-type ItemSelection struct {
+type ItemSelectionView struct {
 	// logger
 	logger *slog.Logger
 
@@ -52,16 +52,16 @@ type ItemSelection struct {
 
 	zoomEnabled bool
 
-	KeyMap *ItemViewKeyMap
+	keyMap *ItemViewKeyMap
 
 	// Additional Keys
-	AddKeyMap keymaps.AdditionalKeys
+	addKeyMap keymaps.AdditionalKeys
 
 	focused    paneID
 	zoomtarget paneID
 }
 
-func (m *ItemSelection) renderBorder(paneID paneID, content string) string {
+func (m *ItemSelectionView) renderBorder(paneID paneID, content string) string {
 	st := m.panes[paneID].style
 	if m.focused == paneID {
 		return theme.FocusedBorderStyle.Inherit(st).Render(content)
@@ -69,32 +69,32 @@ func (m *ItemSelection) renderBorder(paneID paneID, content string) string {
 	return theme.BorderStyle.Inherit(st).Render(content)
 }
 
-type Option func(t *ItemSelection)
+type Option func(t *ItemSelectionView)
 
 func WithAdditionalKeys(keys keymaps.AdditionalKeys) Option {
-	return func(t *ItemSelection) {
-		t.AddKeyMap = keys
+	return func(t *ItemSelectionView) {
+		t.addKeyMap = keys
 	}
 }
 
-func NewItemSelectionView(ctx context.Context, config *appconfig.Config, opts ...Option) *ItemSelection {
-	i := &ItemSelection{
+func NewItemSelectionView(ctx context.Context, config *appconfig.Config, opts ...Option) *ItemSelectionView {
+	i := &ItemSelectionView{
 		logger: config.Logger.With(slog.String(logging.ViewKey, Log_ItemsView)),
 		config: config,
-		KeyMap: DefaultItemViewKeyMap(),
+		keyMap: DefaultItemViewKeyMap(),
 		panes:  make(map[paneID]paneProperties),
 	}
 	for _, o := range opts {
 		o(i)
 	}
 
-	i.itemsPane = newItemSelectionPane(ctx, config, withItemsPaneKeys(i.AddKeyMap))
-	i.detailsPane = newDetailsPane(ctx, config, withDetailsPaneKeys(i.AddKeyMap))
+	i.itemsPane = newItemSelectionPane(ctx, config, withItemsPaneKeys(i.addKeyMap))
+	i.detailsPane = newDetailsPane(ctx, config, withDetailsPaneKeys(i.addKeyMap))
 
 	return i
 }
 
-func (m *ItemSelection) Init() tea.Cmd {
+func (m *ItemSelectionView) Init() tea.Cmd {
 	m.logger.Info("initialising...")
 	cmds := make([]tea.Cmd, 0)
 	cmds = append(cmds, m.itemsPane.Init())
@@ -105,21 +105,21 @@ func (m *ItemSelection) Init() tea.Cmd {
 
 // update handles the message and if it does not detect a keypress that it can
 // map itself proceeds to forward the message to the model's children
-func (m *ItemSelection) Update(msg tea.Msg) tea.Cmd {
+func (m *ItemSelectionView) Update(msg tea.Msg) tea.Cmd {
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
 		switch {
-		case key.Matches(msg, m.KeyMap.Back):
+		case key.Matches(msg, m.keyMap.Back):
 			if m.keyExecutionSafe(msg) {
 				return m.back()
 			}
-		case key.Matches(msg, m.KeyMap.MoveFocus):
+		case key.Matches(msg, m.keyMap.MoveFocus):
 			m.moveFocus()
 			return nil
-		case key.Matches(msg, m.KeyMap.MoveWidthLeft):
+		case key.Matches(msg, m.keyMap.MoveWidthLeft):
 			return m.moveWidthLeft()
-		case key.Matches(msg, m.KeyMap.MoveWidthRight):
+		case key.Matches(msg, m.keyMap.MoveWidthRight):
 			return m.moveWidthRight()
 		}
 	case tea.WindowSizeMsg:
@@ -133,7 +133,7 @@ func (m *ItemSelection) Update(msg tea.Msg) tea.Cmd {
 	return tea.Batch(cmd, m.forward(msg))
 }
 
-func (m *ItemSelection) keyExecutionSafe(k tea.KeyPressMsg) bool {
+func (m *ItemSelectionView) keyExecutionSafe(k tea.KeyPressMsg) bool {
 	switch m.focused {
 	case itemsPaneID:
 		return m.itemsPane.KeyMapExecutionSafe(k)
@@ -145,7 +145,7 @@ func (m *ItemSelection) keyExecutionSafe(k tea.KeyPressMsg) bool {
 
 // forward takes a message and decides to broadcast or to forward only to focused
 // children
-func (m *ItemSelection) forward(msg tea.Msg) tea.Cmd {
+func (m *ItemSelectionView) forward(msg tea.Msg) tea.Cmd {
 	if _, isKeyPress := msg.(tea.KeyPressMsg); isKeyPress {
 		return m.routeToFocusedOnly(msg)
 	}
@@ -153,7 +153,7 @@ func (m *ItemSelection) forward(msg tea.Msg) tea.Cmd {
 }
 
 // broadcast takes a message and forwards it to all children
-func (m ItemSelection) broadcast(msg tea.Msg) tea.Cmd {
+func (m ItemSelectionView) broadcast(msg tea.Msg) tea.Cmd {
 	cmds := []tea.Cmd{}
 	cmds = append(cmds, m.itemsPane.Update(msg))
 	cmds = append(cmds, m.detailsPane.Update(msg))
@@ -162,7 +162,7 @@ func (m ItemSelection) broadcast(msg tea.Msg) tea.Cmd {
 
 // routeToFocusedOnly takes a message and only routes it to a single child, the
 // active child with highest precedence (dialogs take precedence over views)
-func (m *ItemSelection) routeToFocusedOnly(msg tea.Msg) tea.Cmd {
+func (m *ItemSelectionView) routeToFocusedOnly(msg tea.Msg) tea.Cmd {
 	switch m.focused {
 	case itemsPaneID:
 		return m.itemsPane.Update(msg)
@@ -173,26 +173,26 @@ func (m *ItemSelection) routeToFocusedOnly(msg tea.Msg) tea.Cmd {
 	}
 }
 
-func (m *ItemSelection) handleZoom(msg tea.Msg) tea.Cmd {
+func (m *ItemSelectionView) handleZoom(msg tea.Msg) tea.Cmd {
 	switch msg.(type) {
 	case messages.ZoomToggleItemSelectionPane:
 		m.logger.Debug("zoom selection-pane")
 		m.zoomEnabled = !m.zoomEnabled
 		m.zoomtarget = itemsPaneID
 		m.focused = itemsPaneID
-		m.KeyMap.MoveFocus.SetEnabled(!m.KeyMap.MoveFocus.Enabled())
+		m.keyMap.MoveFocus.SetEnabled(!m.keyMap.MoveFocus.Enabled())
 	case messages.ZoomToggleItemDetailsPane:
 		m.logger.Debug("zoom details-pane")
 		m.zoomEnabled = !m.zoomEnabled
 		m.zoomtarget = detailsPaneID
 		m.focused = detailsPaneID
-		m.KeyMap.MoveFocus.SetEnabled(!m.KeyMap.MoveFocus.Enabled())
+		m.keyMap.MoveFocus.SetEnabled(!m.keyMap.MoveFocus.Enabled())
 	}
 	m.applySize()
 	return nil
 }
 
-func (m *ItemSelection) back() tea.Cmd {
+func (m *ItemSelectionView) back() tea.Cmd {
 	m.logger.Debug("backing out of items-view")
 	// switch to previous view
 	switchView := func() tea.Msg {
@@ -207,7 +207,7 @@ func (m *ItemSelection) back() tea.Cmd {
 	return tea.Batch(switchView, itemsCmd, detailsCmd)
 }
 
-func (m *ItemSelection) moveFocus() {
+func (m *ItemSelectionView) moveFocus() {
 	m.logger.Debug("moving focus", slog.Int("current_focus", int(m.focused)))
 	m.focused++
 	if m.focused > detailsPaneID {
@@ -215,7 +215,7 @@ func (m *ItemSelection) moveFocus() {
 	}
 }
 
-func (m *ItemSelection) moveWidthLeft() tea.Cmd {
+func (m *ItemSelectionView) moveWidthLeft() tea.Cmd {
 	m.logger.Debug("moving width left",
 		slog.Int("current_width", int(m.config.Items.PrimaryWidth)),
 	)
@@ -224,7 +224,7 @@ func (m *ItemSelection) moveWidthLeft() tea.Cmd {
 	return nil
 }
 
-func (m *ItemSelection) moveWidthRight() tea.Cmd {
+func (m *ItemSelectionView) moveWidthRight() tea.Cmd {
 	m.logger.Debug("moving width right",
 		slog.Int("current_width", int(m.config.Items.PrimaryWidth)),
 	)
@@ -233,7 +233,7 @@ func (m *ItemSelection) moveWidthRight() tea.Cmd {
 	return nil
 }
 
-func (m *ItemSelection) applySize() {
+func (m *ItemSelectionView) applySize() {
 	var (
 		borderH     = 2
 		borderW     = 2
@@ -282,7 +282,7 @@ func (m *ItemSelection) applySize() {
 	m.detailsPane.applySize(dt.height, dt.width)
 }
 
-func (m *ItemSelection) View() string {
+func (m *ItemSelectionView) View() string {
 	s := strings.Builder{}
 	s.WriteString(lipgloss.JoinHorizontal(lipgloss.Top,
 		ternary(m.renderBorder(itemsPaneID, m.itemsPane.View()), "", !m.zoomEnabled || m.zoomtarget == itemsPaneID),

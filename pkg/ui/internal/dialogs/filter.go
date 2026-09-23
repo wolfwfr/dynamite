@@ -56,12 +56,12 @@ type filterContent struct {
 	attrValueInput2   textinput.Model
 }
 
-type FilterStateInit struct {
-	AttrName       string
-	AttrType       types.ScalarAttributeType
-	AttrValue1     *string
-	AttrValue2     *string
-	FilterOperator messages.FilterOperator
+type filterStateInit struct {
+	attrName       string
+	attrType       types.ScalarAttributeType
+	attrValue1     *string
+	attrValue2     *string
+	filterOperator messages.FilterOperator
 }
 
 // the FilterDialog dialog enables the user to specify a filter for the scan or
@@ -92,10 +92,10 @@ type FilterDialog struct {
 	state struct {
 		// init state is the state at initialisation and after the user commits
 		// (or applies) their changes.
-		init []FilterStateInit
+		init []filterStateInit
 		// table state is set excusively on initialisation
 		table struct {
-			TableARN string
+			tableARN string
 		}
 	}
 
@@ -129,10 +129,10 @@ type filterListStyles struct {
 	ignored lipgloss.Style
 
 	// titles
-	AttrNameInputTitle  lipgloss.Style
-	AttrValueInputTitle lipgloss.Style
-	AttrTypeTitle       lipgloss.Style
-	OperatorTitle       lipgloss.Style
+	attrNameInputTitle  lipgloss.Style
+	attrValueInputTitle lipgloss.Style
+	attrTypeTitle       lipgloss.Style
+	operatorTitle       lipgloss.Style
 
 	// remove filter button
 	removeButton        lipgloss.Style
@@ -175,10 +175,10 @@ func newFilterStyles() filterListStyles {
 	s.ignored = lipgloss.NewStyle().Foreground(theme.DialogUnfocusColour).Padding(1, 1, 0, 1)
 
 	// inputs fields
-	s.AttrNameInputTitle = lipgloss.NewStyle().Foreground(theme.SubtleColour1).Padding(0, 0, 0, 1)
-	s.AttrValueInputTitle = lipgloss.NewStyle().Foreground(theme.SubtleColour1).Padding(0, 0, 0, 1)
-	s.AttrTypeTitle = lipgloss.NewStyle().Foreground(theme.SubtleColour1).Padding(0, 0, 0, 1)
-	s.OperatorTitle = lipgloss.NewStyle().Foreground(theme.SubtleColour1).Padding(0, 0, 0, 1)
+	s.attrNameInputTitle = lipgloss.NewStyle().Foreground(theme.SubtleColour1).Padding(0, 0, 0, 1)
+	s.attrValueInputTitle = lipgloss.NewStyle().Foreground(theme.SubtleColour1).Padding(0, 0, 0, 1)
+	s.attrTypeTitle = lipgloss.NewStyle().Foreground(theme.SubtleColour1).Padding(0, 0, 0, 1)
+	s.operatorTitle = lipgloss.NewStyle().Foreground(theme.SubtleColour1).Padding(0, 0, 0, 1)
 
 	// remove button
 	s.removeButton = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(theme.DialogUnfocusColour).Foreground(theme.ButtonBlurredTextFg).Padding(0, 2, 0, 2).Margin(0, 0, 1, 0)
@@ -320,10 +320,10 @@ func (m *FilterDialog) updateStyles() {
 	s.textInputBox = s.textInputBox.Width(subwidth)
 	s.textInputBoxFocused = s.textInputBoxFocused.Width(subwidth)
 
-	s.AttrNameInputTitle = s.AttrNameInputTitle.Width(subwidth)
-	s.AttrValueInputTitle = s.AttrValueInputTitle.Width(subwidth)
-	s.AttrTypeTitle = s.AttrTypeTitle.Width(10)
-	s.OperatorTitle = s.OperatorTitle.Width(subwidth)
+	s.attrNameInputTitle = s.attrNameInputTitle.Width(subwidth)
+	s.attrValueInputTitle = s.attrValueInputTitle.Width(subwidth)
+	s.attrTypeTitle = s.attrTypeTitle.Width(10)
+	s.operatorTitle = s.operatorTitle.Width(subwidth)
 
 	// dialog-style is actively resized; retain
 	s.dialog = m.styles.dialog
@@ -679,16 +679,16 @@ func (m *FilterDialog) SetState(msg messages.InitFilterParameters) tea.Cmd {
 	m.ResetState()
 
 	// init table state
-	m.state.table.TableARN = msg.TableARN
+	m.state.table.tableARN = msg.TableARN
 
 	// init the initial state
-	m.state.init = make([]FilterStateInit, len(msg.State))
+	m.state.init = make([]filterStateInit, len(msg.State))
 	for i := range msg.State {
-		m.state.init[i].AttrName = msg.State[i].AttrPath
-		m.state.init[i].AttrType = msg.State[i].AttrType
-		m.state.init[i].AttrValue1 = msg.State[i].AttrValue1
-		m.state.init[i].AttrValue2 = msg.State[i].AttrValue2
-		m.state.init[i].FilterOperator = msg.State[i].FilterOperator
+		m.state.init[i].attrName = msg.State[i].AttrPath
+		m.state.init[i].attrType = msg.State[i].AttrType
+		m.state.init[i].attrValue1 = msg.State[i].AttrValue1
+		m.state.init[i].attrValue2 = msg.State[i].AttrValue2
+		m.state.init[i].filterOperator = msg.State[i].FilterOperator
 	}
 
 	// update list item delegates
@@ -718,7 +718,7 @@ func (m *FilterDialog) InitContent() tea.Cmd {
 		}
 		for i := range m.content {
 			if len(m.state.init) > i {
-				m.content[i].attrTypeSelection.Select(typeIdx[m.state.init[i].AttrType])
+				m.content[i].attrTypeSelection.Select(typeIdx[m.state.init[i].attrType])
 			}
 		}
 	}
@@ -731,7 +731,7 @@ func (m *FilterDialog) InitContent() tea.Cmd {
 		}
 		for i := range m.content {
 			if len(m.state.init) > i {
-				m.content[i].operatorSelection.Select(operatorIdx[string(m.state.init[i].FilterOperator)])
+				m.content[i].operatorSelection.Select(operatorIdx[string(m.state.init[i].filterOperator)])
 			}
 		}
 	}
@@ -739,9 +739,9 @@ func (m *FilterDialog) InitContent() tea.Cmd {
 	{ // set input fields
 		for i := range m.content {
 			if len(m.state.init) > i {
-				m.content[i].attrNameInput.SetValue(m.state.init[i].AttrName)
-				m.content[i].attrValueInput1.SetValue(u.IfNotNil(m.state.init[i].AttrValue1, ""))
-				m.content[i].attrValueInput2.SetValue(u.IfNotNil(m.state.init[i].AttrValue2, ""))
+				m.content[i].attrNameInput.SetValue(m.state.init[i].attrName)
+				m.content[i].attrValueInput1.SetValue(u.IfNotNil(m.state.init[i].attrValue1, ""))
+				m.content[i].attrValueInput2.SetValue(u.IfNotNil(m.state.init[i].attrValue2, ""))
 			}
 		}
 	}
@@ -830,11 +830,11 @@ func (m *FilterDialog) applyParameters() tea.Cmd {
 	}
 	for i := range m.content {
 		if true &&
-			m.content[i].attrNameInput.Value() != m.state.init[i].AttrName ||
-			m.content[i].attrTypeSelection.SelectedItem().(regular.ListItem).Meta[scalarTypeMatchKey].(types.ScalarAttributeType) != m.state.init[i].AttrType ||
-			m.content[i].operatorSelection.SelectedItem().(regular.ListItem).Value != string(m.state.init[i].FilterOperator) ||
-			m.content[i].attrValueInput1.Value() != u.IfNotNil(m.state.init[i].AttrValue1, "") ||
-			m.content[i].attrValueInput2.Value() != u.IfNotNil(m.state.init[i].AttrValue2, "") {
+			m.content[i].attrNameInput.Value() != m.state.init[i].attrName ||
+			m.content[i].attrTypeSelection.SelectedItem().(regular.ListItem).Meta[scalarTypeMatchKey].(types.ScalarAttributeType) != m.state.init[i].attrType ||
+			m.content[i].operatorSelection.SelectedItem().(regular.ListItem).Value != string(m.state.init[i].filterOperator) ||
+			m.content[i].attrValueInput1.Value() != u.IfNotNil(m.state.init[i].attrValue1, "") ||
+			m.content[i].attrValueInput2.Value() != u.IfNotNil(m.state.init[i].attrValue2, "") {
 			return tea.Batch(m.filterParametersUpdate(), m.toggleDialog())
 		}
 	}
@@ -844,7 +844,7 @@ func (m *FilterDialog) applyParameters() tea.Cmd {
 
 func (m *FilterDialog) filterParametersUpdate() tea.Cmd {
 	// NOTE: resolve variables outside async tea.Cmd func
-	tableARN := m.state.table.TableARN
+	tableARN := m.state.table.tableARN
 	state := make([]messages.FilterState, len(m.content))
 	for i := range m.content {
 		state[i].AttrPath = m.content[i].attrNameInput.Value()
@@ -1023,10 +1023,10 @@ func (m *FilterDialog) renderContent() string {
 
 	// title bar
 	lines[0] = lipgloss.JoinHorizontal(lipgloss.Top,
-		m.styles.AttrNameInputTitle.Render(strings.Join(field1Title, " / ")),
-		m.styles.AttrTypeTitle.Render("Type"),
-		m.styles.OperatorTitle.Width(longestOp+opPadding).Render(""),
-		m.styles.AttrValueInputTitle.Render(strings.Join(field2Title, " / ")),
+		m.styles.attrNameInputTitle.Render(strings.Join(field1Title, " / ")),
+		m.styles.attrTypeTitle.Render("Type"),
+		m.styles.operatorTitle.Width(longestOp+opPadding).Render(""),
+		m.styles.attrValueInputTitle.Render(strings.Join(field2Title, " / ")),
 	)
 
 	return lipgloss.JoinVertical(lipgloss.Left, lines...)

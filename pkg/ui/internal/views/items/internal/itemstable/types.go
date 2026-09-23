@@ -38,14 +38,14 @@ type ItemsTable struct {
 	// styles
 	styles TableStyles
 
-	// dynamo-db-Items including JSON/YAML render & styling instructions
-	Items apitypes.Items
+	// dynamo-db-items including JSON/YAML render & styling instructions
+	items apitypes.Items
 
 	viewOptions view.ViewOptions
 
-	// ColumnAttributes represents a unique set of dynamo-db item keys that
+	// columnAttributes represents a unique set of dynamo-db item keys that
 	// exhaustively cover all keys in the currently paged set of items
-	ColumnAttributes []ColumnAttributes
+	columnAttributes []ColumnAttributes
 
 	transformFmt string
 }

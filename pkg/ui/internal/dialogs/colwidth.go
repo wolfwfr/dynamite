@@ -76,9 +76,9 @@ type WidthDialog struct {
 	styles widthListStyles
 
 	state struct {
-		TableARN   string
-		AllColumns []string // matching by index
-		DynWidth   []bool   // matching by index
+		tableARN   string
+		allColumns []string // matching by index
+		dynWidth   []bool   // matching by index
 	}
 
 	content list.Model
@@ -212,32 +212,32 @@ func (m *WidthDialog) Update(msg tea.Msg) tea.Cmd {
 }
 
 func (m *WidthDialog) SetState(msg messages.InitColumnWidth) tea.Cmd {
-	m.state.TableARN = msg.TableARN
-	m.state.AllColumns = msg.AllColumns
-	m.state.DynWidth = msg.DynWidth
+	m.state.tableARN = msg.TableARN
+	m.state.allColumns = msg.AllColumns
+	m.state.dynWidth = msg.DynWidth
 	return m.updateContent()
 }
 
 func (m *WidthDialog) EnableAll() tea.Cmd {
-	for i := range m.state.DynWidth {
-		m.state.DynWidth[i] = true
+	for i := range m.state.dynWidth {
+		m.state.dynWidth[i] = true
 	}
 	return tea.Batch(m.updateContent(), m.UpdateMessage())
 }
 
 func (m *WidthDialog) DisableAll() tea.Cmd {
-	for i := range m.state.DynWidth {
-		m.state.DynWidth[i] = false
+	for i := range m.state.dynWidth {
+		m.state.dynWidth[i] = false
 	}
 	return tea.Batch(m.updateContent(), m.UpdateMessage())
 }
 
 func (m *WidthDialog) updateContent() tea.Cmd {
-	items := make([]list.Item, 0, len(m.state.AllColumns))
-	for i := range m.state.AllColumns {
+	items := make([]list.Item, 0, len(m.state.allColumns))
+	for i := range m.state.allColumns {
 		items = append(items, checkbox.Item{
-			Checked: m.state.DynWidth[i],
-			Name:    m.state.AllColumns[i],
+			Checked: m.state.dynWidth[i],
+			Name:    m.state.allColumns[i],
 			Meta: map[string]any{
 				"idx": i,
 			},
@@ -254,15 +254,15 @@ func (m *WidthDialog) selectItem() tea.Cmd {
 		return nil
 	}
 	idx := itm.Meta["idx"].(int)
-	if idx >= len(m.state.AllColumns) {
+	if idx >= len(m.state.allColumns) {
 		m.logger.Error("content returned index that exceeds maximum",
 			slog.Int("selected_item_index", idx),
-			slog.Int("n_columns", len(m.state.AllColumns)),
+			slog.Int("n_columns", len(m.state.allColumns)),
 		)
 		panic("dialog state not up to date")
 	}
-	m.state.DynWidth[idx] = !m.state.DynWidth[idx]
-	itm.Checked = m.state.DynWidth[idx]
+	m.state.dynWidth[idx] = !m.state.dynWidth[idx]
+	itm.Checked = m.state.dynWidth[idx]
 	listUpdate := m.content.SetItem(idx, itm) // cmd for filtering
 	columnUpdate := m.UpdateMessage()
 	return tea.Batch(listUpdate, columnUpdate)
@@ -271,9 +271,9 @@ func (m *WidthDialog) selectItem() tea.Cmd {
 func (m *WidthDialog) UpdateMessage() tea.Cmd {
 	return func() tea.Msg {
 		msg := messages.ColumnWidthUpdate{}
-		msg.TableARN = m.state.TableARN
-		msg.AllColumns = m.state.AllColumns
-		msg.DynWidth = m.state.DynWidth
+		msg.TableARN = m.state.tableARN
+		msg.AllColumns = m.state.allColumns
+		msg.DynWidth = m.state.dynWidth
 		return msg
 	}
 }

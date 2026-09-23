@@ -86,20 +86,20 @@ type Queryialog struct {
 		}
 		// table state is set excusively on initialisation
 		table struct {
-			TableARN   string
-			TableIndex messages.TableIndex
-			GSI        []messages.GlobalSecondaryIndex
-			LSI        []messages.LocalSecondaryIndex
+			tableARN   string
+			tableIndex messages.TableIndex
+			gsi        []messages.GlobalSecondaryIndex
+			lsi        []messages.LocalSecondaryIndex
 		}
 		// resolved state is state that is resolved from the user input
 		resolved struct {
 			// resolved from selected index
-			HashKey     string
-			HashKeyType string
+			hashKey     string
+			hashKeyType string
 
 			// resolved from selected index
-			RangeKey     *string
-			RangeKeyType string
+			rangeKey     *string
+			rangeKeyType string
 		}
 	}
 
@@ -352,28 +352,28 @@ func (m *Queryialog) newIndexDelegate(s *queryListStyles) headed.ItemDelegate {
 		d.HeadedItems[0] = func(i headed.Item, ix int) string { return u.Ternary(m.styles.tableShortHeader, "", ix == 0) }
 	}
 
-	if len(m.state.table.GSI) > 0 {
-		firstGSI := m.state.table.GSI[0].Name
+	if len(m.state.table.gsi) > 0 {
+		firstGSI := m.state.table.gsi[0].Name
 		f := func(i headed.Item, _ int) string {
 			return u.Ternary(headerFmt(m.styles.gsiFullHeader), "", i.Name == firstGSI)
 		}
 		if m.collapseHeaders {
 			f = func(i headed.Item, _ int) string {
-				return u.Ternary(m.styles.gsiShortHeader, "", u.ContainsBy(m.state.table.GSI, func(e messages.GlobalSecondaryIndex) bool {
+				return u.Ternary(m.styles.gsiShortHeader, "", u.ContainsBy(m.state.table.gsi, func(e messages.GlobalSecondaryIndex) bool {
 					return e.Name == i.Name
 				}))
 			}
 		}
 		d.HeadedItems = append(d.HeadedItems, f)
 	}
-	if len(m.state.table.LSI) > 0 {
-		firstLSI := m.state.table.LSI[0].Name
+	if len(m.state.table.lsi) > 0 {
+		firstLSI := m.state.table.lsi[0].Name
 		f := func(i headed.Item, _ int) string {
 			return u.Ternary(headerFmt(m.styles.lsiFullHeader), "", i.Name == firstLSI)
 		}
 		if m.collapseHeaders {
 			f = func(i headed.Item, _ int) string {
-				return u.Ternary(m.styles.lsiShortHeader, "", u.ContainsBy(m.state.table.LSI, func(e messages.LocalSecondaryIndex) bool {
+				return u.Ternary(m.styles.lsiShortHeader, "", u.ContainsBy(m.state.table.lsi, func(e messages.LocalSecondaryIndex) bool {
 					return e.Name == i.Name
 				}))
 			}
@@ -536,7 +536,7 @@ func (m *Queryialog) MoveFocus(i int) tea.Cmd {
 
 	// prevent selection of range-key fields if no range key applies for the
 	// selected index
-	if m.state.resolved.RangeKey == nil && slices.Contains(rangeFields, m.focus) {
+	if m.state.resolved.rangeKey == nil && slices.Contains(rangeFields, m.focus) {
 		m.MoveFocus(i)
 	}
 
@@ -579,14 +579,14 @@ func (m *Queryialog) ResetState() {
 	m.state.init.selectedIndex = ""
 	m.state.init.orderDescending = false
 
-	m.state.table.TableARN = ""
-	m.state.table.TableIndex = messages.TableIndex{}
-	m.state.table.GSI = nil
-	m.state.table.LSI = nil
-	m.state.resolved.HashKey = ""
-	m.state.resolved.HashKeyType = ""
-	m.state.resolved.RangeKey = nil
-	m.state.resolved.RangeKeyType = ""
+	m.state.table.tableARN = ""
+	m.state.table.tableIndex = messages.TableIndex{}
+	m.state.table.gsi = nil
+	m.state.table.lsi = nil
+	m.state.resolved.hashKey = ""
+	m.state.resolved.hashKeyType = ""
+	m.state.resolved.rangeKey = nil
+	m.state.resolved.rangeKeyType = ""
 	m.focus = queryIndexSelection
 
 	m.content.indexSelection.SetItems([]list.Item{})
@@ -602,10 +602,10 @@ func (m *Queryialog) SetState(msg messages.InitQueryParameters) tea.Cmd {
 	m.ResetState()
 
 	// init table state
-	m.state.table.TableARN = msg.TableARN
-	m.state.table.TableIndex = msg.TableIndex
-	m.state.table.GSI = msg.GSI
-	m.state.table.LSI = msg.LSI
+	m.state.table.tableARN = msg.TableARN
+	m.state.table.tableIndex = msg.TableIndex
+	m.state.table.gsi = msg.GSI
+	m.state.table.lsi = msg.LSI
 
 	// init resolved state for updating contents later
 	m.resolveIndexInfo()
@@ -634,14 +634,14 @@ func (m *Queryialog) InitContent() tea.Cmd {
 
 	{ // set indexes
 		var idx int
-		items := make([]list.Item, 0, 1+len(m.state.table.GSI)+len(m.state.table.LSI))
+		items := make([]list.Item, 0, 1+len(m.state.table.gsi)+len(m.state.table.lsi))
 		items = append(items, headed.Item{
 			Name: tableIndexName,
 			Meta: map[string]any{metaKey: indexItemMeta{
 				indexType: table,
 			}},
 		})
-		for i, g := range m.state.table.GSI {
+		for i, g := range m.state.table.gsi {
 			items = append(items, headed.Item{
 				Name: g.Name,
 				Meta: map[string]any{metaKey: indexItemMeta{
@@ -653,7 +653,7 @@ func (m *Queryialog) InitContent() tea.Cmd {
 				idx = len(items) - 1
 			}
 		}
-		for i, l := range m.state.table.LSI {
+		for i, l := range m.state.table.lsi {
 			items = append(items, headed.Item{
 				Name: l.Name,
 				Meta: map[string]any{metaKey: indexItemMeta{
@@ -677,7 +677,7 @@ func (m *Queryialog) InitContent() tea.Cmd {
 		operators[3] = regular.ListItem{Value: string(messages.Less)}
 		operators[4] = regular.ListItem{Value: string(messages.LessEqual)}
 		operators[5] = regular.ListItem{Value: string(messages.Between)}
-		if m.state.resolved.RangeKeyType != "N" {
+		if m.state.resolved.rangeKeyType != "N" {
 			operators = append(operators, regular.ListItem{Value: string(messages.BeginsWith)})
 		}
 		var idx int
@@ -720,7 +720,7 @@ func (m *Queryialog) updateContent() tea.Cmd {
 	operators[3] = regular.ListItem{Value: string(messages.Less)}
 	operators[4] = regular.ListItem{Value: string(messages.LessEqual)}
 	operators[5] = regular.ListItem{Value: string(messages.Between)}
-	if m.state.resolved.RangeKeyType != "N" {
+	if m.state.resolved.rangeKeyType != "N" {
 		operators = append(operators, regular.ListItem{Value: string(messages.BeginsWith)})
 	}
 
@@ -757,7 +757,7 @@ func (m *Queryialog) queryParametersUpdate() tea.Cmd {
 	rangeKeyV2 := m.content.rangeKeyInput2.Value()
 
 	// NOTE: resolve variables outside async tea.Cmd func
-	tableARN := m.state.table.TableARN
+	tableARN := m.state.table.tableARN
 	indexName := u.Ternary(idx, "", idx != tableIndexName)
 	hkval := m.content.hashKeyInput.Value()
 	rkval1 := u.Ternary(&rangeKeyV, nil, rangeKeyV != "")
@@ -854,8 +854,8 @@ func (m *Queryialog) updateIndexListSize() {
 		var (
 			maxContentH       = maxDialogHeight - (titleH + bordersH + filterH + contentPH + applyH + helpH)
 			paginatorH        = lipgloss.Height(m.content.indexSelection.Styles.PaginationStyle.Render(m.content.indexSelection.Paginator.View())) + 1 // margin is set dynamically in list, cannot access; ergo '+1'
-			gsilen            = len(m.state.table.GSI)
-			lsilen            = len(m.state.table.LSI)
+			gsilen            = len(m.state.table.gsi)
+			lsilen            = len(m.state.table.lsi)
 			numHeaders        = u.Ternary(1, u.Ternary(2, 3, gsilen > 0 && lsilen == 0), gsilen+lsilen == 0)
 			headerH           = lipgloss.Height(m.styles.Header.Render(m.styles.headerFmt("test-header")))
 			totalHeaderH      = numHeaders * headerH
@@ -886,7 +886,7 @@ func (m *Queryialog) View() string {
 	)
 
 	// only render range-key parameters when range-key applies
-	if m.state.resolved.RangeKey != nil {
+	if m.state.resolved.rangeKey != nil {
 		rangeKeyFields := m.renderJoinedRangeKeyFields()
 		keyFieldsRendering = slices.Insert(keyFieldsRendering, 1, rangeKeyFields)
 	}
@@ -965,7 +965,7 @@ func (m *Queryialog) renderHashKey() string {
 
 	return lipgloss.JoinVertical(
 		lipgloss.Left,
-		m.styles.hashKeyInputTitle.Render(fmt.Sprintf("Hash Key (%s): %s", m.state.resolved.HashKeyType, m.state.resolved.HashKey)),
+		m.styles.hashKeyInputTitle.Render(fmt.Sprintf("Hash Key (%s): %s", m.state.resolved.hashKeyType, m.state.resolved.hashKey)),
 		hashKeyInputStyle.Render(m.content.hashKeyInput.View()),
 	)
 }
@@ -979,7 +979,7 @@ func (m *Queryialog) renderJoinedRangeKeyFields() string {
 	or := m.content.rangeOrderSelection.SelectedItem().(regular.ListItem).Value
 
 	rendering := []string{
-		m.styles.rangeKeyInputTitle.Render(fmt.Sprintf("Range Key (%s): %s", m.state.resolved.RangeKeyType, *m.state.resolved.RangeKey)),
+		m.styles.rangeKeyInputTitle.Render(fmt.Sprintf("Range Key (%s): %s", m.state.resolved.rangeKeyType, *m.state.resolved.rangeKey)),
 		rangeKeyOperatorStyle.Render(op),
 		rangeKeyInputStyle1.Render(m.content.rangeKeyInput1.View()),
 		m.styles.rangeKeyOrderTitle.Render("Range Order"),
@@ -1009,22 +1009,22 @@ func (m *Queryialog) resolveIndexInfo() {
 
 	switch meta.indexType {
 	case table:
-		i := m.state.table.TableIndex
-		m.state.resolved.HashKey = i.HashKey
-		m.state.resolved.HashKeyType = i.HashKeyType
-		m.state.resolved.RangeKey = i.RangeKey
-		m.state.resolved.RangeKeyType = i.RangeKeyType
+		i := m.state.table.tableIndex
+		m.state.resolved.hashKey = i.HashKey
+		m.state.resolved.hashKeyType = i.HashKeyType
+		m.state.resolved.rangeKey = i.RangeKey
+		m.state.resolved.rangeKeyType = i.RangeKeyType
 	case gsi:
-		i := m.state.table.GSI[meta.sliceIndex]
-		m.state.resolved.HashKey = i.HashKey
-		m.state.resolved.HashKeyType = i.HashKeyType
-		m.state.resolved.RangeKey = i.RangeKey
-		m.state.resolved.RangeKeyType = i.RangeKeyType
+		i := m.state.table.gsi[meta.sliceIndex]
+		m.state.resolved.hashKey = i.HashKey
+		m.state.resolved.hashKeyType = i.HashKeyType
+		m.state.resolved.rangeKey = i.RangeKey
+		m.state.resolved.rangeKeyType = i.RangeKeyType
 	case lsi:
-		i := m.state.table.LSI[meta.sliceIndex]
-		m.state.resolved.HashKey = i.HashKey
-		m.state.resolved.HashKeyType = i.HashKeyType
-		m.state.resolved.RangeKey = &i.RangeKey
-		m.state.resolved.RangeKeyType = i.RangeKeyType
+		i := m.state.table.lsi[meta.sliceIndex]
+		m.state.resolved.hashKey = i.HashKey
+		m.state.resolved.hashKeyType = i.HashKeyType
+		m.state.resolved.rangeKey = &i.RangeKey
+		m.state.resolved.rangeKeyType = i.RangeKeyType
 	}
 }

@@ -27,10 +27,10 @@ func (m *ItemSelectionPane) enableScanMode(force bool) tea.Cmd {
 
 	m.queryMode = messages.ScanMode
 	m.tableIndex.activeIndex = m.scanParameters.index
-	m.KeyMap.Query.SetEnabled(true)
-	m.KeyMap.QueryParameters.SetEnabled(false)
-	m.KeyMap.Scan.SetEnabled(false)
-	m.KeyMap.ScanParameters.SetEnabled(true)
+	m.keyMap.Query.SetEnabled(true)
+	m.keyMap.QueryParameters.SetEnabled(false)
+	m.keyMap.Scan.SetEnabled(false)
+	m.keyMap.ScanParameters.SetEnabled(true)
 
 	switchM := func() tea.Msg {
 		return messages.SwitchQueryMode{

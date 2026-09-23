@@ -55,7 +55,7 @@ func (t *ItemsTable) SetColumnSorting(cols []string, sortingOn string, ascending
 	// NOTE: parsing rows anew assures a consistent input to update-table &
 	// sort-rows, preventing sort-rows from regurgitating its own output on when
 	// changing sorting without resets; leads to more consistent outputs.
-	t.updateTable(assembleColumns(t.viewOptions, t.ColumnAttributes), parseRows(t.ColumnAttributes, t.Items, t.CompileTransforms()), nil)
+	t.updateTable(assembleColumns(t.viewOptions, t.columnAttributes), parseRows(t.columnAttributes, t.items, t.CompileTransforms()), nil)
 	return true
 }
 
@@ -103,7 +103,7 @@ func (t *ItemsTable) SetColumnVisibility(cols []string, visible []bool) bool {
 		return false
 	}
 
-	t.updateTable(assembleColumns(t.viewOptions, t.ColumnAttributes), nil, nil)
+	t.updateTable(assembleColumns(t.viewOptions, t.columnAttributes), nil, nil)
 
 	return true
 }
@@ -140,7 +140,7 @@ func (t *ItemsTable) SetColumnTransform(cols []string, transformed []bool) bool 
 		return false
 	}
 
-	t.updateTable(assembleColumns(t.viewOptions, t.ColumnAttributes), parseRows(t.ColumnAttributes, t.Items, t.CompileTransforms()), nil)
+	t.updateTable(assembleColumns(t.viewOptions, t.columnAttributes), parseRows(t.columnAttributes, t.items, t.CompileTransforms()), nil)
 	t.RebuildSearchResults()
 
 	return true
@@ -259,7 +259,7 @@ func (t *ItemsTable) SetColumnDynamicWidth(cols []string, dynamicWidth []bool) b
 		return false
 	}
 
-	t.updateTable(assembleColumns(t.viewOptions, t.ColumnAttributes), nil, nil)
+	t.updateTable(assembleColumns(t.viewOptions, t.columnAttributes), nil, nil)
 
 	return true
 }

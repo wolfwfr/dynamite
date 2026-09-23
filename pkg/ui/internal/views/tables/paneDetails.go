@@ -40,10 +40,10 @@ type detailsPane struct {
 	}
 
 	// key map
-	KeyMap *DetailsPaneKeyMap
+	keyMap *DetailsPaneKeyMap
 
 	// Additional Keys
-	AddKeyMap keymaps.AdditionalKeys
+	addKeyMap keymaps.AdditionalKeys
 
 	styles detailsStyles
 
@@ -60,7 +60,7 @@ type detailsPaneOption func(p *detailsPane)
 
 func withDetailsPaneKeys(keys keymaps.AdditionalKeys) detailsPaneOption {
 	return func(t *detailsPane) {
-		t.AddKeyMap = keys
+		t.addKeyMap = keys
 	}
 }
 
@@ -75,14 +75,14 @@ func newDetailsPane(ctx context.Context, config *appconfig.Config, opts ...detai
 		logger:  config.Logger.With(slog.String(logging.ViewKey, Log_TablesView), slog.String(logging.PaneKey, "details-pane")),
 		config:  config,
 		content: c,
-		KeyMap:  DefaultDetailsKeyMap(),
+		keyMap:  DefaultDetailsKeyMap(),
 	}
 
 	for _, o := range opts {
 		o(p)
 	}
 
-	if !keymaps.UniqueKeyMaps(p.KeyMap.ShortHelp(), p.AddKeyMap.Bindings()) {
+	if !keymaps.UniqueKeyMaps(p.keyMap.ShortHelp(), p.addKeyMap.Bindings()) {
 		panic("overlapping keymaps!")
 	}
 
@@ -115,10 +115,10 @@ func (m *detailsPane) Update(msg tea.Msg) (cmd tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
 		switch {
-		case key.Matches(msg, m.KeyMap.Zoom):
+		case key.Matches(msg, m.keyMap.Zoom):
 			return m.Zoom()
 		default:
-			if match, call := m.AddKeyMap.Matches(msg); match {
+			if match, call := m.addKeyMap.Matches(msg); match {
 				return call
 			}
 		}

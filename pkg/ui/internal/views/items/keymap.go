@@ -180,16 +180,16 @@ type DialogKeyMaps struct {
 	Copy             key.Binding
 }
 
-func (m *ItemSelection) DialogKeyMaps() DialogKeyMaps {
+func (m *ItemSelectionView) DialogKeyMaps() DialogKeyMaps {
 	return DialogKeyMaps{
-		ColumnVisibility: m.itemsPane.KeyMap.ColVis,
-		ColumnSorting:    m.itemsPane.KeyMap.ColSort,
-		ColumnTransform:  m.itemsPane.KeyMap.ColTransform,
-		ColumnWidth:      m.itemsPane.KeyMap.ColWidth,
-		ScanParams:       m.itemsPane.KeyMap.ScanParameters,
-		QueryParams:      m.itemsPane.KeyMap.QueryParameters,
-		FilterParams:     m.itemsPane.KeyMap.FilterParameters,
-		Copy:             m.itemsPane.KeyMap.Copy,
+		ColumnVisibility: m.itemsPane.keyMap.ColVis,
+		ColumnSorting:    m.itemsPane.keyMap.ColSort,
+		ColumnTransform:  m.itemsPane.keyMap.ColTransform,
+		ColumnWidth:      m.itemsPane.keyMap.ColWidth,
+		ScanParams:       m.itemsPane.keyMap.ScanParameters,
+		QueryParams:      m.itemsPane.keyMap.QueryParameters,
+		FilterParams:     m.itemsPane.keyMap.FilterParameters,
+		Copy:             m.itemsPane.keyMap.Copy,
 	}
 }
 

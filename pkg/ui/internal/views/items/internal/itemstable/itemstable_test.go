@@ -127,14 +127,14 @@ func TestGetSelectedRow(t *testing.T) {
 		})
 		t.Run("return selected row when depicting content", func(t *testing.T) {
 			sut := newSUT()
-			sut.Items = genJSONItems(1)                                 // generate and populate items
+			sut.items = genJSONItems(1)                                 // generate and populate items
 			sut.table.SetContent([]table.Column{col}, []table.Row{row}) // set initial content
 			res, _ := sut.GetSelectedItem()                             // test call
 			assert.NotNil(t, res)
 		})
 		t.Run("return no selected row when virtual-rows were set and were empty (i.e. active search with no results)", func(t *testing.T) {
 			sut := newSUT()
-			sut.Items = genJSONItems(1)                                 // generate and populate items
+			sut.items = genJSONItems(1)                                 // generate and populate items
 			sut.table.SetContent([]table.Column{col}, []table.Row{row}) // set initial content
 			sut.table.SetVirtualRows([]table.Row{})                     // set virtual row
 			res, _ := sut.GetSelectedItem()                             // test call
@@ -142,7 +142,7 @@ func TestGetSelectedRow(t *testing.T) {
 		})
 		t.Run("return selected row when virtual-rows were set and were not empty (i.e. active search with results)", func(t *testing.T) {
 			sut := newSUT()
-			sut.Items = genJSONItems(1)                                 // generate and populate items
+			sut.items = genJSONItems(1)                                 // generate and populate items
 			sut.table.SetContent([]table.Column{col}, []table.Row{row}) // set initial content
 			sut.table.SetVirtualRows([]table.Row{row})                  // set virtual row
 			res, _ := sut.GetSelectedItem()                             // test call

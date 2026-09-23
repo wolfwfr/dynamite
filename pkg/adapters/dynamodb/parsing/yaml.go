@@ -17,37 +17,37 @@ const (
 )
 
 type YAMLParser struct {
-	Styles  yamlParserStyles
+	styles  yamlParserStyles
 	tabSize int
 }
 
 type yamlParserStyles struct {
-	FieldNameStyle lipgloss.Style
-	NumberStyle    lipgloss.Style
-	BoolStyle      lipgloss.Style
-	BytesStyle     lipgloss.Style
-	NULLStyle      lipgloss.Style
-	StringStyle    lipgloss.Style
-	TokenStyle     lipgloss.Style
-	ErrorStyle     lipgloss.Style
+	fieldNameStyle lipgloss.Style
+	numberStyle    lipgloss.Style
+	boolStyle      lipgloss.Style
+	bytesStyle     lipgloss.Style
+	nullStyle      lipgloss.Style
+	stringStyle    lipgloss.Style
+	tokenStyle     lipgloss.Style
+	errorStyle     lipgloss.Style
 }
 
 func newYamlParserStyles() yamlParserStyles {
 	p := yamlParserStyles{}
-	p.FieldNameStyle = lipgloss.NewStyle().Foreground(theme.FieldNameFg)
-	p.NumberStyle = lipgloss.NewStyle().Foreground(theme.NumberFg)
-	p.BoolStyle = lipgloss.NewStyle().Foreground(theme.BoolFg)
-	p.BytesStyle = lipgloss.NewStyle().Foreground(theme.BytesFg)
-	p.NULLStyle = lipgloss.NewStyle().Foreground(theme.NULLFg)
-	p.StringStyle = lipgloss.NewStyle().Foreground(theme.StringFg)
-	p.TokenStyle = lipgloss.NewStyle().Foreground(theme.TokenFg)
-	p.ErrorStyle = lipgloss.NewStyle().Foreground(theme.ErrorFg)
+	p.fieldNameStyle = lipgloss.NewStyle().Foreground(theme.FieldNameFg)
+	p.numberStyle = lipgloss.NewStyle().Foreground(theme.NumberFg)
+	p.boolStyle = lipgloss.NewStyle().Foreground(theme.BoolFg)
+	p.bytesStyle = lipgloss.NewStyle().Foreground(theme.BytesFg)
+	p.nullStyle = lipgloss.NewStyle().Foreground(theme.NULLFg)
+	p.stringStyle = lipgloss.NewStyle().Foreground(theme.StringFg)
+	p.tokenStyle = lipgloss.NewStyle().Foreground(theme.TokenFg)
+	p.errorStyle = lipgloss.NewStyle().Foreground(theme.ErrorFg)
 	return p
 }
 
 func NewYAMLParser(tabSize int) YAMLParser {
 	p := YAMLParser{tabSize: tabSize}
-	p.Styles = newYamlParserStyles()
+	p.styles = newYamlParserStyles()
 	return p
 }
 
@@ -64,8 +64,8 @@ func (p YAMLParser) pYAML(elements map[string]types.AttributeValue, hashkey stri
 	// obtain sorted keys
 	keysSorted := getSortedKeys(hashkey, rangekey, elements, nestLevel == 0)
 
-	fieldNameSt := p.Styles.FieldNameStyle
-	tokenSt := p.Styles.TokenStyle
+	fieldNameSt := p.styles.fieldNameStyle
+	tokenSt := p.styles.tokenStyle
 
 	tbs := tabs(p.tabSize, nestLevel)
 	for _, k := range keysSorted {
@@ -98,12 +98,12 @@ func (p YAMLParser) pYAML(elements map[string]types.AttributeValue, hashkey stri
 // in the styling-object must not refer to the object/list contents. Its true
 // contents are irrelevent as they will not get rendered anyway.
 func (p YAMLParser) switchAttrValueYAML(v types.AttributeValue, hashkey string, rangekey *string, nestLevel int, isListItem bool) (string, styles.ObjectStyle) {
-	strSt := p.Styles.StringStyle
-	numSt := p.Styles.NumberStyle
-	bolSt := p.Styles.BoolStyle
-	bytSt := p.Styles.BytesStyle
-	nulSt := p.Styles.NULLStyle
-	errSt := p.Styles.ErrorStyle
+	strSt := p.styles.stringStyle
+	numSt := p.styles.numberStyle
+	bolSt := p.styles.boolStyle
+	bytSt := p.styles.bytesStyle
+	nulSt := p.styles.nullStyle
+	errSt := p.styles.errorStyle
 
 	obj := parseListHelper
 
@@ -113,9 +113,9 @@ func (p YAMLParser) switchAttrValueYAML(v types.AttributeValue, hashkey string, 
 	case *types.AttributeValueMemberBOOL:
 		return obj(pYAMLBool(vv.Value, bolSt))
 	case *types.AttributeValueMemberBS:
-		return stringableAsListYAML(p.Styles, vv.Value, p.tabSize, nestLevel, func(s []byte) (string, styles.ObjectStyle) { return obj(pYAMLBytes(s, bytSt)) })
+		return stringableAsListYAML(p.styles, vv.Value, p.tabSize, nestLevel, func(s []byte) (string, styles.ObjectStyle) { return obj(pYAMLBytes(s, bytSt)) })
 	case *types.AttributeValueMemberL:
-		return stringableAsListYAML(p.Styles, vv.Value, p.tabSize, nestLevel, func(s types.AttributeValue) (string, styles.ObjectStyle) {
+		return stringableAsListYAML(p.styles, vv.Value, p.tabSize, nestLevel, func(s types.AttributeValue) (string, styles.ObjectStyle) {
 			return p.switchAttrValueYAML(s, hashkey, rangekey, nestLevel, true)
 		})
 	case *types.AttributeValueMemberM:
@@ -149,14 +149,14 @@ func (p YAMLParser) switchAttrValueYAML(v types.AttributeValue, hashkey string, 
 	case *types.AttributeValueMemberN:
 		return obj(pYAMLNum(vv.Value, numSt))
 	case *types.AttributeValueMemberNS:
-		return stringableAsListYAML(p.Styles, vv.Value, p.tabSize, nestLevel, func(s string) (string, styles.ObjectStyle) { return obj(pYAMLNum(s, numSt)) })
+		return stringableAsListYAML(p.styles, vv.Value, p.tabSize, nestLevel, func(s string) (string, styles.ObjectStyle) { return obj(pYAMLNum(s, numSt)) })
 	case *types.AttributeValueMemberNULL:
 		v := util.Ternary("NULL", "NOT NULL", vv.Value)
 		return obj(pYAMLNULL(v, nulSt))
 	case *types.AttributeValueMemberS:
 		return obj(pYAMLString(vv.Value, strSt))
 	case *types.AttributeValueMemberSS:
-		return stringableAsListYAML(p.Styles, vv.Value, p.tabSize, nestLevel, func(s string) (string, styles.ObjectStyle) { return obj(pYAMLString(s, strSt)) })
+		return stringableAsListYAML(p.styles, vv.Value, p.tabSize, nestLevel, func(s string) (string, styles.ObjectStyle) { return obj(pYAMLString(s, strSt)) })
 	default:
 		fm := "<failed to parse>"
 		return obj(pYAMLERR(fm, errSt))
@@ -164,7 +164,7 @@ func (p YAMLParser) switchAttrValueYAML(v types.AttributeValue, hashkey string, 
 }
 
 func stringableAsListYAML[S []E, E any](stls yamlParserStyles, s S, tabSize, nestLevel int, tr func(E) (string, styles.ObjectStyle)) (string, styles.ObjectStyle) {
-	tokenSt := stls.TokenStyle
+	tokenSt := stls.tokenStyle
 
 	raw := strings.Builder{}
 	styled := styles.ObjectStyle{styles.LineStyle{}} // start with an empty line

@@ -54,10 +54,10 @@ type ColumnSorting struct {
 	}
 
 	state struct {
-		TableARN   string
-		AllColumns []string // matching by index
-		SortingOn  string
-		Ascending  bool // if false, descending
+		tableARN   string
+		allColumns []string // matching by index
+		sortingOn  string
+		ascending  bool // if false, descending
 	}
 
 	styles sortingListStyles
@@ -237,20 +237,20 @@ func (m *ColumnSorting) Update(msg tea.Msg) tea.Cmd {
 }
 
 func (m *ColumnSorting) SetState(msg messages.InitColumnSorting) tea.Cmd {
-	m.state.TableARN = msg.TableARN
-	m.state.AllColumns = msg.AllColumns
-	m.state.Ascending = msg.Ascending
-	m.state.SortingOn = msg.SortingOn
+	m.state.tableARN = msg.TableARN
+	m.state.allColumns = msg.AllColumns
+	m.state.ascending = msg.Ascending
+	m.state.sortingOn = msg.SortingOn
 	return m.updateContent()
 }
 
 func (m *ColumnSorting) updateContent() tea.Cmd {
-	items := make([]list.Item, 0, len(m.state.AllColumns))
-	for i := range m.state.AllColumns {
+	items := make([]list.Item, 0, len(m.state.allColumns))
+	for i := range m.state.allColumns {
 		items = append(items, sortingItem{
-			checked:   m.state.AllColumns[i] == m.state.SortingOn,
-			name:      m.state.AllColumns[i],
-			ascending: m.state.Ascending,
+			checked:   m.state.allColumns[i] == m.state.sortingOn,
+			name:      m.state.allColumns[i],
+			ascending: m.state.ascending,
 			idx:       i,
 		})
 	}
@@ -260,12 +260,12 @@ func (m *ColumnSorting) updateContent() tea.Cmd {
 }
 
 func (m *ColumnSorting) reset() tea.Cmd {
-	m.state.SortingOn = ""
-	m.state.Ascending = true
+	m.state.sortingOn = ""
+	m.state.ascending = true
 	m.updateContent()
 	return func() tea.Msg {
 		return messages.ColumnSortingReset{
-			TableARN: m.state.TableARN,
+			TableARN: m.state.tableARN,
 		}
 	}
 }
@@ -274,19 +274,19 @@ func (m *ColumnSorting) selectItem() tea.Cmd {
 	sel := m.content.SelectedItem().(sortingItem)
 	idx := sel.idx
 	items := m.content.Items()
-	if idx >= len(m.state.AllColumns) {
+	if idx >= len(m.state.allColumns) {
 		m.logger.Error("content returned index that exceeds maximum",
 			slog.Int("selected_item_index", idx),
-			slog.Int("n_columns", len(m.state.AllColumns)),
+			slog.Int("n_columns", len(m.state.allColumns)),
 		)
 		panic("dialog state not up to date")
 	}
 	cmds := make([]tea.Cmd, 0)
 
-	if sel.name != m.state.SortingOn {
+	if sel.name != m.state.sortingOn {
 		// when selecting new item, reset old item
-		if m.state.SortingOn != "" {
-			oldIdx := u.Find(m.state.AllColumns, m.state.SortingOn)
+		if m.state.sortingOn != "" {
+			oldIdx := u.Find(m.state.allColumns, m.state.sortingOn)
 			itm := items[oldIdx].(sortingItem)
 			itm.checked = false
 			cmds = append(cmds, m.content.SetItem(oldIdx, itm))
@@ -301,8 +301,8 @@ func (m *ColumnSorting) selectItem() tea.Cmd {
 		cmds = append(cmds, m.content.SetItem(idx, sel))
 	}
 
-	m.state.Ascending = sel.ascending
-	m.state.SortingOn = sel.name
+	m.state.ascending = sel.ascending
+	m.state.sortingOn = sel.name
 
 	cmds = append(cmds, m.UpdateMessage())
 	return tea.Batch(cmds...)
@@ -311,10 +311,10 @@ func (m *ColumnSorting) selectItem() tea.Cmd {
 func (m *ColumnSorting) UpdateMessage() tea.Cmd {
 	return func() tea.Msg {
 		msg := messages.ColumnSortingUpdate{}
-		msg.TableARN = m.state.TableARN
-		msg.AllColumns = m.state.AllColumns
-		msg.SortingOn = m.state.SortingOn
-		msg.Ascending = m.state.Ascending
+		msg.TableARN = m.state.tableARN
+		msg.AllColumns = m.state.allColumns
+		msg.SortingOn = m.state.sortingOn
+		msg.Ascending = m.state.ascending
 		return msg
 	}
 }

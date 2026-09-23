@@ -21,7 +21,7 @@ type paneID int
 
 const (
 	tablesPaneID paneID = iota
-	detailPaneID
+	detailsPaneID
 )
 
 type paneProperties struct {
@@ -30,7 +30,7 @@ type paneProperties struct {
 	style  lipgloss.Style
 }
 
-type TableSelection struct {
+type TableSelectionView struct {
 	// logger
 	logger *slog.Logger
 
@@ -47,10 +47,10 @@ type TableSelection struct {
 	panes map[paneID]paneProperties
 
 	// key map
-	KeyMap *TableViewKeyMap
+	keyMap *TableViewKeyMap
 
 	// Additional Keys
-	AddKeyMap keymaps.AdditionalKeys
+	addKeyMap keymaps.AdditionalKeys
 
 	// panes
 	tablesPane *tableSelectionPane
@@ -62,7 +62,7 @@ type TableSelection struct {
 	zoomtarget paneID
 }
 
-func (m *TableSelection) renderBorder(paneID paneID, content string) string {
+func (m *TableSelectionView) renderBorder(paneID paneID, content string) string {
 	st := m.panes[paneID].style
 	if m.focused == paneID {
 		return theme.FocusedBorderStyle.Inherit(st).Render(content)
@@ -70,19 +70,19 @@ func (m *TableSelection) renderBorder(paneID paneID, content string) string {
 	return theme.BorderStyle.Inherit(st).Render(content)
 }
 
-type Option func(t *TableSelection)
+type Option func(t *TableSelectionView)
 
 func WithAdditionalKeys(keys keymaps.AdditionalKeys) Option {
-	return func(t *TableSelection) {
-		t.AddKeyMap = keys
+	return func(t *TableSelectionView) {
+		t.addKeyMap = keys
 	}
 }
 
-func NewTableSelectionView(ctx context.Context, config *appconfig.Config, opts ...Option) *TableSelection {
-	t := &TableSelection{
+func NewTableSelectionView(ctx context.Context, config *appconfig.Config, opts ...Option) *TableSelectionView {
+	t := &TableSelectionView{
 		logger: config.Logger.With(slog.String(logging.ViewKey, Log_TablesView)),
 		config: config,
-		KeyMap: DefaultTableViewKeyMap(),
+		keyMap: DefaultTableViewKeyMap(),
 		panes:  make(map[paneID]paneProperties),
 	}
 
@@ -90,13 +90,13 @@ func NewTableSelectionView(ctx context.Context, config *appconfig.Config, opts .
 		o(t)
 	}
 
-	t.tablesPane = newTableSelectionPane(ctx, config, withTablePaneKeys(t.AddKeyMap))
-	t.detailPane = newDetailsPane(ctx, config, withDetailsPaneKeys(t.AddKeyMap))
+	t.tablesPane = newTableSelectionPane(ctx, config, withTablePaneKeys(t.addKeyMap))
+	t.detailPane = newDetailsPane(ctx, config, withDetailsPaneKeys(t.addKeyMap))
 
 	return t
 }
 
-func (m *TableSelection) Init() tea.Cmd {
+func (m *TableSelectionView) Init() tea.Cmd {
 	m.logger.Info("initialising...")
 	cmds := make([]tea.Cmd, 0)
 	cmds = append(cmds, m.tablesPane.Init())
@@ -107,19 +107,19 @@ func (m *TableSelection) Init() tea.Cmd {
 
 // update handles the message and if it does not detect a keypress that it can
 // map itself proceeds to forward the message to the model's children
-func (m *TableSelection) Update(msg tea.Msg) tea.Cmd {
+func (m *TableSelectionView) Update(msg tea.Msg) tea.Cmd {
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
 		switch {
-		case key.Matches(msg, m.KeyMap.MoveFocus):
+		case key.Matches(msg, m.keyMap.MoveFocus):
 			m.moveFocus()
 			return nil
-		case key.Matches(msg, m.KeyMap.MoveWidthLeft):
+		case key.Matches(msg, m.keyMap.MoveWidthLeft):
 			return m.moveWidthLeft()
-		case key.Matches(msg, m.KeyMap.MoveWidthRight):
+		case key.Matches(msg, m.keyMap.MoveWidthRight):
 			return m.moveWidthRight()
-		case key.Matches(msg, m.KeyMap.Regions):
+		case key.Matches(msg, m.keyMap.Regions):
 			return m.ToggleRegionsDialog()
 		}
 	case tea.WindowSizeMsg:
@@ -135,7 +135,7 @@ func (m *TableSelection) Update(msg tea.Msg) tea.Cmd {
 
 // forward takes a message and decides to broadcast or to forward only to focused
 // children
-func (m *TableSelection) forward(msg tea.Msg) tea.Cmd {
+func (m *TableSelectionView) forward(msg tea.Msg) tea.Cmd {
 	if _, isKeyPress := msg.(tea.KeyPressMsg); isKeyPress {
 		return m.routeToFocusedOnly(msg)
 	}
@@ -143,7 +143,7 @@ func (m *TableSelection) forward(msg tea.Msg) tea.Cmd {
 }
 
 // broadcast takes a message and forwards it to all children
-func (m TableSelection) broadcast(msg tea.Msg) tea.Cmd {
+func (m TableSelectionView) broadcast(msg tea.Msg) tea.Cmd {
 	cmds := []tea.Cmd{}
 	cmds = append(cmds, m.tablesPane.Update(msg))
 	cmds = append(cmds, m.detailPane.Update(msg))
@@ -152,43 +152,43 @@ func (m TableSelection) broadcast(msg tea.Msg) tea.Cmd {
 
 // routeToFocusedOnly takes a message and only routes it to a single child, the
 // active child with highest precedence (dialogs take precedence over views)
-func (m *TableSelection) routeToFocusedOnly(msg tea.Msg) tea.Cmd {
+func (m *TableSelectionView) routeToFocusedOnly(msg tea.Msg) tea.Cmd {
 	switch m.focused {
 	case tablesPaneID:
 		return m.tablesPane.Update(msg)
-	case detailPaneID:
+	case detailsPaneID:
 		return m.detailPane.Update(msg)
 	default:
 		panic("BUG: focused pane not found; report to maintainer")
 	}
 }
 
-func (m *TableSelection) handleZoom(msg tea.Msg) tea.Cmd {
+func (m *TableSelectionView) handleZoom(msg tea.Msg) tea.Cmd {
 	switch msg.(type) {
 	case messages.ZoomToggleTableSelectionPane:
 		m.logger.Debug("zoom selection-pane")
 		m.zoomEnabled = !m.zoomEnabled
 		m.zoomtarget = tablesPaneID
 		m.focused = tablesPaneID
-		m.KeyMap.MoveFocus.SetEnabled(!m.KeyMap.MoveFocus.Enabled())
+		m.keyMap.MoveFocus.SetEnabled(!m.keyMap.MoveFocus.Enabled())
 	case messages.ZoomToggleTableDetailsPane:
 		m.logger.Debug("zoom details-pane")
 		m.zoomEnabled = !m.zoomEnabled
-		m.zoomtarget = detailPaneID
-		m.focused = detailPaneID
-		m.KeyMap.MoveFocus.SetEnabled(!m.KeyMap.MoveFocus.Enabled())
+		m.zoomtarget = detailsPaneID
+		m.focused = detailsPaneID
+		m.keyMap.MoveFocus.SetEnabled(!m.keyMap.MoveFocus.Enabled())
 	}
 	m.applySize()
 	return nil
 }
 
-func (m TableSelection) ToggleRegionsDialog() tea.Cmd {
+func (m TableSelectionView) ToggleRegionsDialog() tea.Cmd {
 	return func() tea.Msg {
 		return messages.ToggleRegions{}
 	}
 }
 
-func (m *TableSelection) moveWidthLeft() tea.Cmd {
+func (m *TableSelectionView) moveWidthLeft() tea.Cmd {
 	m.logger.Debug("moving width left",
 		slog.Int("current_width", int(m.config.Tables.PrimaryWidth)),
 	)
@@ -197,7 +197,7 @@ func (m *TableSelection) moveWidthLeft() tea.Cmd {
 	return nil
 }
 
-func (m *TableSelection) moveWidthRight() tea.Cmd {
+func (m *TableSelectionView) moveWidthRight() tea.Cmd {
 	m.logger.Debug("moving width right",
 		slog.Int("current_width", int(m.config.Tables.PrimaryWidth)),
 	)
@@ -206,7 +206,7 @@ func (m *TableSelection) moveWidthRight() tea.Cmd {
 	return nil
 }
 
-func (m *TableSelection) applySize() {
+func (m *TableSelectionView) applySize() {
 	var (
 		borderH     = 2
 		borderW     = 2
@@ -214,14 +214,14 @@ func (m *TableSelection) applySize() {
 		pct         = min(100.0, float64(m.config.Tables.PrimaryWidth))
 		partWidth   = int(float64(m.window.width) / (100.0 / pct))
 		tableswidth = u.Ternary(m.window.width, partWidth, m.zoomEnabled && m.zoomtarget == tablesPaneID)
-		detailwidth = u.Ternary(m.window.width, m.window.width-tableswidth, m.zoomEnabled && m.zoomtarget == detailPaneID)
+		detailwidth = u.Ternary(m.window.width, m.window.width-tableswidth, m.zoomEnabled && m.zoomtarget == detailsPaneID)
 		paddingR    = 1
 	)
 	// ensure full screen width is utilised,
 	detailwidth = max(detailwidth, m.window.width-tableswidth)
 
 	tb := m.panes[tablesPaneID]
-	dt := m.panes[detailPaneID]
+	dt := m.panes[detailsPaneID]
 
 	//heights
 	tb.height = m.window.height - homeGutterH - borderH
@@ -247,26 +247,26 @@ func (m *TableSelection) applySize() {
 
 	// update
 	m.panes[tablesPaneID] = tb
-	m.panes[detailPaneID] = dt
+	m.panes[detailsPaneID] = dt
 
 	// forward
 	m.tablesPane.applySize(tb.height-1, tb.width) // subtracting 1 from height for slightly cleaner look
 	m.detailPane.applySize(dt.height, dt.width)
 }
 
-func (m *TableSelection) moveFocus() {
+func (m *TableSelectionView) moveFocus() {
 	m.logger.Debug("moving focus", slog.Int("current_focus", int(m.focused)))
 	m.focused++
-	if m.focused > detailPaneID {
+	if m.focused > detailsPaneID {
 		m.focused = tablesPaneID
 	}
 }
 
-func (m *TableSelection) View() string {
+func (m *TableSelectionView) View() string {
 	s := strings.Builder{}
 	s.WriteString(lipgloss.JoinHorizontal(lipgloss.Top,
 		u.Ternary(m.renderBorder(tablesPaneID, m.tablesPane.View()), "", !m.zoomEnabled || m.zoomtarget == tablesPaneID),
-		u.Ternary(m.renderBorder(detailPaneID, m.detailPane.View()), "", !m.zoomEnabled || m.zoomtarget == detailPaneID),
+		u.Ternary(m.renderBorder(detailsPaneID, m.detailPane.View()), "", !m.zoomEnabled || m.zoomtarget == detailsPaneID),
 	))
 	return s.String()
 }

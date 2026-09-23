@@ -55,7 +55,7 @@ type Help struct {
 		height int
 	}
 
-	Help help.Model
+	help help.Model
 
 	// accessible views
 	tableSelection help.KeyMap
@@ -75,7 +75,7 @@ func NewHelp(tableView, itemView help.KeyMap, close key.Binding) *Help {
 			close: close,
 		},
 
-		Help: help.New(),
+		help: help.New(),
 
 		tableSelection: tableView,
 		itemselection:  itemView,
@@ -96,7 +96,7 @@ func (m *Help) Init() tea.Cmd {
 
 func (m *Help) updateStyles() {
 	s := newHelpStyles()
-	m.Help.Styles = help.DefaultStyles(theme.DarkTheme)
+	m.help.Styles = help.DefaultStyles(theme.DarkTheme)
 
 	// dialog-style is actively resized; retain
 	s.dialog = m.styles.dialog
@@ -133,7 +133,7 @@ func (m *Help) applySize(height, width int) {
 
 func (m *Help) updateSize() {
 	// first reset widths for obtaining desired size
-	m.Help.SetWidth(0)
+	m.help.SetWidth(0)
 	m.styles.dialog = m.styles.dialog.Width(0)
 	m.styles.dialog = m.styles.dialog.Height(0)
 
@@ -149,7 +149,7 @@ func (m *Help) updateSize() {
 
 	m.dialog.height = min(m.defaultDialogHeight, m.window.height)
 
-	m.Help.SetWidth(helpWidth)
+	m.help.SetWidth(helpWidth)
 
 	m.styles.dialog = m.styles.dialog.
 		Height(m.dialog.height).
@@ -169,7 +169,7 @@ func (m *Help) View() string {
 		lipgloss.JoinVertical(lipgloss.Center,
 			m.styles.title.Render(title),
 			m.renderFullHelp(),
-			m.styles.helpLine.Render(m.Help.ShortHelpView((m.keyMap.ShortHelp()))),
+			m.styles.helpLine.Render(m.help.ShortHelpView((m.keyMap.ShortHelp()))),
 		),
 	)
 }
@@ -178,9 +178,9 @@ func (m *Help) renderFullHelp() string {
 	var fullhelp string
 	switch m.activeView {
 	case messages.Item_selection:
-		fullhelp = m.Help.FullHelpView(m.itemselection.FullHelp())
+		fullhelp = m.help.FullHelpView(m.itemselection.FullHelp())
 	case messages.Table_selection:
-		fullhelp = m.Help.FullHelpView(m.tableSelection.FullHelp())
+		fullhelp = m.help.FullHelpView(m.tableSelection.FullHelp())
 	}
 	return m.styles.fullHelp.Render(fullhelp)
 }

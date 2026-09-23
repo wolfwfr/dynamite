@@ -119,8 +119,8 @@ func (t *ItemsTable) GetColumns() []table.Column {
 }
 
 func (t *ItemsTable) GetColumnTypes() []ColumnAttributes {
-	res := make([]ColumnAttributes, len(t.ColumnAttributes))
-	copy(res, t.ColumnAttributes)
+	res := make([]ColumnAttributes, len(t.columnAttributes))
+	copy(res, t.columnAttributes)
 	return res
 }
 
@@ -145,7 +145,7 @@ func (t *ItemsTable) GetKeyMap() *table.KeyMap {
 func (t *ItemsTable) AddItems(items apitypes.Items, hasRangeKey bool) {
 	t.logger.Debug("adding items",
 		slog.Int("incoming_len", len(items)),
-		slog.Int("existing_len", len(t.Items)),
+		slog.Int("existing_len", len(t.items)),
 		slog.Bool("with_range_key", hasRangeKey),
 	)
 	t.appendItems(items)
@@ -154,15 +154,15 @@ func (t *ItemsTable) AddItems(items apitypes.Items, hasRangeKey bool) {
 	}
 
 	// set columns
-	columnTitles := compileUniqueKeys(items, t.ColumnAttributes, hasRangeKey)
-	defer func() { t.ColumnAttributes = columnTitles }()
+	columnTitles := compileUniqueKeys(items, t.columnAttributes, hasRangeKey)
+	defer func() { t.columnAttributes = columnTitles }()
 
 	var (
 		cols []table.Column = nil
 		rows []table.Row    = nil
 		virt []table.Row    = nil
 
-		noColumnUpdate = slices.Equal(t.ColumnAttributes, columnTitles)
+		noColumnUpdate = slices.Equal(t.columnAttributes, columnTitles)
 		columnUpdate   = !noColumnUpdate
 		appendOnly     = noColumnUpdate && !t.viewOptions.GetColumnSortingOptions().Enabled
 	)
@@ -170,18 +170,18 @@ func (t *ItemsTable) AddItems(items apitypes.Items, hasRangeKey bool) {
 	switch {
 	case columnUpdate: // update columns & ALL rows
 		cols = assembleColumns(t.viewOptions, columnTitles)
-		rows = parseRows(columnTitles, t.Items, t.CompileTransforms())
+		rows = parseRows(columnTitles, t.items, t.CompileTransforms())
 	case appendOnly: // update with new rows (append)
-		rows = parseRows(columnTitles, t.Items, t.CompileTransforms())
+		rows = parseRows(columnTitles, t.items, t.CompileTransforms())
 	default: // update ALL rows but no columns
-		rows = parseRows(columnTitles, t.Items, t.CompileTransforms())
+		rows = parseRows(columnTitles, t.items, t.CompileTransforms())
 	}
 
 	t.updateTable(cols, rows, virt)
 }
 
 func (t *ItemsTable) appendItems(newItems apitypes.Items) {
-	t.Items = mergeSlices(t.Items, newItems)
+	t.items = mergeSlices(t.items, newItems)
 }
 
 func (t *ItemsTable) View() string {
@@ -194,7 +194,7 @@ func (t *ItemsTable) GetSelectedRow() *table.Row {
 
 func (t *ItemsTable) GetSelectedItem() (*apitypes.Item, int) {
 	var (
-		items = t.Items
+		items = t.items
 		row   = t.table.SelectedRow()
 	)
 

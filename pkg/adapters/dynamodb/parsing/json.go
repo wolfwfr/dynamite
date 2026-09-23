@@ -18,37 +18,37 @@ const (
 )
 
 type JSONParser struct {
-	Styles  jsonParserStyles
+	styles  jsonParserStyles
 	tabSize int
 }
 
 type jsonParserStyles struct {
-	FieldNameStyle lipgloss.Style
-	NumberStyle    lipgloss.Style
-	BoolStyle      lipgloss.Style
-	BytesStyle     lipgloss.Style
-	NULLStyle      lipgloss.Style
-	StringStyle    lipgloss.Style
-	TokenStyle     lipgloss.Style
-	ErrorStyle     lipgloss.Style
+	fieldNameStyle lipgloss.Style
+	numberStyle    lipgloss.Style
+	boolStyle      lipgloss.Style
+	bytesStyle     lipgloss.Style
+	nullStyle      lipgloss.Style
+	stringStyle    lipgloss.Style
+	tokenStyle     lipgloss.Style
+	errorStyle     lipgloss.Style
 }
 
 func newjsonParserStyles() jsonParserStyles {
 	p := jsonParserStyles{}
-	p.FieldNameStyle = lipgloss.NewStyle().Foreground(theme.FieldNameFg)
-	p.NumberStyle = lipgloss.NewStyle().Foreground(theme.NumberFg)
-	p.BoolStyle = lipgloss.NewStyle().Foreground(theme.BoolFg)
-	p.BytesStyle = lipgloss.NewStyle().Foreground(theme.BytesFg)
-	p.NULLStyle = lipgloss.NewStyle().Foreground(theme.NULLFg)
-	p.StringStyle = lipgloss.NewStyle().Foreground(theme.StringFg)
-	p.TokenStyle = lipgloss.NewStyle().Foreground(theme.TokenFg)
-	p.ErrorStyle = lipgloss.NewStyle().Foreground(theme.ErrorFg)
+	p.fieldNameStyle = lipgloss.NewStyle().Foreground(theme.FieldNameFg)
+	p.numberStyle = lipgloss.NewStyle().Foreground(theme.NumberFg)
+	p.boolStyle = lipgloss.NewStyle().Foreground(theme.BoolFg)
+	p.bytesStyle = lipgloss.NewStyle().Foreground(theme.BytesFg)
+	p.nullStyle = lipgloss.NewStyle().Foreground(theme.NULLFg)
+	p.stringStyle = lipgloss.NewStyle().Foreground(theme.StringFg)
+	p.tokenStyle = lipgloss.NewStyle().Foreground(theme.TokenFg)
+	p.errorStyle = lipgloss.NewStyle().Foreground(theme.ErrorFg)
 	return p
 }
 
 func NewJSONParser(tabSize int) JSONParser {
 	p := JSONParser{tabSize: tabSize}
-	p.Styles = newjsonParserStyles()
+	p.styles = newjsonParserStyles()
 	return p
 }
 
@@ -92,8 +92,8 @@ func (p JSONParser) pJSON(elements map[string]types.AttributeValue, hashkey stri
 		kv = make([]apitypes.KeyValue, len(keysSorted))
 	}
 
-	tokenSt := p.Styles.TokenStyle
-	fieldSt := p.Styles.FieldNameStyle
+	tokenSt := p.styles.tokenStyle
+	fieldSt := p.styles.fieldNameStyle
 
 	if len(keysSorted) == 0 { // no content
 		raw, styled := emptyBrackets("{}", tokenSt)
@@ -147,13 +147,13 @@ func (p JSONParser) pJSON(elements map[string]types.AttributeValue, hashkey stri
 }
 
 func (p JSONParser) switchAttrValueJSON(v types.AttributeValue, hashkey string, rangekey *string, nestLevel int) (string, styles.ObjectStyle) {
-	strSt := p.Styles.StringStyle
-	numSt := p.Styles.NumberStyle
-	bolSt := p.Styles.BoolStyle
-	bytSt := p.Styles.BytesStyle
-	tokSt := p.Styles.TokenStyle
-	nulSt := p.Styles.NULLStyle
-	errSt := p.Styles.ErrorStyle
+	strSt := p.styles.stringStyle
+	numSt := p.styles.numberStyle
+	bolSt := p.styles.boolStyle
+	bytSt := p.styles.bytesStyle
+	tokSt := p.styles.tokenStyle
+	nulSt := p.styles.nullStyle
+	errSt := p.styles.errorStyle
 
 	obj := parseListHelper
 
@@ -163,9 +163,9 @@ func (p JSONParser) switchAttrValueJSON(v types.AttributeValue, hashkey string, 
 	case *types.AttributeValueMemberBOOL:
 		return obj(pJSONBool(vv.Value, tokSt, bolSt))
 	case *types.AttributeValueMemberBS:
-		return stringableAsListJSON(p.Styles, vv.Value, p.tabSize, nestLevel, func(s []byte) (string, styles.ObjectStyle) { return obj(pJSONBytes(s, tokSt, bytSt)) })
+		return stringableAsListJSON(p.styles, vv.Value, p.tabSize, nestLevel, func(s []byte) (string, styles.ObjectStyle) { return obj(pJSONBytes(s, tokSt, bytSt)) })
 	case *types.AttributeValueMemberL:
-		return stringableAsListJSON(p.Styles, vv.Value, p.tabSize, nestLevel, func(s types.AttributeValue) (string, styles.ObjectStyle) {
+		return stringableAsListJSON(p.styles, vv.Value, p.tabSize, nestLevel, func(s types.AttributeValue) (string, styles.ObjectStyle) {
 			return p.switchAttrValueJSON(s, hashkey, rangekey, nestLevel+1)
 		})
 	case *types.AttributeValueMemberM:
@@ -176,14 +176,14 @@ func (p JSONParser) switchAttrValueJSON(v types.AttributeValue, hashkey string, 
 	case *types.AttributeValueMemberN:
 		return obj(pJSONNum(vv.Value, tokSt, numSt))
 	case *types.AttributeValueMemberNS:
-		return stringableAsListJSON(p.Styles, vv.Value, p.tabSize, nestLevel, func(s string) (string, styles.ObjectStyle) { return obj(pJSONNum(s, tokSt, numSt)) })
+		return stringableAsListJSON(p.styles, vv.Value, p.tabSize, nestLevel, func(s string) (string, styles.ObjectStyle) { return obj(pJSONNum(s, tokSt, numSt)) })
 	case *types.AttributeValueMemberNULL:
 		v := util.Ternary("NULL", "NOT NULL", vv.Value)
 		return obj(pJSONNULL(v, tokSt, nulSt))
 	case *types.AttributeValueMemberS:
 		return obj(pJSONString(vv.Value, tokSt, strSt))
 	case *types.AttributeValueMemberSS:
-		return stringableAsListJSON(p.Styles, vv.Value, p.tabSize, nestLevel, func(s string) (string, styles.ObjectStyle) { return obj(pJSONString(s, tokSt, strSt)) })
+		return stringableAsListJSON(p.styles, vv.Value, p.tabSize, nestLevel, func(s string) (string, styles.ObjectStyle) { return obj(pJSONString(s, tokSt, strSt)) })
 	default:
 		fm := "<failed to parse>"
 		return obj(pJSONERR(fm, tokSt, errSt))
@@ -191,7 +191,7 @@ func (p JSONParser) switchAttrValueJSON(v types.AttributeValue, hashkey string, 
 }
 
 func stringableAsListJSON[S []E, E any](stls jsonParserStyles, items S, tabSize, nestLevel int, tr func(E) (string, styles.ObjectStyle)) (string, styles.ObjectStyle) {
-	tokenSt := stls.TokenStyle
+	tokenSt := stls.tokenStyle
 
 	if len(items) == 0 {
 		return emptyBrackets("[]", tokenSt)

@@ -76,9 +76,9 @@ type ColumnVis struct {
 	styles columnsListStyles
 
 	state struct {
-		TableARN   string
-		AllColumns []string // matching by index
-		Visible    []bool   // matching by index
+		tableARN   string
+		allColumns []string // matching by index
+		visible    []bool   // matching by index
 	}
 
 	content list.Model
@@ -206,32 +206,32 @@ func (m *ColumnVis) Update(msg tea.Msg) tea.Cmd {
 }
 
 func (m *ColumnVis) SetState(msg messages.InitColumnVisibility) tea.Cmd {
-	m.state.TableARN = msg.TableARN
-	m.state.AllColumns = msg.AllColumns
-	m.state.Visible = msg.Visible
+	m.state.tableARN = msg.TableARN
+	m.state.allColumns = msg.AllColumns
+	m.state.visible = msg.Visible
 	return m.updateContent()
 }
 
 func (m *ColumnVis) EnableAll() tea.Cmd {
-	for i := range m.state.Visible {
-		m.state.Visible[i] = true
+	for i := range m.state.visible {
+		m.state.visible[i] = true
 	}
 	return tea.Batch(m.updateContent(), m.UpdateMessage())
 }
 
 func (m *ColumnVis) DisableAll() tea.Cmd {
-	for i := range m.state.Visible {
-		m.state.Visible[i] = false
+	for i := range m.state.visible {
+		m.state.visible[i] = false
 	}
 	return tea.Batch(m.updateContent(), m.UpdateMessage())
 }
 
 func (m *ColumnVis) updateContent() tea.Cmd {
-	items := make([]list.Item, 0, len(m.state.AllColumns))
-	for i := range m.state.AllColumns {
+	items := make([]list.Item, 0, len(m.state.allColumns))
+	for i := range m.state.allColumns {
 		items = append(items, checkbox.Item{
-			Checked: m.state.Visible[i],
-			Name:    m.state.AllColumns[i],
+			Checked: m.state.visible[i],
+			Name:    m.state.allColumns[i],
 			Meta: map[string]any{
 				"idx": i,
 			},
@@ -248,15 +248,15 @@ func (m *ColumnVis) selectItem() tea.Cmd {
 		return nil
 	}
 	idx := itm.Meta["idx"].(int)
-	if idx >= len(m.state.AllColumns) {
+	if idx >= len(m.state.allColumns) {
 		m.logger.Error("content returned index that exceeds maximum",
 			slog.Int("selected_item_index", idx),
-			slog.Int("n_columns", len(m.state.AllColumns)),
+			slog.Int("n_columns", len(m.state.allColumns)),
 		)
 		panic("dialog state not up to date")
 	}
-	m.state.Visible[idx] = !m.state.Visible[idx]
-	itm.Checked = m.state.Visible[idx]
+	m.state.visible[idx] = !m.state.visible[idx]
+	itm.Checked = m.state.visible[idx]
 	listUpdate := m.content.SetItem(idx, itm) // cmd for filtering
 	columnUpdate := m.UpdateMessage()
 	return tea.Batch(listUpdate, columnUpdate)
@@ -265,9 +265,9 @@ func (m *ColumnVis) selectItem() tea.Cmd {
 func (m *ColumnVis) UpdateMessage() tea.Cmd {
 	return func() tea.Msg {
 		msg := messages.ColumnVisibilityUpdate{}
-		msg.TableARN = m.state.TableARN
-		msg.AllColumns = m.state.AllColumns
-		msg.Visible = m.state.Visible
+		msg.TableARN = m.state.tableARN
+		msg.AllColumns = m.state.allColumns
+		msg.Visible = m.state.visible
 		return msg
 	}
 }

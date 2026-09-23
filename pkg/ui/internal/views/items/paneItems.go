@@ -97,10 +97,10 @@ type ItemSelectionPane struct {
 	search *search.SearchBox
 
 	// key map
-	KeyMap *ItemPaneKeyMap
+	keyMap *ItemPaneKeyMap
 
 	// Additional Keys
-	AddKeyMap keymaps.AdditionalKeys
+	addKeyMap keymaps.AdditionalKeys
 
 	// the underlying table
 	table itemsTable
@@ -168,7 +168,7 @@ type itemsPaneOption func(p *ItemSelectionPane)
 // withItemsPaneKeys
 func withItemsPaneKeys(keys keymaps.AdditionalKeys) itemsPaneOption {
 	return func(t *ItemSelectionPane) {
-		t.AddKeyMap = keys
+		t.addKeyMap = keys
 	}
 }
 
@@ -178,7 +178,7 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 		logger:        config.Logger.With(slog.String(logging.ViewKey, Log_ItemsView), slog.String(logging.PaneKey, "items")),
 		config:        config,
 		stdTO:         30 * time.Second,
-		KeyMap:        DefaultItemPaneKeyMap(),
+		keyMap:        DefaultItemPaneKeyMap(),
 		sessions:      make(map[string]SessionData),
 		queryMode:     messages.ScanMode,
 		previewFormat: messages.JSONformat,
@@ -239,7 +239,7 @@ func newItemSelectionPane(ctx context.Context, config *appconfig.Config, opts ..
 		o(p)
 	}
 
-	if !keymaps.UniqueKeyMaps(p.KeyMap.ShortHelp(), p.AddKeyMap.Bindings()) {
+	if !keymaps.UniqueKeyMaps(p.keyMap.ShortHelp(), p.addKeyMap.Bindings()) {
 		panic("overlapping keymaps!")
 	}
 
@@ -448,48 +448,48 @@ func (m *ItemSelectionPane) update(msg tea.Msg) (cmd tea.Cmd) {
 
 func (m *ItemSelectionPane) handleKeyPress(msg tea.KeyPressMsg) tea.Cmd {
 	switch {
-	case key.Matches(msg, m.KeyMap.Search):
+	case key.Matches(msg, m.keyMap.Search):
 		return m.search.OpenSearchBox()
-	case key.Matches(msg, m.KeyMap.Esc):
+	case key.Matches(msg, m.keyMap.Esc):
 		if m.search.IsEnabled() {
 			return m.search.Reset() // make search-box disappear
 		} else if m.paging {
 			return m.cancelPaging()
 		}
-	case key.Matches(msg, m.KeyMap.Continue):
+	case key.Matches(msg, m.keyMap.Continue):
 		return m.continuePaging()
-	case key.Matches(msg, m.KeyMap.Reload):
+	case key.Matches(msg, m.keyMap.Reload):
 		return m.Reload()
-	case key.Matches(msg, m.KeyMap.ColWidth):
+	case key.Matches(msg, m.keyMap.ColWidth):
 		return m.toggleColumnWidthDialog(msg)
-	case key.Matches(msg, m.KeyMap.AllColWidth):
+	case key.Matches(msg, m.keyMap.AllColWidth):
 		return m.toggleColumnWidthForAll()
-	case key.Matches(msg, m.KeyMap.Zoom):
+	case key.Matches(msg, m.keyMap.Zoom):
 		return m.Zoom()
-	case key.Matches(msg, m.KeyMap.ToggleFmt):
+	case key.Matches(msg, m.keyMap.ToggleFmt):
 		return m.ToggleJSONYAMLFormat()
-	case key.Matches(msg, m.KeyMap.Query):
+	case key.Matches(msg, m.keyMap.Query):
 		return m.enableQueryMode(false)
-	case key.Matches(msg, m.KeyMap.Scan):
+	case key.Matches(msg, m.keyMap.Scan):
 		return m.enableScanMode(false)
-	case key.Matches(msg, m.KeyMap.ScanParameters):
+	case key.Matches(msg, m.keyMap.ScanParameters):
 		return m.ToggleScanParametersDialog()
-	case key.Matches(msg, m.KeyMap.QueryParameters):
+	case key.Matches(msg, m.keyMap.QueryParameters):
 		return m.ToggleQueryParametersDialog()
-	case key.Matches(msg, m.KeyMap.FilterParameters):
+	case key.Matches(msg, m.keyMap.FilterParameters):
 		return m.ToggleFilterParametersDialog()
-	case key.Matches(msg, m.KeyMap.Copy):
+	case key.Matches(msg, m.keyMap.Copy):
 		return m.toggleCopyDialog()
-	case key.Matches(msg, m.KeyMap.Browser):
+	case key.Matches(msg, m.keyMap.Browser):
 		return m.openInBrowser(m.resolveBrowserURL())
-	case key.Matches(msg, m.KeyMap.ColVis):
+	case key.Matches(msg, m.keyMap.ColVis):
 		return m.toggleColumnVisibilityDialog(msg)
-	case key.Matches(msg, m.KeyMap.ColSort):
+	case key.Matches(msg, m.keyMap.ColSort):
 		return m.toggleColumnSortingDialog(msg)
-	case key.Matches(msg, m.KeyMap.ColTransform):
+	case key.Matches(msg, m.keyMap.ColTransform):
 		return m.toggleColumnTransformDialog(msg)
 	default:
-		if match, call := m.AddKeyMap.Matches(msg); match {
+		if match, call := m.addKeyMap.Matches(msg); match {
 			return call
 		}
 		// forward unmatched keypresses to child table
@@ -922,23 +922,23 @@ func (m *ItemSelectionPane) applySize(height, width int) {
 func (m *ItemSelectionPane) updateKeyMaps() {
 	allowed := m.table.GetAllowedOptions()
 
-	if m.KeyMap.Search.Enabled() && !allowed.SearchAllowed {
+	if m.keyMap.Search.Enabled() && !allowed.SearchAllowed {
 		m.table.ResetSearch()
 	}
-	if m.KeyMap.ColSort.Enabled() && !allowed.ColumnSortingAllowed {
+	if m.keyMap.ColSort.Enabled() && !allowed.ColumnSortingAllowed {
 		m.table.ResetColumnSorting()
 	}
-	if m.KeyMap.ColVis.Enabled() && !allowed.ColumnVisibilityAllowed {
+	if m.keyMap.ColVis.Enabled() && !allowed.ColumnVisibilityAllowed {
 		m.table.ResetColumnVisibility()
 	}
-	if m.KeyMap.ColTransform.Enabled() && !allowed.ColumnTransformAllowed {
+	if m.keyMap.ColTransform.Enabled() && !allowed.ColumnTransformAllowed {
 		m.table.ResetColumnSorting()
 	}
 
-	m.KeyMap.Search.SetEnabled(allowed.SearchAllowed)
-	m.KeyMap.ColSort.SetEnabled(allowed.ColumnSortingAllowed)
-	m.KeyMap.ColVis.SetEnabled(allowed.ColumnVisibilityAllowed)
-	m.KeyMap.ColTransform.SetEnabled(allowed.ColumnTransformAllowed)
+	m.keyMap.Search.SetEnabled(allowed.SearchAllowed)
+	m.keyMap.ColSort.SetEnabled(allowed.ColumnSortingAllowed)
+	m.keyMap.ColVis.SetEnabled(allowed.ColumnVisibilityAllowed)
+	m.keyMap.ColTransform.SetEnabled(allowed.ColumnTransformAllowed)
 }
 
 // updateSize updates dimensions of the pane's contents based on the current
@@ -959,10 +959,10 @@ func (m *ItemSelectionPane) updateSize() {
 }
 
 func (m *ItemSelectionPane) resetKeyMap() {
-	m.KeyMap.QueryParameters.SetEnabled(false)
-	m.KeyMap.Query.SetEnabled(true)
-	m.KeyMap.ScanParameters.SetEnabled(true)
-	m.KeyMap.Scan.SetEnabled(false)
+	m.keyMap.QueryParameters.SetEnabled(false)
+	m.keyMap.Query.SetEnabled(true)
+	m.keyMap.ScanParameters.SetEnabled(true)
+	m.keyMap.Scan.SetEnabled(false)
 }
 
 // reset contents resets any table modifications and resets the table contents

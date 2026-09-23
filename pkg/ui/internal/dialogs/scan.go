@@ -64,10 +64,10 @@ type ScanDialog struct {
 	}
 
 	state struct {
-		TableARN   string
-		TableIndex messages.TableIndex
-		GSI        []messages.GlobalSecondaryIndex
-		LSI        []messages.LocalSecondaryIndex
+		tableARN   string
+		tableIndex messages.TableIndex
+		gsi        []messages.GlobalSecondaryIndex
+		lsi        []messages.LocalSecondaryIndex
 	}
 
 	styles scanListStyles
@@ -192,28 +192,28 @@ func (m *ScanDialog) newDelegate(s *scanListStyles) headed.ItemDelegate {
 		d.HeadedItems[0] = func(i headed.Item, ix int) string { return u.Ternary(m.styles.tableShortHeader, "", ix == 0) }
 	}
 
-	if len(m.state.GSI) > 0 {
-		firstGSI := m.state.GSI[0].Name
+	if len(m.state.gsi) > 0 {
+		firstGSI := m.state.gsi[0].Name
 		f := func(i headed.Item, _ int) string {
 			return u.Ternary(headerFmt(m.styles.gsiFullHeader), "", i.Name == firstGSI)
 		}
 		if m.collapseHeaders {
 			f = func(i headed.Item, _ int) string {
-				return u.Ternary(m.styles.gsiShortHeader, "", u.ContainsBy(m.state.GSI, func(e messages.GlobalSecondaryIndex) bool {
+				return u.Ternary(m.styles.gsiShortHeader, "", u.ContainsBy(m.state.gsi, func(e messages.GlobalSecondaryIndex) bool {
 					return e.Name == i.Name
 				}))
 			}
 		}
 		d.HeadedItems = append(d.HeadedItems, f)
 	}
-	if len(m.state.LSI) > 0 {
-		firstLSI := m.state.LSI[0].Name
+	if len(m.state.lsi) > 0 {
+		firstLSI := m.state.lsi[0].Name
 		f := func(i headed.Item, _ int) string {
 			return u.Ternary(headerFmt(m.styles.lsiFullHeader), "", i.Name == firstLSI)
 		}
 		if m.collapseHeaders {
 			f = func(i headed.Item, _ int) string {
-				return u.Ternary(m.styles.lsiShortHeader, "", u.ContainsBy(m.state.LSI, func(e messages.LocalSecondaryIndex) bool {
+				return u.Ternary(m.styles.lsiShortHeader, "", u.ContainsBy(m.state.lsi, func(e messages.LocalSecondaryIndex) bool {
 					return e.Name == i.Name
 				}))
 			}
@@ -271,10 +271,10 @@ func (m *ScanDialog) Update(msg tea.Msg) tea.Cmd {
 }
 
 func (m *ScanDialog) ResetState() {
-	m.state.TableARN = ""
-	m.state.TableIndex = messages.TableIndex{}
-	m.state.GSI = nil
-	m.state.LSI = nil
+	m.state.tableARN = ""
+	m.state.tableIndex = messages.TableIndex{}
+	m.state.gsi = nil
+	m.state.lsi = nil
 	m.selected = ""
 	m.content.SetItems([]list.Item{})
 	m.content.Select(0)
@@ -283,10 +283,10 @@ func (m *ScanDialog) ResetState() {
 func (m *ScanDialog) SetState(msg messages.InitScanParameters) tea.Cmd {
 	m.ResetState()
 
-	m.state.TableARN = msg.TableARN
-	m.state.TableIndex = msg.TableIndex
-	m.state.GSI = msg.GSI
-	m.state.LSI = msg.LSI
+	m.state.tableARN = msg.TableARN
+	m.state.tableIndex = msg.TableIndex
+	m.state.gsi = msg.GSI
+	m.state.lsi = msg.LSI
 	if msg.CurrentIndex != nil {
 		m.selected = *msg.CurrentIndex
 	}
@@ -297,14 +297,14 @@ func (m *ScanDialog) SetState(msg messages.InitScanParameters) tea.Cmd {
 
 func (m *ScanDialog) updateContent() tea.Cmd {
 	var idx int
-	items := make([]list.Item, 0, 1+len(m.state.GSI)+len(m.state.LSI))
+	items := make([]list.Item, 0, 1+len(m.state.gsi)+len(m.state.lsi))
 	items = append(items, headed.Item{
 		Name: tableIndexName,
 		Meta: map[string]any{metaKey: indexItemMeta{
 			indexType: table,
 		}},
 	})
-	for i, g := range m.state.GSI {
+	for i, g := range m.state.gsi {
 		items = append(items, headed.Item{
 			Name: g.Name,
 			Meta: map[string]any{metaKey: indexItemMeta{
@@ -316,7 +316,7 @@ func (m *ScanDialog) updateContent() tea.Cmd {
 			idx = len(items) - 1
 		}
 	}
-	for i, l := range m.state.LSI {
+	for i, l := range m.state.lsi {
 		items = append(items, headed.Item{
 			Name: l.Name,
 			Meta: map[string]any{metaKey: indexItemMeta{
@@ -347,7 +347,7 @@ func (m *ScanDialog) changeIndex() tea.Cmd {
 	m.selected = m.content.SelectedItem().(headed.Item).Name
 	return func() tea.Msg {
 		return messages.UpdateScanIndex{
-			TableARN:  m.state.TableARN,
+			TableARN:  m.state.tableARN,
 			IndexName: u.Ternary(m.selected, "", m.selected != tableIndexName),
 		}
 	}
@@ -396,8 +396,8 @@ func (m *ScanDialog) updateSize() {
 		var (
 			maxContentH       = maxDialogHeight - (bordersH + titleH + filterH + idxInfoH + helpH + contentPH)
 			paginatorH        = lipgloss.Height(m.content.Styles.PaginationStyle.Render(m.content.Paginator.View())) + 1 // margin is set dynamically in list, cannot access; ergo '+1'
-			gsilen            = len(m.state.GSI)
-			lsilen            = len(m.state.LSI)
+			gsilen            = len(m.state.gsi)
+			lsilen            = len(m.state.lsi)
 			numHeaders        = u.Ternary(1, u.Ternary(2, 3, gsilen > 0 && lsilen == 0), gsilen+lsilen == 0)
 			headerH           = lipgloss.Height(m.styles.Header.Render(m.styles.headerFmt("test-header")))
 			totalHeaderH      = numHeaders * headerH
@@ -504,19 +504,19 @@ func (m *ScanDialog) renderIndexInfo() string {
 	}
 	switch meta.indexType {
 	case table:
-		i := m.state.TableIndex
+		i := m.state.tableIndex
 		hash = i.HashKey
 		hashType = i.HashKeyType
 		rang = i.RangeKey
 		rangType = i.RangeKeyType
 	case gsi:
-		i := m.state.GSI[meta.sliceIndex]
+		i := m.state.gsi[meta.sliceIndex]
 		hash = i.HashKey
 		hashType = i.HashKeyType
 		rang = i.RangeKey
 		rangType = i.RangeKeyType
 	case lsi:
-		i := m.state.LSI[meta.sliceIndex]
+		i := m.state.lsi[meta.sliceIndex]
 		hash = i.HashKey
 		hashType = i.HashKeyType
 		rang = &i.RangeKey
