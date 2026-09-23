@@ -1,6 +1,5 @@
 package itemselection
 
-// TODO: private/public field consistency (entire project)
 import (
 	"context"
 	"fmt"
