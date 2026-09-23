@@ -615,7 +615,7 @@ func (m Model) View() tea.View {
 	help := m.Help.ShortHelpView(keys)
 	var fill string
 	if remainingSpace := m.Help.Width() - lipgloss.Width(help); remainingSpace > 0 {
-		fill = u.RepeatString(" ", remainingSpace)
+		fill = strings.Repeat(" ", remainingSpace)
 	}
 
 	gutter := lipgloss.JoinHorizontal(lipgloss.Left, pregutterLeft, help, fill, pregutterRight)

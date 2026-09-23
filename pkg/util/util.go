@@ -4,7 +4,6 @@ package util
 import (
 	"cmp"
 	"reflect"
-	"strings"
 )
 
 func Ternary[T any](first, second T, cond bool) T {
@@ -49,14 +48,6 @@ func FindBy[S []E, E comparable](slice S, cond func(i E) bool) int {
 		}
 	}
 	return -1
-}
-
-func RepeatString(str string, c int) string {
-	b := strings.Builder{}
-	for range c {
-		b.WriteString(str)
-	}
-	return b.String()
 }
 
 // MergeMaps takes two maps and returns an identically typed map containing all

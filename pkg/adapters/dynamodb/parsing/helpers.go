@@ -48,11 +48,7 @@ func trimSuffixIf(s string, x string, b bool) string {
 }
 
 func tabs(size, n int) string {
-	var res string
-	for range n * size {
-		res += spf(" ")
-	}
-	return res
+	return strings.Repeat(" ", n*size)
 }
 
 // getSortedKeys returns the dynamo-db item keys as a `[]string` sorted

@@ -1066,7 +1066,7 @@ func (m *FilterDialog) selectContentLineFieldStyle(f filterDialogFocus, i int) l
 	}
 
 	if !hasField {
-		return m.styles.ignored.Width(fieldLen + boxAddW).Transform(func(string) string { return u.RepeatString("─", fieldLen) })
+		return m.styles.ignored.Width(fieldLen + boxAddW).Transform(func(string) string { return strings.Repeat("─", fieldLen) })
 	}
 	return style
 }
