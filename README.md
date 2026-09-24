@@ -287,15 +287,13 @@ tables:
     - ^(staging|prod)(.*-api)(.*)$
 ```
 
-The above configuration will match as follows: | table-name | matching
-expression | highlighted segments | number of segments | |
---------------------------------- | ------------------- |
---------------------------------------- | ------------------ | |
-`prod-happiness-service-YEF15` | 1 | `[prod, -happiness-service, -YEF15]` | 3 |
-| `staging-cataclysm-service-EFI89` | 1 |
-`[staging, -cataclysm-service, -EFI89]` | 3 | | `staging-chaos-api-YAK36` | 2 |
-`[staging, -chaos-service, -YAK36]` | 3 | | `NewYork-rockstar-api` | NONE |
-`[NewYork-rockstar-api]` | 1 |
+The above configuration will match as follows: 
+| table-name | matching expression | highlighted segments | number of segments | 
+|--------------------------------- | ------------------- | --------------------------------------- | ------------------ | 
+|`prod-happiness-service-YEF15` | 1 | `[prod, -happiness-service, -YEF15]` | 3 |
+| `staging-cataclysm-service-EFI89` | 1 |`[staging, -cataclysm-service, -EFI89]` | 3 | 
+| `staging-chaos-api-YAK36` | 2 |`[staging, -chaos-service, -YAK36]` | 3 |
+| `NewYork-rockstar-api` | NONE |`[NewYork-rockstar-api]` | 1 |
 
 <br/>
 
