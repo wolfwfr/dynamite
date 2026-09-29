@@ -187,7 +187,7 @@ func (a *Adapter) QueryTable(client *dynamodb.Client, ctx context.Context, table
 		FilterExpression:          fex,
 		ExpressionAttributeNames:  names,
 		ExpressionAttributeValues: values,
-		Select:                    "ALL_ATTRIBUTES",
+		Select:                    u.Ternary(types.SelectAllAttributes, types.SelectAllProjectedAttributes, index == nil),
 		IndexName:                 index,
 		ExclusiveStartKey:         params.LastEvaluatedKey,
 		ScanIndexForward:          &ascendingOrder,
