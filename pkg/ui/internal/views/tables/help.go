@@ -1,6 +1,6 @@
 package tableselection
 
-import "charm.land/bubbles/v2/key"
+import "github.com/wolfwfr/bubbles/v2/key"
 
 // VIEW
 func (m *TableSelectionView) ShortHelp() []key.Binding {

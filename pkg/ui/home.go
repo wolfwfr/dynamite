@@ -9,8 +9,8 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
-	"charm.land/bubbles/v2/help"
-	"charm.land/bubbles/v2/key"
+	"github.com/wolfwfr/bubbles/v2/help"
+	"github.com/wolfwfr/bubbles/v2/key"
 
 	appconfig "github.com/wolfwfr/dynamite/pkg"
 	"github.com/wolfwfr/dynamite/pkg/aws"

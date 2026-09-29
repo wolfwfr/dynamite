@@ -1,10 +1,10 @@
 package dialogs
 
 import (
-	"charm.land/bubbles/v2/help"
-	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/wolfwfr/bubbles/v2/help"
+	"github.com/wolfwfr/bubbles/v2/key"
 
 	"github.com/wolfwfr/dynamite/pkg/theme"
 	"github.com/wolfwfr/dynamite/pkg/ui/internal/messages"

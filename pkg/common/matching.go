@@ -1,9 +1,9 @@
 package common
 
 import (
-	"charm.land/bubbles/v2/key"
-	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
+	"github.com/wolfwfr/bubbles/v2/key"
+	"github.com/wolfwfr/bubbles/v2/textinput"
 )
 
 var textinputKeys []key.Binding

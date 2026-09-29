@@ -5,8 +5,8 @@ package keymaps
 import (
 	"slices"
 
-	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
+	"github.com/wolfwfr/bubbles/v2/key"
 )
 
 // ------------------------------------------ //

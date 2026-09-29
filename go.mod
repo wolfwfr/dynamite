@@ -2,11 +2,7 @@ module github.com/wolfwfr/dynamite
 
 go 1.26.2
 
-// awaiting merge of https://github.com/charmbracelet/bubbles/pull/1032
-replace charm.land/bubbles/v2 v2.1.0 => github.com/wolfwfr/bubbles/v2 v2.1.1-beta1
-
 require (
-	charm.land/bubbles/v2 v2.1.0
 	charm.land/bubbletea/v2 v2.0.8
 	charm.land/lipgloss/v2 v2.0.5
 	github.com/atotto/clipboard v0.1.4
@@ -19,6 +15,8 @@ require (
 	github.com/sahilm/fuzzy v0.1.3
 	github.com/stretchr/testify v1.11.1
 	github.com/urfave/cli/v3 v3.8.0
+	// TODO: awaiting merge of https://github.com/charmbracelet/bubbles/pull/1032; replace with official package when issue is fixed
+	github.com/wolfwfr/bubbles/v2 v2.1.1-fix1
 	go.uber.org/mock v0.6.0
 	gopkg.in/yaml.v3 v3.0.1
 )

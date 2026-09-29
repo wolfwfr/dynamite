@@ -1,6 +1,6 @@
 package tableselection
 
-import "charm.land/bubbles/v2/key"
+import "github.com/wolfwfr/bubbles/v2/key"
 
 // DetailsPaneKeyMap defines keybindings. It satisfies to the help.KeyMap interface, which
 // is used to render the help menu.

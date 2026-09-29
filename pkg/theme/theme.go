@@ -3,8 +3,8 @@ package theme
 import (
 	"image/color"
 
-	"charm.land/bubbles/v2/textinput"
 	"charm.land/lipgloss/v2"
+	"github.com/wolfwfr/bubbles/v2/textinput"
 )
 
 func init() {

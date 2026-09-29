@@ -4,10 +4,10 @@ import (
 	"context"
 	"testing"
 
-	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/wolfwfr/bubbles/v2/key"
 	gm "go.uber.org/mock/gomock"
 
 	appconfig "github.com/wolfwfr/dynamite/pkg"

@@ -1,8 +1,8 @@
 package dialogs
 
 import (
-	"charm.land/bubbles/v2/textinput"
 	"charm.land/lipgloss/v2"
+	"github.com/wolfwfr/bubbles/v2/textinput"
 	"github.com/wolfwfr/dynamite/pkg/theme"
 )
 

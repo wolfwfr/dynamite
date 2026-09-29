@@ -1,6 +1,6 @@
 package table
 
-import "charm.land/bubbles/v2/key"
+import "github.com/wolfwfr/bubbles/v2/key"
 
 // KeyMap defines keybindings. It satisfies to the help.KeyMap interface, which
 // is used to render the help menu.
