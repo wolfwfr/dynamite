@@ -36,9 +36,8 @@ type NotificationDialog struct {
 	close *key.Binding
 
 	tracker struct {
-		start    time.Time
-		ticker   *time.Ticker
-		finished bool
+		start   time.Time
+		expired bool
 	}
 
 	defaultDialogHeight int
@@ -92,8 +91,6 @@ func NewNotificationDialog(msg string, err error, opts ...Option) *NotificationD
 		o(d)
 	}
 
-	d.tracker.ticker = time.NewTicker(50 * time.Millisecond)
-
 	d.newStyles()
 	d.updateSize()
 
@@ -118,7 +115,7 @@ func (m *NotificationDialog) Tick() tea.Cmd {
 func (m *NotificationDialog) tick() tea.Cmd {
 	id := m.id
 	return func() tea.Msg {
-		<-m.tracker.ticker.C
+		<-time.After(50 * time.Millisecond)
 		return messages.NotificationTick{ID: id}
 	}
 }
@@ -132,7 +129,10 @@ func (m *NotificationDialog) Init() tea.Cmd {
 }
 
 func (m *NotificationDialog) Update(msg tea.Msg) tea.Cmd {
-	var cmd tea.Cmd
+	var cmds []tea.Cmd
+
+	cmds = append(cmds, m.maybeExpire())
+
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.applySize(msg)
@@ -140,21 +140,16 @@ func (m *NotificationDialog) Update(msg tea.Msg) tea.Cmd {
 		m.newStyles()
 		return nil
 	case messages.NotificationTick:
-		if msg.ID == m.id {
-			return m.onTick()
+		if msg.ID == m.id && !m.tracker.expired {
+			cmds = append(cmds, m.tick())
 		}
-		return nil
 	case tea.KeyPressMsg:
 		if m.close != nil && key.Matches(msg, *m.close) {
-			cmd = m.toggleDialog()
+			cmds = append(cmds, m.toggleDialog())
 		}
 	}
 
-	return tea.Batch(cmd, m.checkExpiry())
-}
-
-func (m *NotificationDialog) onTick() tea.Cmd {
-	return tea.Batch(m.tick(), m.checkExpiry())
+	return tea.Batch(cmds...)
 }
 
 func (m *NotificationDialog) toggleDialog() tea.Cmd {
@@ -166,9 +161,9 @@ func (m *NotificationDialog) toggleDialog() tea.Cmd {
 	}
 }
 
-func (m *NotificationDialog) checkExpiry() tea.Cmd {
-	if m.tracker.finished {
-		m.tracker.ticker.Stop()
+func (m *NotificationDialog) maybeExpire() tea.Cmd {
+	if m.getProgression() >= 1 {
+		m.tracker.expired = true
 		return m.toggleDialog()
 	}
 	return nil
@@ -212,7 +207,6 @@ func (m *NotificationDialog) renderProgress() string {
 	w := m.dialog.width - 4
 
 	p := m.getProgression()
-	m.tracker.finished = p >= 1
 
 	b := int(p * float64(w))
 
