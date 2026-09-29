@@ -23,3 +23,5 @@ tmp
 **/mocks/
 
 *.log
+
+dist/
