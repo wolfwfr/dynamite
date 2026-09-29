@@ -10,6 +10,8 @@ import (
 var regexMatchs []*regexp.Regexp
 
 func (m *tableSelectionPane) initialiseRegex(exprs []string) {
+	regexMatchs = make([]*regexp.Regexp, 0, len(exprs))
+
 	for i, expr := range exprs {
 		c, err := regexp.Compile(expr)
 		if err != nil {
