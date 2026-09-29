@@ -60,6 +60,7 @@ func (m *Manager) readConfigFromDisk() (*configFile, error) {
 		if os.IsNotExist(err) {
 			return nil, nil
 		}
+		return nil, err
 	}
 	defer f.Close()
 
@@ -83,6 +84,7 @@ func (m *Manager) readStateFromDisk() (*StateFile, error) {
 		if os.IsNotExist(err) {
 			return nil, nil
 		}
+		return nil, err
 	}
 	defer f.Close()
 
