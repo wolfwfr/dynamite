@@ -181,7 +181,7 @@ func (t *ItemsTable) AddItems(items apitypes.Items, hasRangeKey bool) {
 }
 
 func (t *ItemsTable) appendItems(newItems apitypes.Items) {
-	t.items = mergeSlices(t.items, newItems)
+	t.items = append(t.items, newItems...)
 }
 
 func (t *ItemsTable) View() string {

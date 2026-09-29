@@ -9,13 +9,6 @@ import (
 	u "github.com/wolfwfr/dynamite/pkg/util"
 )
 
-func mergeSlices[S ~[]E, E any](s1, s2 S) S {
-	n := make([]E, len(s1)+len(s2))
-	copy(n[:len(s1)], s1)
-	copy(n[len(s1):], s2)
-	return n
-}
-
 // compileUniqueKeys takes a table of key-value pairs, observes all keys and
 // compiles a complete, in-order list of all unique key observed.
 // This ensures that when individual table rows have keys missing, the final
