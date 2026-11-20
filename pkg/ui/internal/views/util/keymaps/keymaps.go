@@ -6,7 +6,7 @@ import (
 	"slices"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/wolfwfr/bubbles/v2/key"
+	"charm.land/bubbles/v2/key"
 )
 
 // ------------------------------------------ //
