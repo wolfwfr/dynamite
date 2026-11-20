@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/wolfwfr/bubbles/v2/key"
+	"charm.land/bubbles/v2/key"
 	gm "go.uber.org/mock/gomock"
 
 	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"

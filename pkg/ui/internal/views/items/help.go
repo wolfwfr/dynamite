@@ -1,6 +1,6 @@
 package itemselection
 
-import "github.com/wolfwfr/bubbles/v2/key"
+import "charm.land/bubbles/v2/key"
 
 // VIEW
 func (m *ItemSelectionView) ShortHelp() []key.Binding {

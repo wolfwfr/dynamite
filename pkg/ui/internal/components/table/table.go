@@ -11,9 +11,9 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/wolfwfr/bubbles/v2/help"
-	"github.com/wolfwfr/bubbles/v2/key"
-	"github.com/wolfwfr/bubbles/v2/viewport"
+	"charm.land/bubbles/v2/help"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/viewport"
 
 	"github.com/wolfwfr/dynamite/pkg/util"
 )
